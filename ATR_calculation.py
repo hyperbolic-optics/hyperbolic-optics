@@ -65,11 +65,11 @@ def plot_base_permittivity(wavenumber, E_xx, E_zz):
 
     plt.show()
 
-def rotated_permittivities(E_ext, E_ord, rotation = np.pi/4.):
+def rotated_permittivities(E_ext, E_ord, rotation = git snp.pi/4.):
     E_xx = E_ext * (np.cos(rotation))**2 + E_ord * (np.sin(rotation))**2
     E_zz = E_ext * (np.sin(rotation))**2 + E_ord * (np.cos(rotation))**2
     
-    E_xz = (E_ord - E_ext) * np.sin(rotation) * np.cos(rotation) * -1
+    E_xz = E_ord * np.cos(rotation) * np.sin(rotation) - E_ext * np.cos(rotation) * np.sin(rotation)
 
     return E_xx, E_zz, E_xz
 
@@ -110,6 +110,7 @@ def kvectors(wavenumber, E_xx, E_zz, E_xz, prism_permittivity = 5.5, angle=np.pi
         if kz3[i].imag<0:
             kz3[i] = kz3_other[i]
 
+
     return kx, kz1, kz2, kz3
 
 
@@ -143,7 +144,7 @@ def reflectivity_calculation(kx, kz1, kz2, kz3, E_xx, E_zz, E_xz, prism_permitti
     A41 =  0.
     A42 = -1.
     A43 =  1. 
-    A44 =  (E_zz * kz3 + E_xz*kx) / (kz2*(E_xx * E_zz - 2 * E_xz))
+    A44 =  (E_zz * kz3 + E_xz*kx) / (kz2*(E_xx * E_zz - E_xz**2))
 
     reflection_matrix = np.array([[A11, A12, A13, A14],
                            [A21, A22, A23, A24],
@@ -203,7 +204,7 @@ if __name__ == "__main__":
 
     kx, kz1,kz2, kz3 = kvectors(wavenumber, E_xx, E_zz, E_xz)
 
-    #plot_kvectors(wavenumber, kz3)
+    # plot_kvectors(wavenumber, kz3)
 
     reflectivity = fetch_reflectivity(kx,kz1,kz2,kz3, E_xx, E_zz, E_xz)
     plot_reflectivity(reflectivity)
