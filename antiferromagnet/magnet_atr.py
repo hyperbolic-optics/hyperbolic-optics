@@ -51,31 +51,31 @@ def retrieve_matrix(frequency, permeability_3, permeability_t):
     kx, ky, kz, k0, epsilon, mu_3, mu_t, omega = sp.symbols('k_x k_y k_z k_{0} \epsilon_{3} \mu_{3} \mu_{t} \omega')
 
     element_1 = k0**2 * epsilon * mu_3 - ky**2 - kz**2
-    element_2 = ky * kz + k0**2 * epsilon * mu_t * sp.I
+    element_2 = k0**2 * epsilon * mu_t * sp.I + kx * ky
     element_3 = kx * kz
     element_4 = kx * ky - k0**2 * epsilon * mu_t * sp.I
     element_5 = k0**2 * epsilon * mu_3 - kx**2 - kz**2
     element_6 = ky * kz
     element_7 = kx * kz
     element_8 = ky * kz
-    element_9 = k0**2 * epsilon - kx**2 - ky**2
+    element_9 = 1. # (k0**2 * epsilon - kx**2 - ky**2)
 
     matrix = sp.Matrix([element_1, element_2, element_3, element_4, element_5, element_6, element_7, element_8, element_9]).reshape(3,3)
     
-    new_matrices = (matrix.subs({
+    new_matrices = [matrix.subs({
         k0 : 2 * np.pi * omega,
-        kx : np.sin(np.pi/4.) * 2 * np.pi * omega,
-        kz : 0,
-        epsilon : 5.5,
-        mu_3 : item[0],
-        mu_t : item[1]
-    }).subs({ omega : item[2]}) for item in zip (permeability_3, permeability_t, frequency))
+        kx : np.sin(np.pi/4.) * 2 * np.pi * omega * np.sqrt(11.56),
+        kz : 0 + 0j,
+        epsilon : 5.5 + 0j,
+        mu_3 : item_1 + 0j,
+        mu_t : item_2 + 0j
+    }).subs({ omega : item_3 + 0j}) for (item_1, item_2, item_3) in zip(permeability_3, permeability_t, frequency)]
 
     return new_matrices
 
 
 def solve_ky(matrices):
-    determinants = (item.det() for item in matrices)
+    determinants = [item.det() for item in matrices]
     ky_solutions = [sp.solve(item, sp.symbols('k_y')) for item in determinants]
 
     ky_solutions = np.asarray(ky_solutions).astype(complex)
@@ -118,16 +118,53 @@ def plot_ky(frequency, ky_solutions):
     plt.close()
 
 
-def main():
-    frequency_spectrum = np.linspace(52, 54, 200)
-    parameters = magnetic_parameters()
-    permeability_3, permeability_t = calculate_permeability(*(frequency_spectrum, *parameters))
+def plot_analytical_and_matrix(frequency, analytical_ky, analytical_ky_other, matrix_ky, matrix_ky_other):
+    plt.rcParams["figure.figsize"] = (8,7)
+    fig, axs = plt.subplots(2)
+    fig.suptitle('$k_y$ Solutions - Analytical and from Matrix')
+    axs[0].plot(frequency, analytical_ky.real,'--', label = 'Analytical Real',)
+    axs[0].plot(frequency, analytical_ky.imag,'--', label = 'Analytical Imaginary')
+    axs[0].plot(frequency, matrix_ky.real,'-.', label = 'Matrix Real')
+    axs[0].plot(frequency, matrix_ky.imag,'-.', label = 'Matrix Imaginary')
+    axs[0].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$k_y$')
+    axs[0].legend()
 
-    matrices = retrieve_matrix(frequency_spectrum, permeability_3, permeability_t)
+    axs[1].plot(frequency, analytical_ky_other.real,'--', label = 'Analytical Real')
+    axs[1].plot(frequency, analytical_ky_other.imag,'--', label = 'Analytical Imaginary')
+    axs[1].plot(frequency, matrix_ky_other.real,'-.', label = 'Matrix Real')
+    axs[1].plot(frequency, matrix_ky_other.imag,'-.', label = 'Matrix Imaginary')
+    axs[1].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$k_{y}$')
+    axs[1].legend()
+
+    plt.show()
+
+
+def no_phi(wavenumber, permeability_3, permeability_t, magnet_permittivity=5.5, prism_permittivity=11.56, incident_angle=np.pi/4.):
+
+    k0 = wavenumber * 2 * np.pi
+    kx = k0 * np.sqrt(prism_permittivity) * np.sin(incident_angle)
     
-    ky_solutions = solve_ky(matrices)
+    ky = 0. - np.sqrt((k0**2 * magnet_permittivity * (permeability_3**2 - permeability_t**2)/permeability_3) - kx**2)
 
-    plot_ky(frequency_spectrum, ky_solutions)
+    ky_other = 0. + np.sqrt((k0**2 * magnet_permittivity * (permeability_3**2 - permeability_t**2)/permeability_3) - kx**2)
+
+    return ky, ky_other
+
+
+
+def main():
+    frequency = np.linspace(52.01, 54, 250)
+    parameters = magnetic_parameters()
+    permeability_3, permeability_t = calculate_permeability(*(frequency, *parameters))
+
+    matrices = retrieve_matrix(frequency, permeability_3, permeability_t)
+    ky_solutions = solve_ky(matrices)
+    ky_matrix = ky_solutions[:,0]
+    ky_matrix_other = ky_solutions[:,1]
+
+    ky_analytical, ky_other_analytical = no_phi(frequency, permeability_3, permeability_t)
+
+    plot_analytical_and_matrix(frequency, ky_analytical, ky_other_analytical, ky_matrix, ky_matrix_other)
 
 
 if __name__ == "__main__":
