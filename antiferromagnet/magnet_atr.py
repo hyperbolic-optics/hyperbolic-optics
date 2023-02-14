@@ -4,7 +4,6 @@ np.set_printoptions(suppress=True)
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from scipy import constants
 
-
 def magnetic_parameters():
     gamma = 1.05 # cm^-1 / T
     B0 = 0.3 # T
@@ -13,7 +12,7 @@ def magnetic_parameters():
     magnetisation = 445633.84 #A/cm
 
     resonant_frequency_squared = gamma**2. * (2. * Ba * Be + Ba ** 2.)
-    damping_parameter = 1.27e-4 * np.sqrt(resonant_frequency_squared)
+    damping_parameter = 1.97e-4 * np.sqrt(resonant_frequency_squared)
 
     return gamma, B0, Ba, magnetisation, resonant_frequency_squared, damping_parameter
 
@@ -35,11 +34,11 @@ def fetch_wavevectors_permittivity(frequency, theta, phi):
     prism_permittivity = 11.56 + 0.j
     
     k0 = frequency * np.pi * 2. + 0.j
-    kx = k0 * np.sqrt(prism_permittivity) * np.sin(theta)
-    kz = k0 * np.sqrt(prism_permittivity) * np.cos(phi)
+    kx = k0 * np.sqrt(prism_permittivity) * np.sin(theta) * np.sin(phi)
+    kz = k0 * np.sqrt(prism_permittivity) * np.cos(phi) * np.sin(theta)
 
-    ky1 = np.sqrt(k0**2. * prism_permittivity - kx**2 + 0.j)
-    ky2 = np.sqrt(k0**2. - kx**2. + 0.j)
+    ky1 = np.sqrt(k0**2. * prism_permittivity - ((kx**2. + kz**2.) + 0.j))
+    ky2 = np.sqrt(k0**2. - (kx**2. + kz**2.) + 0.j)
     
     magnet_permittivity = 5.5 + 0.j
     permittivity_2 = 1. + 0.j
@@ -48,70 +47,49 @@ def fetch_wavevectors_permittivity(frequency, theta, phi):
     return k0, kx, kz, ky1, ky2, prism_permittivity, permittivity_2, magnet_permittivity
 
 
-def retrieve_roots(mu_3, mu_t, k0, kx, kz, epsilon):
+def polynomial_coeffs(mu_3, mu_t, epsilon, k0, kx, kz):
+    fourth_power = epsilon * k0**2. * mu_3
 
-    fourth_power = epsilon*k0**2.*mu_3
-
-    third_power = 0.
-
-    second_power = epsilon*k0**2.*(-epsilon*k0**2.*mu_3**2. - epsilon*k0**2.*mu_3 + epsilon*k0**2.*mu_t**2. + 2.*kx**2.*mu_3 + kz**2.*mu_3 + kz**2.)
-
-    first_power = 0.
+    second_power = epsilon * k0**2. *(-epsilon * k0**2. * mu_3**2. - epsilon * k0**2. * mu_3 + epsilon * k0**2. * mu_t**2. + 2. * kx**2. * mu_3 + kz**2. * mu_3 + kz**2.)
 
     zero_power = epsilon*k0**2.*(epsilon**2.*k0**4.*mu_3**2. - epsilon**2.*k0**4.*mu_t**2. - epsilon*k0**2.*kx**2.*mu_3**2. - epsilon*k0**2.*kx**2.*mu_3 + epsilon*k0**2.*kx**2.*mu_t**2. - 2.*epsilon*k0**2.*kz**2.*mu_3 + kx**4.*mu_3 + kx**2.*kz**2.*mu_3 + kx**2.*kz**2. + kz**4.)
 
-    ordering = [[
+    coeffs = [[
         fourth_power[i],
-        third_power,
         second_power[i],
-        first_power,
         zero_power[i]
     ] for i in range(0, len(mu_3))]
 
-    #ordering = np.asarray(ordering)
+    coeffs = np.asarray(coeffs)
 
-    roots = [np.roots(item) for item in ordering]
-
-    return np.asarray(roots)
+    return coeffs
 
 
-def restructure_roots(roots): 
-    positive_roots = []
-    original = np.round(roots[0],9) + 0. + 0.j
-    original = original[np.where(original.imag>=0.)]
-    original = original[np.where(original.real>=0.)]
+def roots_in_order(coeffs):
+    a0 = coeffs[:,0]
+    a1 = coeffs[:,1]
+    a2 = coeffs[:,2]
 
-    if original[1].real > original[0].real:
-        original = np.flip(original)
-    positive_roots.append(original)
-
-    previous = original
+    discriminants = a1**2. - 4. * a0 * a2
     
-    for item in roots[1:]:
-        item = np.round(item,8) + 0. + 0.j # to deal with issue of very very small float errors
-        item = item[np.where(item.imag>=0.)]
-        item = item[np.where(item.real>=0.)]
-
-        condition_1 = abs(item[0].imag - previous[1].imag) < abs(item[0].imag - previous[0].imag)
-        condition_2 = abs(item[0].real - previous[1].real) < abs(item[0].real - previous[0].real)
-
-        condition_3 = abs(item[1].imag - previous[0].imag) < abs(item[1].imag - previous[1].imag)
-        condition_4 = abs(item[1].real - previous[0].real) < abs(item[1].real - previous[1].real)
-
-
-        if (condition_1 and condition_2) or (condition_3 and condition_4):
-            item = np.flip(item)
-
-        positive_roots.append(item)
-
-        previous = item
+    zero_crossings = np.where(np.diff(np.sign(discriminants)))[0]
+    first = zero_crossings[0]
+    second = zero_crossings[1]
+    third = zero_crossings[-2]
+    fourth = zero_crossings[-1]
     
+    plus = ((-a1 + np.sqrt(discriminants))/ (2. * a0))
+    minus = ((-a1 - np.sqrt(discriminants))/ (2. * a0))
 
+    stack = np.column_stack((plus,minus))
+    stack[:second-1, [0, 1]] = stack[:second-1, [1, 0]]
+    stack[fourth-1:, [0, 1]] = stack[fourth-1:, [1, 0]]
+    if zero_crossings.shape == (6,):
+        stack[zero_crossings[3]-2:, [0, 1]] = stack[zero_crossings[3]-2:, [1, 0]]
     
-    positive_roots = np.asarray(positive_roots)
-    kya = positive_roots[:, 0]
-    kyb = positive_roots[:, 1]
-
+    kya = np.sqrt(stack[:,1])
+    kyb = np.sqrt(stack[:,0])
+    
     return kya, kyb
 
 
@@ -275,17 +253,16 @@ def plot_permeability_components(frequency, permeability_3, permeability_t, mu_v
 
 
 def plot_ky(frequency, zeroth_solutions, first_solutions):
-    axis = np.linspace(0 ,len(frequency), len(frequency))
     plt.rcParams["figure.figsize"] = (8,7)
     fig, axs = plt.subplots(2)
     fig.suptitle('$k_{y}$ Solutions')
-    axs[0].plot(axis, zeroth_solutions.real, label = 'Real')
-    axs[0].plot(axis, zeroth_solutions.imag, label = 'Imaginary')
+    axs[0].plot(frequency, zeroth_solutions.real, label = 'Real')
+    axs[0].plot(frequency, zeroth_solutions.imag, label = 'Imaginary')
     axs[0].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$k_{y}$')
     axs[0].legend()
 
-    axs[1].plot(axis, first_solutions.real, label = 'Real')
-    axs[1].plot(axis, first_solutions.imag, label = 'Imaginary')
+    axs[1].plot(frequency, first_solutions.real, label = 'Real')
+    axs[1].plot(frequency, first_solutions.imag, label = 'Imaginary')
     axs[1].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$k_{y}$')
     axs[1].legend()
 
@@ -391,18 +368,18 @@ def main_ky():
     parameters = magnetic_parameters()
     mu_3, mu_t, mu_v = calculate_permeability(*(frequency, *parameters))
 
-    phi = 1.56
+    phi = 1.57
     incident_angles = np.linspace(-1.57,1.57, 300)
+
 
     for theta in incident_angles:
         k0, kx, kz, ky1, ky2, prism_permittivity, permittivity_2, magnet_permittivity = fetch_wavevectors_permittivity(frequency, theta, phi)
-        ky_roots = retrieve_roots(mu_3,mu_t, k0, kx, kz, magnet_permittivity)
-
-        kya, kyb, = restructure_roots(ky_roots)
+        coeffs = polynomial_coeffs(mu_3, mu_t, magnet_permittivity, k0, kx, kz)
+        kya, kyb = roots_in_order(coeffs)
         kyas.append(kya)
         kybs.append(kyb)
 
-
+    
     wavevectors = np.asarray(kyas).reshape(len(frequency),len(kyas)).real
     contour_wavevector(frequency, incident_angles, wavevectors.T.real, 0., phi)
  
@@ -414,15 +391,14 @@ def main_matrix_contour():
 
     phi = 1.57
     incident_angles = np.linspace(-1.57,1.57, 300)
-    d = 1.e-4
+    d = 20.e-4
     reflectivities = []
-    
+
     for theta in incident_angles:
-
         k0, kx, kz, ky1, ky2, prism_permittivity, permittivity_2, magnet_permittivity = fetch_wavevectors_permittivity(frequency, theta, phi)
-        ky_roots = retrieve_roots(mu_3,mu_t, k0, kx, kz, magnet_permittivity)
 
-        kya, kyb, = restructure_roots(ky_roots)
+        coeffs = polynomial_coeffs(mu_3, mu_t, magnet_permittivity, k0, kx, kz)
+        kya, kyb = roots_in_order(coeffs)
 
         Aa, Ba = solve_A_B(mu_3, mu_t, k0, kx, kya, kz, magnet_permittivity)
         Ab, Bb = solve_A_B(mu_3, mu_t, k0, kx, kyb, kz, magnet_permittivity)
@@ -459,14 +435,14 @@ def main_single_theta():
     mu_3, mu_t, mu_v = calculate_permeability(*(frequency, *parameters))
 
     phi = 1.57
-    theta = 0.01
+    theta = 0.001
     d = 1.e-4
-
-    k0, kx, kz, ky1, ky2, prism_permittivity, permittivity_2, magnet_permittivity = fetch_wavevectors_permittivity(frequency, theta, phi)
-    ky_roots = retrieve_roots(mu_3,mu_t, k0, kx, kz, magnet_permittivity)
-
-    kya, kyb = restructure_roots(ky_roots)
     
+    k0, kx, kz, ky1, ky2, prism_permittivity, permittivity_2, magnet_permittivity = fetch_wavevectors_permittivity(frequency, theta, phi)
+    
+    coeffs = polynomial_coeffs(mu_3, mu_t, magnet_permittivity, k0, kx, kz)
+    kya, kyb = roots_in_order(coeffs)
+    plot_ky(frequency, kya, kyb)
 
     Aa, Ba = solve_A_B(mu_3, mu_t, k0, kx, kya, kz, magnet_permittivity)
     Ab, Bb = solve_A_B(mu_3, mu_t, k0, kx, kyb, kz, magnet_permittivity)
@@ -488,7 +464,7 @@ def main_single_theta():
             d
             )
 
-    plot_reflectivity(frequency, reflectivity_z, theta)
+    #plot_reflectivity(frequency, reflectivity_x, theta)
 
 
 
