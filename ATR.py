@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 np.set_printoptions(suppress=True)
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
-from scipy import constants
 from scipy.linalg import expm
 
 
@@ -61,15 +60,25 @@ def construct_quartz_tensors(eps_ord, eps_ext):
     return permittivity
 
 
-def anisotropy_rotation_matrix_x(matrix, theta):
+def anisotropy_rotation_matrix_y(matrix, theta):
 
     rotation_matrix = np.array([
-        [1., 0., 0.],
-        [0., np.cos(theta), -np.sin(theta)],
-        [0, np.sin(theta), np.cos(theta)]
+        [np.cos(theta), 0., np.sin(theta)],
+        [0., 1., 0.],
+        [-np.sin(theta), 0., np.cos(theta)]
     ])
 
-    return rotation_matrix @ matrix @ rotation_matrix.T
+    return rotation_matrix @ matrix @ (rotation_matrix).T
+
+
+def anisotropy_rotation_matrix_z(matrix, theta):
+    rotation_matrix = np.array([
+        [np.cos(theta), -np.sin(theta), 0.],
+        [np.sin(theta), np.cos(theta), 0.],
+        [0., 0., 1.]
+    ])
+
+    return rotation_matrix @ matrix @ np.linalg.inv(rotation_matrix)
 
 
 def air_tensor():
@@ -85,6 +94,19 @@ def air_tensor():
     return both_tensor
 
 
+def prism_tensor(eps_prism):
+
+    tensor = np.array(
+        [
+        [eps_prism, 0., 0.],
+        [0., eps_prism, 0.],
+        [0., 0., eps_prism]
+        ],
+    )
+
+    return tensor
+
+
 def ambient_incident_prism(eps_prism, theta):
     n = np.sqrt(eps_prism)
 
@@ -98,10 +120,10 @@ def ambient_incident_prism(eps_prism, theta):
     return matrix
 
 
-def layer_matrix(eps_tensor, kx, k0, thickness, incident_ambient = False, incident_exit = False):
+def layer_matrix(eps_tensor, kx, k0, thickness, prism = False, quartz = False):
 
-    delta_11 = - kx * (eps_tensor[2,0]/eps_tensor[2,2])
-    delta_12 = - kx * (eps_tensor[2,1]/eps_tensor[2,2])
+    delta_11 = -1. * kx * (eps_tensor[2,0]/eps_tensor[2,2])
+    delta_12 = -1. * kx * (eps_tensor[2,1]/eps_tensor[2,2])
     delta_13 = 0.
     delta_14 = 1. - (kx**2.)/eps_tensor[2,2]
 
@@ -110,15 +132,15 @@ def layer_matrix(eps_tensor, kx, k0, thickness, incident_ambient = False, incide
     delta_23 = -1.
     delta_24 = 0.
 
-    delta_31 = (eps_tensor[1,2] * eps_tensor[2,0] / eps_tensor[2,2]) - eps_tensor[1,0]
-    delta_32 = (kx**2.) - eps_tensor[1,1] + (eps_tensor[1,2] * eps_tensor[2,1]/ eps_tensor[2,2])
+    delta_31 = ((eps_tensor[1,2] * eps_tensor[2,0]) / eps_tensor[2,2]) - eps_tensor[1,0]
+    delta_32 = (kx**2.) - eps_tensor[1,1] + ((eps_tensor[1,2] * eps_tensor[2,1])/ eps_tensor[2,2])
     delta_33 = 0.
     delta_34 = kx * (eps_tensor[1,2]/eps_tensor[2,2])
 
     delta_41 = eps_tensor[0,0] - (eps_tensor[0,2] * eps_tensor[2,0] / eps_tensor[2,2])
     delta_42 = eps_tensor[0,1] - (eps_tensor[0,2] * eps_tensor[2,1] / eps_tensor[2,2])
     delta_43 = 0.
-    delta_44 = -kx * eps_tensor[0,2]/eps_tensor[2,2]
+    delta_44 = -1. * kx * eps_tensor[0,2]/eps_tensor[2,2]
 
     delta = np.array(
         [
@@ -130,21 +152,32 @@ def layer_matrix(eps_tensor, kx, k0, thickness, incident_ambient = False, incide
     )
 
     eigenvalue, vector = np.linalg.eig(delta)
-    if incident_ambient:
+    if prism:
         return np.linalg.inv(vector)
     
-    if incident_exit:
-        return vector
+    if quartz:
+        return eigenvalue, vector
 
-    eigenvalue = np.diag(eigenvalue)
-    partial = expm(1.j * eigenvalue * k0 * thickness)
+    partial = expm(np.diag((1.j * eigenvalue * k0 * thickness)))
     partial_complete = vector @ partial @ np.linalg.inv(vector)
-
-
     return partial_complete
 
 
-def reflection_coefficients(T):
+def value_vector_sort(eigenvalues, eigenvectors):
+
+    positive_eigenvectors = eigenvectors.T[np.where(eigenvalues.imag>0)]
+
+    eigenvector_columns = np.array([
+        [positive_eigenvectors[0]],
+        [np.zeros_like(eigenvalues)],
+        [positive_eigenvectors[1]],
+        [np.zeros_like(eigenvalues)]
+    ]).T[:,0,:]
+
+    return eigenvector_columns
+    
+
+def reflection_coefficients(T): 
     
     r_pp = (T[:,0,0] * T[:,3,2] - T[:,3,0] * T[:,0,2]) / (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
     
@@ -157,74 +190,207 @@ def reflection_coefficients(T):
     return r_pp, r_ps, r_sp, r_ss
 
 
-def plot_reflectivity_components(frequency, r_pp, r_ps, r_sp, r_ss):
-    plt.rcParams["figure.figsize"] = (8,7)
-    fig, axs = plt.subplots(4)
-    fig.suptitle('Reflection Coefficients')
-    axs[0].plot(frequency, r_pp.real, label = 'Real')
-    axs[0].plot(frequency, r_pp.imag, label = 'Imaginary')
-    axs[0].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$r_{pp}$')
-    axs[0].legend()
-
-    axs[1].plot(frequency, r_ps.real, label = 'Real')
-    axs[1].plot(frequency, r_ps.imag, label = 'Imaginary')
-    axs[1].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$r_{ps}$')
-    axs[1].legend()
-
-    axs[2].plot(frequency, r_sp.real, label = 'Real')
-    axs[2].plot(frequency, r_sp.imag, label = 'Imaginary')
-    axs[2].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$r_{sp}$')
-    axs[2].legend()
-
-    axs[3].plot(frequency, r_ss.real, label = 'Real')
-    axs[3].plot(frequency, r_ss.imag, label = 'Imaginary')
-    axs[3].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$r_{ss}$')
-    axs[3].legend()
-
+def plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss):
+    reflection = (r_pp * np.conj(r_pp)).real
+    reflection6 = (r_ss * np.conj(r_ss)).real
+    reflection1 = ((r_ps/r_ss) * np.conj(r_ps/r_ss)).real
+    reflection2 = ((r_ps/r_pp) * np.conj(r_ps/r_pp)).real
+    reflection3 = ((r_sp/r_ss) * np.conj(r_sp/r_ss)).real
+    reflection4 = ((r_sp/r_pp) * np.conj(r_sp/r_pp)).real
     
+    plt.rcParams["figure.figsize"] = (8,7)
+    fig, (ax, ax2, ax3, ax4, ax5, ax6) = plt.subplots(ncols=6,figsize=(12,6), sharey=True)#gridspec_kw={"width_ratios":[1,1, 0.05]})
+    fig.subplots_adjust(wspace=0.3)
+    fig.suptitle('Reflectivity for various configurations')
+
+    ax.set_title('$|r_{pp}|^2$')
+    ax.plot(reflection, frequency)
+    ax.set(xlabel = '$|r_{pp}|^2$')
+    ax.set(ylabel='$\omega/2\pi c (cm^{-1})$')
+
+    ax2.set_title('$|r_{ss}|^2$')
+    ax2.plot(reflection6, frequency)
+    ax2.set(xlabel = '$|r_{ss}|^2$')
+
+    ax3.set_title('$|\dfrac{r_{ps}}{r_{ss}}|^2$')
+    ax3.plot(reflection1, frequency)
+    ax3.set(xlabel = '$|\dfrac{r_{ps}}{r_{ss}}|^2$')
+
+    ax4.set_title('$|\dfrac{r_{ps}}{r_{pp}}|^2$')
+    ax4.plot(reflection2, frequency)
+    ax4.set(xlabel = '$|\dfrac{r_{ps}}{r_{pp}}|^2$')
+
+    ax5.set_title('$|\dfrac{r_{sp}}{r_{ss}}|^2$')
+    ax5.plot(reflection3, frequency)
+    ax5.set(xlabel = '$|\dfrac{r_{sp}}{r_{ss}}|^2$')
+
+    ax6.set_title('$|\dfrac{r_{sp}}{r_{pp}}|^2$')
+    ax6.plot(reflection4, frequency)
+    ax6.set(xlabel = '$|\dfrac{r_{sp}}{r_{pp}}|^2$')
+
+    # plt.tight_layout()
+    plt.show()
+
+
+def contour_reflection(wavenumber, x_axis, reflectivity, distance, rotation):
+    
+    fig, ax = plt.subplots()
+    rotation = np.degrees(rotation)
+    x_axis = np.sqrt(5.5) * np.sin(x_axis)
+    
+    params = {'mathtext.default': 'regular' }          
+    plt.rcParams.update(params)
+    image = ax.pcolormesh(x_axis, wavenumber, reflectivity, cmap = 'magma')
+    cbar = plt.colorbar(image, ax = ax)
+    cbar.mappable.set_clim(0., 1.)
+    cbar.set_label("Reflectivity")
+    ax.set_title("ATR for $\phi$ = " + str(int(round(rotation,1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
+    ax.set_xlabel('$k_x / k_0 $')
+    ax.set_ylabel('$\omega/2\pi c (cm^{-1})$')
+    
+    plt.show()
+    #plt.savefig(f"plots/ATR_{int(rotation)}_degrees.png")
+    plt.close()
+
+
+def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
+
+    r_pp = reflectivities[:,0]
+    r_ps = reflectivities[:,1]
+    r_sp = reflectivities[:,2]
+    r_ss = reflectivities[:,3]
+
+    R_pp = (r_pp * np.conj(r_pp)).real.T
+    R_ps = (r_ps * np.conj(r_ps)).real.T
+    R_sp = (r_sp * np.conj(r_sp)).real.T
+    R_ss = (r_ss * np.conj(r_ss)).real.T
+
+    params = {'mathtext.default': 'regular' }          
+    plt.rcParams.update(params)
+
+    fig, ax = plt.subplots(2,2, figsize=(9, 7))
+
+    x_axis = np.sqrt(5.5) * np.sin(x_axis)
+    fig.suptitle("ATR for $\phi_x$ = " + str(int(round(np.degrees(anisotropy_rotation_x),1))) + "$^\circ$, $\phi_z$ = " + str(int(round(np.degrees(rotation_z),1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
+
+    reflection_pp = ax[0,0].pcolormesh(x_axis, wavenumber, R_pp, cmap = 'magma')
+    cbar_pp = plt.colorbar(reflection_pp, ax = ax[0,0])
+    # cbar_pp.mappable.set_clim(0., 1.)
+    cbar_pp.set_label("$|r_{pp}|^2$")
+    ax[0,0].set_title("$|r_{pp}|^2$")
+    ax[0,0].set_xlabel('$k_x / k_0 $')
+    ax[0,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+
+    reflection_ps = ax[0,1].pcolormesh(x_axis, wavenumber, R_ps, cmap = 'magma')
+    cbar_ps = plt.colorbar(reflection_ps, ax = ax[0,1])
+    # cbar_p.mappable.set_clim(0., 1.)
+    cbar_ps.set_label("$|r_{ps}|^2$")
+    ax[0,1].set_title("$|r_{ps}|^2$")
+    ax[0,1].set_xlabel('$k_x / k_0 $')
+    ax[0,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+
+    reflection_sp = ax[1,0].pcolormesh(x_axis, wavenumber, R_sp, cmap = 'magma')
+    cbar_sp = plt.colorbar(reflection_sp, ax = ax[1,0])
+    # cbar_pp.mappable.set_clim(0., 1.)
+    cbar_sp.set_label("$|r_{sp}|^2$")
+    ax[1,0].set_title("$|r_{sp}|^2$")
+    ax[1,0].set_xlabel('$k_x / k_0 $')
+    ax[1,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+
+    reflection_ss = ax[1,1].pcolormesh(x_axis, wavenumber, R_ss, cmap = 'magma')
+    cbar_ss = plt.colorbar(reflection_ss, ax = ax[1,1])
+    # cbar_pp.mappable.set_clim(0., 1.)
+    cbar_ss.set_label("$|r_{ss}|^2$")
+    ax[1,1].set_title("$|r_{ss}|^2$")
+    ax[1,1].set_xlabel('$k_x / k_0 $')
+    ax[1,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+    
+    plt.tight_layout()
     plt.show()
     plt.close()
 
 
 
+def main_contour():
+    frequency = np.linspace(410,600,300)
+    
+    anisotropy_rotation_x = np.radians(90)
+    rotation_z = 0.
+    d = 1.5e-4
+
+    params = permittivity_parameters()
+    eps_ext, eps_ord = permittivity_fetch(frequency, params)
+    quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
+    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, anisotropy_rotation_x)
+    quartz_tensor = anisotropy_rotation_matrix_z(quartz_tensor, rotation_z)
+
+    eps_prism = 5.5
+    incident_angle = np.linspace(-np.pi/2., np.pi/2., len(frequency))
+    k0 = frequency * 2. * np.pi
+
+    reflectivities = []
+
+    for angle in incident_angle:
+        prism_layer = ambient_incident_prism(eps_prism, angle)
+        kx = np.sqrt(eps_prism) * np.sin(angle)
+        transfer_matrices = []
+
+        for i in range(0,len(frequency)):
+            value, vector = layer_matrix(quartz_tensor[i], kx, 0, 0, quartz=True)
+            quartz_eigenvectors = value_vector_sort(value, vector)
+
+            air_layer = layer_matrix(air_tensor(), kx, k0[i], d)
+
+            transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
+            transfer_matrices.append(transfer)
+
+        transfer_matrices = np.asarray(transfer_matrices)
+
+        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
+
+        reflectivities.append([r_pp,r_ps,r_sp,r_ss])
+
+
+    reflectivities = np.asarray(reflectivities)
+
+    # contour_reflection(frequency, incident_angle, reflectivities.T, d, anisotropy_rotation)
+
+    contour_all_polarisations(frequency, incident_angle, d, anisotropy_rotation_x, rotation_z, reflectivities)
+
+
+
 def main():
     frequency = np.linspace(410,600,300)
-    anisotropy_rotation = 0.
     
     params = permittivity_parameters()
     eps_ext, eps_ord = permittivity_fetch(frequency, params)
     quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_rotation_matrix_x(quartz_tensor, anisotropy_rotation)
+    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, np.radians(45))
+    quartz_tensor = anisotropy_rotation_matrix_z(quartz_tensor, np.radians(45))
+
 
     eps_prism = 5.5
-    incident_angle = -np.pi/4.
+    incident_angle = np.radians(30)
     
     k0 = frequency * 2. * np.pi
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
-    
-    air_params = air_tensor()
 
     transfer_matrices = []
     prism_layer = ambient_incident_prism(eps_prism, incident_angle)
-    
-    for i in range(0,len(frequency)):
-        quartz_layer = layer_matrix(quartz_tensor[i], kx, 0., 0., incident_exit=True)
-        air_layer = layer_matrix(air_params, kx, k0[i], thickness = 0.)
-        
-        total_transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_layer
-        
-        transfer_matrices.append(total_transfer)
+
+    for i in range(0, len(frequency)):
+        value, quartz_eigenvectors = layer_matrix(quartz_tensor[i], kx, 0, 0, quartz=True)
+        quartz_eigenvectors = value_vector_sort(value, quartz_eigenvectors)
+
+        air_layer = layer_matrix(air_tensor(), kx, k0[i], 1.5e-4)
+
+        transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
+        transfer_matrices.append(transfer)
 
     transfer_matrices = np.asarray(transfer_matrices)
 
     r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
-
-    reflection = (r_pp * np.conj(r_pp)).real
-    plt.plot(reflection, frequency)
-    plt.show()
-
-    
-
+    plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss)
 
 if __name__ == "__main__":
-    main()
+    main_contour()
