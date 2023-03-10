@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(suppress=True)
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from scipy.linalg import expm
+from scipy import constants
 
 
 def permittivity_parameters():
@@ -58,6 +59,53 @@ def construct_quartz_tensors(eps_ord, eps_ext):
     ).T
 
     return permittivity
+
+
+def magnetic_parameters():
+    gamma = 1.05 # cm^-1 / T
+    B0 = 0.3 # T
+    Ba = 19.745 # T
+    Be = 53.313 # T
+    magnetisation = 445633.84 #A/cm
+
+    resonant_frequency_squared = gamma**2. * (2. * Ba * Be + Ba ** 2.)
+    damping_parameter = 1.27e-4 * np.sqrt(resonant_frequency_squared)
+
+    return gamma, B0, Ba, magnetisation, resonant_frequency_squared, damping_parameter
+
+
+def fetch_epsilon_mu(frequency, gamma, B0, Ba, magnetisation, resonant_frequency_squared, damping):
+    
+    X = 1./(resonant_frequency_squared - (frequency + B0 * gamma + 1.j * damping)**2.)
+    Y = 1./(resonant_frequency_squared - (frequency - B0 * gamma + 1.j * damping)**2.)
+
+    mu_3 = 1. + constants.mu_0 * gamma**2. * Ba * magnetisation * (X + Y)
+    mu_t = constants.mu_0 * gamma**2. * Ba * magnetisation * (X-Y)
+    
+    magnet_permittivity = 5.5 + 0.j
+
+    return mu_3, mu_t, magnet_permittivity
+
+
+def construct_magnet_tensors(mu_3, mu_t, epsilon):
+
+    permeability = np.array(
+        [
+        [mu_3, np.zeros_like(mu_3), 1.j * mu_t],
+        [np.zeros_like(mu_3), np.ones_like(mu_3), np.zeros_like(mu_3)],
+        [-1.j * mu_t, np.zeros_like(mu_3), mu_3]
+        ]
+    ).T
+
+    permittivity = np.array(
+        [
+        [epsilon, 0., 0.],
+        [0., epsilon, 0.],
+        [0., 0., epsilon]
+        ]
+    )
+
+    return permeability, permittivity
 
 
 def anisotropy_rotation_matrix_y(matrix, theta):
@@ -120,27 +168,27 @@ def ambient_incident_prism(eps_prism, theta):
     return matrix
 
 
-def layer_matrix(eps_tensor, kx, k0, thickness, prism = False, quartz = False):
+def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, prism = False, quartz = False):
 
-    delta_11 = -1. * kx * (eps_tensor[2,0]/eps_tensor[2,2])
-    delta_12 = -1. * kx * (eps_tensor[2,1]/eps_tensor[2,2])
-    delta_13 = 0.
-    delta_14 = 1. - (kx**2.)/eps_tensor[2,2]
+    delta_11 = - kx * (eps_tensor[2,0]/eps_tensor[2,2])
+    delta_12 = kx * ((mu_tensor[1,2]/mu_tensor[2,2]) - (eps_tensor[2,1]/eps_tensor[2,2]))
+    delta_13 = mu_tensor[1,0] - (mu_tensor[1,2] * mu_tensor[2,0] / mu_tensor[2,2])
+    delta_14 = mu_tensor[1,1] - (mu_tensor[1,2] * mu_tensor[2,1] / mu_tensor[2,2]) - (kx**2.)/eps_tensor[2,2]
 
     delta_21 = 0.
-    delta_22 = 0.
-    delta_23 = -1.
-    delta_24 = 0.
+    delta_22 = -kx * mu_tensor[0,2]/mu_tensor[2,2]
+    delta_23 = (mu_tensor[0,2] * mu_tensor[2,0] / mu_tensor[2,2]) - mu_tensor[0,0]
+    delta_24 = (mu_tensor[0,2] * mu_tensor[2,1] / mu_tensor[2,2]) - mu_tensor[0,1]
 
-    delta_31 = ((eps_tensor[1,2] * eps_tensor[2,0]) / eps_tensor[2,2]) - eps_tensor[1,0]
-    delta_32 = (kx**2.) - eps_tensor[1,1] + ((eps_tensor[1,2] * eps_tensor[2,1])/ eps_tensor[2,2])
-    delta_33 = 0.
-    delta_34 = kx * (eps_tensor[1,2]/eps_tensor[2,2])
+    delta_31 = (eps_tensor[1,2] * eps_tensor[2,0] / eps_tensor[2,2]) - eps_tensor[1,0]
+    delta_32 = (kx**2.)/mu_tensor[2,2] - eps_tensor[1,1] + (eps_tensor[1,2] * eps_tensor[2,1]/ eps_tensor[2,2])
+    delta_33 = -kx * mu_tensor[2,0]/mu_tensor[2,2]
+    delta_34 = kx * ((eps_tensor[1,2]/eps_tensor[2,2])-(mu_tensor[2,1]/mu_tensor[2,2]))
 
     delta_41 = eps_tensor[0,0] - (eps_tensor[0,2] * eps_tensor[2,0] / eps_tensor[2,2])
     delta_42 = eps_tensor[0,1] - (eps_tensor[0,2] * eps_tensor[2,1] / eps_tensor[2,2])
     delta_43 = 0.
-    delta_44 = -1. * kx * eps_tensor[0,2]/eps_tensor[2,2]
+    delta_44 = -kx * eps_tensor[0,2]/eps_tensor[2,2]
 
     delta = np.array(
         [
@@ -311,10 +359,10 @@ def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_
 
 
 
-def main_contour():
+def main_contour_quartz():
     frequency = np.linspace(410,600,300)
     
-    anisotropy_rotation_x = np.radians(90)
+    anisotropy_rotation_x = np.radians(0)
     rotation_z = 0.
     d = 1.5e-4
 
@@ -336,10 +384,10 @@ def main_contour():
         transfer_matrices = []
 
         for i in range(0,len(frequency)):
-            value, vector = layer_matrix(quartz_tensor[i], kx, 0, 0, quartz=True)
+            value, vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
             quartz_eigenvectors = value_vector_sort(value, vector)
 
-            air_layer = layer_matrix(air_tensor(), kx, k0[i], d)
+            air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
             transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
             transfer_matrices.append(transfer)
@@ -356,7 +404,6 @@ def main_contour():
     # contour_reflection(frequency, incident_angle, reflectivities.T, d, anisotropy_rotation)
 
     contour_all_polarisations(frequency, incident_angle, d, anisotropy_rotation_x, rotation_z, reflectivities)
-
 
 
 def main():
@@ -392,5 +439,7 @@ def main():
     r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
     plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss)
 
+
+
 if __name__ == "__main__":
-    main_contour()
+    main_contour_quartz()
