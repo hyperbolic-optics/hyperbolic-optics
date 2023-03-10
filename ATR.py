@@ -91,9 +91,9 @@ def construct_magnet_tensors(mu_3, mu_t, epsilon):
 
     permeability = np.array(
         [
-        [mu_3, np.zeros_like(mu_3), 1.j * mu_t],
+        [mu_3, np.zeros_like(mu_3), -1.j * mu_t],
         [np.zeros_like(mu_3), np.ones_like(mu_3), np.zeros_like(mu_3)],
-        [-1.j * mu_t, np.zeros_like(mu_3), mu_3]
+        [1.j * mu_t, np.zeros_like(mu_3), mu_3]
         ]
     ).T
 
@@ -213,27 +213,35 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, prism = False, quartz
 
 def value_vector_sort(eigenvalues, eigenvectors):
 
-    positive_eigenvectors = eigenvectors.T[np.where(eigenvalues.imag>0)]
+    positive_eigenvectors = eigenvectors.T[np.where((eigenvalues.imag>=0))]
+
+    if len(positive_eigenvectors) == 1:
+        print(eigenvalues)
+
+    if len(positive_eigenvectors) == 3:
+        positive_eigenvectors = eigenvectors.T[np.where((eigenvalues.real>=0))]
 
     eigenvector_columns = np.array([
-        [positive_eigenvectors[0]],
-        [np.zeros_like(eigenvalues)],
-        [positive_eigenvectors[1]],
-        [np.zeros_like(eigenvalues)]
-    ]).T[:,0,:]
+        positive_eigenvectors[0],
+        np.zeros_like(eigenvalues),
+        positive_eigenvectors[1],
+        np.zeros_like(eigenvalues)
+    ]).T
 
     return eigenvector_columns
     
 
 def reflection_coefficients(T): 
-    
-    r_pp = (T[:,0,0] * T[:,3,2] - T[:,3,0] * T[:,0,2]) / (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
-    
-    r_ps = (T[:,0,0] * T[:,1,2] - T[:,1,0] * T[:,0,2]) / (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
 
-    r_sp = (T[:,3,0] * T[:,2,2] - T[:,3,2] * T[:,2,0]) / (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
+    bottom_line = (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
+    
+    r_pp = (T[:,0,0] * T[:,3,2] - T[:,3,0] * T[:,0,2]) / bottom_line
+    
+    r_ps = (T[:,0,0] * T[:,1,2] - T[:,1,0] * T[:,0,2]) / bottom_line
 
-    r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
+    r_sp = (T[:,3,0] * T[:,2,2] - T[:,3,2] * T[:,2,0]) / bottom_line
+
+    r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / bottom_line
 
     return r_pp, r_ps, r_sp, r_ss
 
@@ -312,6 +320,7 @@ def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_
     R_ps = (r_ps * np.conj(r_ps)).real.T
     R_sp = (r_sp * np.conj(r_sp)).real.T
     R_ss = (r_ss * np.conj(r_ss)).real.T
+    #R_ss = (r_ss/r_pp * np.conj(r_ss/r_pp)).real
 
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
@@ -358,12 +367,82 @@ def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_
     plt.close()
 
 
+def plot_permeability_components(frequency, permeability_3, permeability_t, mu_v):
+
+    plt.rcParams["figure.figsize"] = (8,7)
+    fig, axs = plt.subplots(3)
+    fig.suptitle('Permeabilities and $\mu_{v}$')
+    axs[0].plot(frequency, permeability_3.real, label = 'Real')
+    axs[0].plot(frequency, permeability_3.imag, label = 'Imaginary')
+    axs[0].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$\mu_{3}$')
+    axs[0].legend()
+
+    axs[1].plot(frequency, permeability_t.real, label = 'Real')
+    axs[1].plot(frequency, permeability_t.imag, label = 'Imaginary')
+    axs[1].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$\mu_{t}$')
+    axs[1].legend()
+    
+    axs[2].plot(frequency, mu_v.real, label = 'Real')
+    axs[2].plot(frequency, mu_v.imag, label = 'Imaginary')
+    axs[2].set(xlabel='$\omega/2\pi c (cm^{-1})$', ylabel = '$\mu_{v}$')
+    axs[2].legend()
+
+    plt.show()
+    plt.close()
+
+
+
+
+def main_magnet_contour():
+    frequency = np.linspace(52.0, 53.5, 300)
+
+    anisotropy_rotation_x = 0.
+    rotation_z = np.radians(45)
+    d = 16.e-4
+
+    parameters = magnetic_parameters()
+    mu_3, mu_t, eps_magnet = fetch_epsilon_mu(*(frequency, *parameters))
+    mu_tensor, magnet_eps_tensor = construct_magnet_tensors(mu_3, mu_t, eps_magnet)
+
+    mu_tensor = anisotropy_rotation_matrix_z(mu_tensor, rotation_z)
+
+
+    eps_prism = 11.56
+    incident_angle = np.linspace(-np.pi/2., np.pi/2., len(frequency))
+    k0 = frequency * 2. * np.pi
+
+    reflectivities = []
+
+    for angle in incident_angle:
+        prism_layer = ambient_incident_prism(eps_prism, angle)
+        kx = np.sqrt(eps_prism) * np.sin(angle)
+        transfer_matrices = []
+
+        for i in range(0,len(frequency)):
+            value, vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, quartz=True)
+            magnet_eigenvectors = value_vector_sort(value, vector)
+
+            # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
+
+            transfer = prism_layer @ magnet_eigenvectors
+            transfer_matrices.append(transfer)
+
+        transfer_matrices = np.asarray(transfer_matrices)
+
+        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
+
+        reflectivities.append([r_pp,r_ps,r_sp,r_ss])
+    
+    reflectivities = np.asarray(reflectivities)
+    
+    contour_all_polarisations(frequency, incident_angle, d, anisotropy_rotation_x, rotation_z, reflectivities)
+
 
 def main_contour_quartz():
     frequency = np.linspace(410,600,300)
     
-    anisotropy_rotation_x = np.radians(0)
-    rotation_z = 0.
+    anisotropy_rotation_x = np.radians(45)
+    rotation_z = np.radians(0)
     d = 1.5e-4
 
     params = permittivity_parameters()
@@ -442,4 +521,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # main_magnet_contour()
     main_contour_quartz()
