@@ -207,13 +207,13 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
         idx = (1.j * eigenvalues).argsort()
         eigenvalues = eigenvalues[idx]
         vector = vector[:,idx]
-        return eigenvalues, vector.T
+        return vector.T
     
     if magnet:
         idx = (eigenvalues).argsort()[::-1]
         eigenvalues = eigenvalues[idx]
         vector = vector[:,idx]
-        return eigenvalues, vector.T
+        return vector.T
 
     eigenvalues = np.diag(eigenvalues)
     partial = expm((1.j * eigenvalues * k0 * thickness))
@@ -222,12 +222,12 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
     return partial_complete
 
 
-def value_vector_sort(eigenvalues, eigenvectors):
+def vector_sort(eigenvectors):
 
     eigenvector_columns = np.array([
-        eigenvectors[1],
-        [0,0,0,0],
         eigenvectors[0],
+        [0,0,0,0],
+        eigenvectors[1],
         [0,0,0,0]
     ]).T
 
@@ -235,8 +235,6 @@ def value_vector_sort(eigenvalues, eigenvectors):
     
 
 def reflection_coefficients(T):
-
-    # T = np.transpose(T, (0,2,1))
 
     bottom_line = (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
     
@@ -247,8 +245,6 @@ def reflection_coefficients(T):
     r_sp = (T[:,3,0] * T[:,2,2] - T[:,3,2] * T[:,2,0]) / bottom_line
 
     r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / bottom_line  
-
-    t_pp = T[:,2,2] / bottom_line
     
     return r_pp, r_ps, r_sp, r_ss
 
@@ -285,73 +281,8 @@ def plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, theta, rotati
     plt.show()
 
 
-def plot_kz(frequency, kz):
-    kz1 = kz[:,0]
-    kz2 = kz[:,1]
-    kz3 = kz[:,2]
-    kz4 = kz[:,3]
 
-    fig, ax = plt.subplots(4, 2, figsize=(10,7), sharex=True)
-    fig.subplots_adjust(wspace=0.3)
-    fig.suptitle("Wavevector Solutions")
-    ax[0,0].plot(frequency, kz1.real)
-    ax[0,0].set(ylabel = '$k_{z1} REAL$')
-    ax[0,0].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[0,1].plot(frequency, kz1.imag)
-    ax[0,1].set(ylabel = '$k_{z1} IMAG$')
-    ax[0,1].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[1,0].plot(frequency, kz2.real)
-    ax[1,0].set(ylabel = '$k_{z2} REAL$')
-    ax[1,0].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[1,1].plot(frequency, kz2.imag)
-    ax[1,1].set(ylabel = '$k_{z2} IMAG$')
-    ax[1,1].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[2,0].plot(frequency, kz3.real)
-    ax[2,0].set(ylabel = '$k_{z3} REAL$')
-    ax[2,0].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[2,1].plot(frequency, kz3.imag)
-    ax[2,1].set(ylabel = '$k_{z3} IMAG$')
-    ax[2,1].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[3,0].plot(frequency, kz4.real)
-    ax[3,0].set(ylabel = '$k_{z4} REAL$')
-    ax[3,0].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax[3,1].plot(frequency, kz4.imag)
-    ax[3,1].set(ylabel = '$k_{z4} IMAG$')
-    ax[3,1].set(xlabel='$\omega/2\pi c (cm^{-1})$')
-
-    plt.tight_layout()
-    plt.show()
-
-
-def contour_reflection(wavenumber, x_axis, reflectivity, distance, rotation):
-    
-    fig, ax = plt.subplots()
-    rotation = np.degrees(rotation)
-    x_axis = np.sqrt(5.5) * np.sin(x_axis)
-    
-    params = {'mathtext.default': 'regular' }          
-    plt.rcParams.update(params)
-    image = ax.pcolormesh(x_axis, wavenumber, reflectivity, cmap = 'magma')
-    cbar = plt.colorbar(image, ax = ax)
-    cbar.mappable.set_clim(0., 1.)
-    cbar.set_label("Reflectivity")
-    ax.set_title("ATR for $\phi$ = " + str(int(round(rotation,1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
-    ax.set_xlabel('$k_x / k_0 $')
-    ax.set_ylabel('$\omega/2\pi c (cm^{-1})$')
-    
-    plt.show()
-    #plt.savefig(f"plots/ATR_{int(rotation)}_degrees.png")
-    plt.close()
-
-
-def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
+def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
 
     r_pp = reflectivities[:,0]
     r_ps = reflectivities[:,1]
@@ -427,7 +358,7 @@ def contour_all_polarisations(wavenumber, x_axis, distance, anisotropy_rotation_
     plt.close()
 
 
-def contour_all_polarisations_z_rotation(wavenumber, x_axis, distance, anisotropy_rotation_x, incident_angle, reflectivities):
+def contour_z_rotation(wavenumber, x_axis, distance, anisotropy_rotation_x, incident_angle, reflectivities):
 
     r_pp = reflectivities[:,0]
     r_ps = reflectivities[:,1]
@@ -506,7 +437,7 @@ def main_magnet_contour():
     frequency = np.linspace(52.0, 53.5, 300)
 
     anisotropy_rotation = np.radians(0)
-    rotation_z = np.radians(45)
+    rotation_z = np.radians(0)
     d = 23.e-4
 
     parameters = magnetic_parameters()
@@ -529,8 +460,8 @@ def main_magnet_contour():
         transfer_matrices = []
 
         for i in range(0,len(frequency)):
-            value, vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-            magnet_eigenvectors = value_vector_sort(value, vector)
+            vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
+            magnet_eigenvectors = vector_sort(value, vector)
 
             air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -546,7 +477,7 @@ def main_magnet_contour():
     
     reflectivities = np.asarray(reflectivities)
     
-    contour_all_polarisations(frequency, incident_angle, d, anisotropy_rotation, rotation_z, reflectivities)
+    contour_theta(frequency, incident_angle, d, anisotropy_rotation, rotation_z, reflectivities)
 
 
 def main_magnet():
@@ -573,8 +504,8 @@ def main_magnet():
     transfer_matrices = []
 
     for i in range(0,len(frequency)):
-        value, vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-        magnet_eigenvectors = value_vector_sort(value, vector)
+        vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
+        magnet_eigenvectors = vector_sort(value, vector)
 
         # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -586,32 +517,6 @@ def main_magnet():
     r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
     
     plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, angle, rotation_z, 0, d)
-
-
-def main_magnet_kz():
-    frequency = np.linspace(52.0, 53.5, 300)
-
-    rotation_z = np.radians(45+180)
-    d = 0.e-4
-
-    parameters = magnetic_parameters()
-    mu_3, mu_t, eps_magnet = fetch_epsilon_mu(*(frequency, *parameters))
-    mu_tensor, magnet_eps_tensor = construct_magnet_tensors(mu_3, mu_t, eps_magnet)
-    mu_tensor = anisotropy_rotation_matrix_z(mu_tensor, rotation_z)
-
-    eps_prism = 11.56
-    angle = np.radians(0)
-
-    kx = np.sqrt(eps_prism) * np.sin(angle)
-    kz = []
-
-    for i in range(0,len(frequency)):
-        value, vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-        kz.append(value)
-
-    kz = np.asarray(kz)
-
-    plot_kz(frequency, kz)
 
 
 def main_quartz_contour():
@@ -640,8 +545,8 @@ def main_quartz_contour():
         transfer_matrices = []
 
         for i in range(0,len(frequency)):
-            value, vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-            quartz_eigenvectors = value_vector_sort(value, vector)
+            vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
+            quartz_eigenvectors = vector_sort(vector)
 
             air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -656,7 +561,7 @@ def main_quartz_contour():
 
     reflectivities = np.asarray(reflectivities)
 
-    contour_all_polarisations(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
+    contour_theta(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
 
 
 def main_quartz_rotation():
@@ -684,8 +589,8 @@ def main_quartz_rotation():
         transfer_matrices = []
 
         for i in range(0,len(frequency)):
-            value, vector = layer_matrix(quartz_tensor_rotated[i], air_tensor(), kx, 0, 0, quartz=True)
-            quartz_eigenvectors = value_vector_sort(value, vector)
+            vector = layer_matrix(quartz_tensor_rotated[i], air_tensor(), kx, 0, 0, quartz=True)
+            quartz_eigenvectors = vector_sort(vector)
 
             air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -700,7 +605,7 @@ def main_quartz_rotation():
 
     reflectivities = np.asarray(reflectivities)
 
-    contour_all_polarisations_z_rotation(frequency, rotation_z, d, anisotropy_rotation_y, incident_angle, reflectivities)
+    contour_z_rotation(frequency, rotation_z, d, anisotropy_rotation_y, incident_angle, reflectivities)
 
 
 def main_quartz():
@@ -724,8 +629,8 @@ def main_quartz():
     prism_layer = ambient_incident_prism(eps_prism, incident_angle)
 
     for i in range(0, len(frequency)):
-        value, vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-        quartz_eigenvectors = value_vector_sort(value, vector)
+        vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
+        quartz_eigenvectors = vector_sort(value, vector)
 
         air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -738,34 +643,6 @@ def main_quartz():
     plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, incident_angle, 45, 45, d)
 
 
-def main_quartz_kz():
-    frequency = np.linspace(410,600,300)
-    eps_prism = 5.5
-    d=0.
-    angle = np.radians(45)
-
-    rotation_y = np.radians(0)
-    rotation_z = np.radians(45)
-
-    
-    params = permittivity_parameters()
-    eps_ext, eps_ord = permittivity_fetch(frequency, params)
-    quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, rotation_y)
-    quartz_tensor = anisotropy_rotation_matrix_z(quartz_tensor, rotation_z)
-
-    kx = np.sqrt(eps_prism) * np.sin(angle)
-    kz = []
-
-    for i in range(0,len(frequency)):
-        value, vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-        kz.append(value)
-    
-    kz = np.asarray(kz)
-
-    plot_kz(frequency, kz)
-
-
 if __name__ == "__main__":
     # main_magnet_kz()
-    main_magnet_contour()
+    main_quartz_rotation()
