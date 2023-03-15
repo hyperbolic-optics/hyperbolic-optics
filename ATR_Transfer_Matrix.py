@@ -144,19 +144,6 @@ def air_tensor():
     return both_tensor
 
 
-def prism_tensor(eps_prism):
-
-    tensor = np.array(
-        [
-        [eps_prism, 0., 0.],
-        [0., eps_prism, 0.],
-        [0., 0., eps_prism]
-        ],
-    )
-
-    return tensor
-
-
 def ambient_incident_prism(eps_prism, theta):
     n = np.sqrt(eps_prism)
 
@@ -461,7 +448,7 @@ def main_magnet_contour():
 
         for i in range(0,len(frequency)):
             vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-            magnet_eigenvectors = vector_sort(value, vector)
+            magnet_eigenvectors = vector_sort(vector)
 
             air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -505,7 +492,7 @@ def main_magnet():
 
     for i in range(0,len(frequency)):
         vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-        magnet_eigenvectors = vector_sort(value, vector)
+        magnet_eigenvectors = vector_sort(vector)
 
         # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
@@ -630,7 +617,7 @@ def main_quartz():
 
     for i in range(0, len(frequency)):
         vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-        quartz_eigenvectors = vector_sort(value, vector)
+        quartz_eigenvectors = vector_sort(vector)
 
         air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
