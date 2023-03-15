@@ -131,6 +131,30 @@ def anisotropy_rotation_matrix_z(matrix, theta):
     return rotation_matrix @ matrix @ rotation_matrix.T
 
 
+def anisotropy_matrix(matrix, phi, beta):
+    rotation_y = np.array([
+        [np.cos(phi), 0., np.sin(phi)],
+        [0., 1., 0.],
+        [-np.sin(phi), 0., np.cos(phi)]
+    ])
+
+    rotation_z = np.array([
+        [np.cos(beta), -np.sin(beta), 0.],
+        [np.sin(beta), np.cos(beta), 0.],
+        [0., 0., 1.]
+    ])
+
+    rotation_x = np.array([
+        [1., 0., 0.],
+        [0., 1., 0.],
+        [0., 0., 1.]
+    ])
+
+    total_rotation = rotation_z @ rotation_y @ rotation_x
+
+    return total_rotation @ matrix @ total_rotation.T
+
+
 def air_tensor():
 
     both_tensor = np.array(
@@ -510,17 +534,16 @@ def main_quartz_contour():
     frequency = np.linspace(410,600,300)
     
     anisotropy_rotation_y = np.radians(45)
-    rotation_z = np.radians(45)
+    rotation_z = np.radians(0)
     theta_cap = np.radians(90)
     d = 1.5e-4
+    eps_prism = 5.5
 
     params = permittivity_parameters()
     eps_ext, eps_ord = permittivity_fetch(frequency, params)
     quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, anisotropy_rotation_y)
-    quartz_tensor = anisotropy_rotation_matrix_z(quartz_tensor, rotation_z)
+    quartz_tensor = anisotropy_matrix(quartz_tensor, anisotropy_rotation_y, rotation_z)
 
-    eps_prism = 5.5
     incident_angle = np.linspace(-theta_cap, theta_cap, len(frequency))
     k0 = frequency * 2. * np.pi
 
@@ -632,4 +655,4 @@ def main_quartz():
 
 if __name__ == "__main__":
     # main_magnet_kz()
-    main_quartz_rotation()
+    main_quartz_contour()
