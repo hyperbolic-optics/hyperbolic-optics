@@ -172,11 +172,12 @@ def ambient_incident_prism(eps_prism, theta):
     n = np.sqrt(eps_prism)
 
     matrix = 0.5 * np.array([
-        [0., 1., -1./(n * np.cos(theta)), 0.],
-        [0., 1., 1./(n * np.cos(theta)), 0.],
-        [1./np.cos(theta), 0., 0., 1./n],
-        [-1./np.cos(theta), 0., 0., 1./n]
+        [np.zeros_like(theta), -1. * np.ones_like(theta), -1./(n * np.cos(theta)), np.zeros_like(theta)],
+        [np.zeros_like(theta), np.ones_like(theta), 1./(n * np.cos(theta)), np.zeros_like(theta)],
+        [1./np.cos(theta), np.zeros_like(theta), np.zeros_like(theta), np.ones_like(theta) * 1./n],
+        [-1./np.cos(theta),np.zeros_like(theta), np.zeros_like(theta), np.ones_like(theta) * 1./n]
     ])
+    matrix = np.transpose(matrix, (2,0,1))
 
     return matrix
 
@@ -185,22 +186,22 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
 
     delta_11 = - kx * (eps_tensor[2,0]/eps_tensor[2,2])
     delta_12 = kx * ((mu_tensor[1,2]/mu_tensor[2,2]) - (eps_tensor[2,1]/eps_tensor[2,2]))
-    delta_13 = mu_tensor[1,0] - (mu_tensor[1,2] * mu_tensor[2,0] / mu_tensor[2,2])
+    delta_13 = np.ones_like(kx) * (mu_tensor[1,0] - (mu_tensor[1,2] * mu_tensor[2,0] / mu_tensor[2,2]))
     delta_14 = mu_tensor[1,1] - (mu_tensor[1,2] * mu_tensor[2,1] / mu_tensor[2,2]) - (kx**2.)/eps_tensor[2,2]
 
-    delta_21 = 0.
+    delta_21 = np.zeros_like(kx)
     delta_22 = -kx * mu_tensor[0,2]/mu_tensor[2,2]
-    delta_23 = (mu_tensor[0,2] * mu_tensor[2,0] / mu_tensor[2,2]) - mu_tensor[0,0]
-    delta_24 = (mu_tensor[0,2] * mu_tensor[2,1] / mu_tensor[2,2]) - mu_tensor[0,1]
+    delta_23 = np.ones_like(kx) * ((mu_tensor[0,2] * mu_tensor[2,0] / mu_tensor[2,2]) - mu_tensor[0,0])
+    delta_24 = np.ones_like(kx) * ((mu_tensor[0,2] * mu_tensor[2,1] / mu_tensor[2,2]) - mu_tensor[0,1])
 
-    delta_31 = (eps_tensor[1,2] * eps_tensor[2,0] / eps_tensor[2,2]) - eps_tensor[1,0]
+    delta_31 = np.ones_like(kx) * ((eps_tensor[1,2] * eps_tensor[2,0] / eps_tensor[2,2]) - eps_tensor[1,0])
     delta_32 = (kx**2.)/mu_tensor[2,2] - eps_tensor[1,1] + (eps_tensor[1,2] * eps_tensor[2,1]/ eps_tensor[2,2])
     delta_33 = -kx * mu_tensor[2,0]/mu_tensor[2,2]
     delta_34 = kx * ((eps_tensor[1,2]/eps_tensor[2,2])-(mu_tensor[2,1]/mu_tensor[2,2]))
 
-    delta_41 = eps_tensor[0,0] - (eps_tensor[0,2] * eps_tensor[2,0] / eps_tensor[2,2])
-    delta_42 = eps_tensor[0,1] - (eps_tensor[0,2] * eps_tensor[2,1] / eps_tensor[2,2])
-    delta_43 = 0.
+    delta_41 = np.ones_like(kx) * (eps_tensor[0,0] - (eps_tensor[0,2] * eps_tensor[2,0] / eps_tensor[2,2]))
+    delta_42 = np.ones_like(kx) * (eps_tensor[0,1] - (eps_tensor[0,2] * eps_tensor[2,1] / eps_tensor[2,2]))
+    delta_43 = np.zeros_like(kx)
     delta_44 = -kx * eps_tensor[0,2]/eps_tensor[2,2]
 
     delta = np.array(
@@ -210,15 +211,25 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
         [delta_31,delta_32,delta_33,delta_34],
         [delta_41,delta_42,delta_43,delta_44]
         ]
-    )
+    ).T
+    delta = np.transpose(delta, (0,2,1))
 
     eigenvalues, vector = np.linalg.eig(delta)
 
     if quartz:
-        idx = (1.j * eigenvalues).argsort()
-        eigenvalues = eigenvalues[idx]
-        vector = vector[:,idx]
-        return vector.T
+    
+        order = (1.j * eigenvalues).argsort(axis=1)
+        vector = np.transpose(vector,(0,2,1))
+
+        vector = np.take_along_axis(vector, order[...,None],1)
+        value = np.take_along_axis(eigenvalues, order ,1)
+
+        print(vector[0])
+        exit()
+
+        return vector
+    
+    exit()
     
     if magnet:
         idx = (eigenvalues).argsort()[::-1]
@@ -234,15 +245,21 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
 
 
 def vector_sort(eigenvectors):
+    
+    eigenvectors[:, 2:4] = 0
+    eigenvectors = np.transpose(eigenvectors, (0,2,1))
 
-    eigenvector_columns = np.array([
-        eigenvectors[0],
-        [0,0,0,0],
-        eigenvectors[1],
-        [0,0,0,0]
-    ]).T
+    exit()
 
-    return eigenvector_columns
+    # eigenvector_columns = np.array([
+    #     eigenvectors[:,0],
+    #     np.zeros_like(eigenvectors[:,0]),
+    #     eigenvectors[:,1],
+    #     np.zeros_like(eigenvectors[:,0])
+    # ]).T
+    # print(eigenvector_columns.shape)
+    
+    return eigenvectors
     
 
 def reflection_coefficients(T):
@@ -256,7 +273,9 @@ def reflection_coefficients(T):
     r_sp = (T[:,3,0] * T[:,2,2] - T[:,3,2] * T[:,2,0]) / bottom_line
 
     r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / bottom_line  
-    
+
+    exit()
+
     return r_pp, r_ps, r_sp, r_ss
 
 
@@ -549,25 +568,21 @@ def main_quartz_contour():
 
     reflectivities = []
 
-    for angle in incident_angle:
-        prism_layer = ambient_incident_prism(eps_prism, angle)
-        kx = np.sqrt(eps_prism) * np.sin(angle)
-        transfer_matrices = []
+    prism_layer = ambient_incident_prism(eps_prism, incident_angle)
+    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
+    
 
-        for i in range(0,len(frequency)):
-            vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-            quartz_eigenvectors = vector_sort(vector)
+    for i in range(0,len(frequency)):
+        vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
+        quartz_eigenvectors = vector_sort(vector)
 
-            air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
+        # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
 
-            transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
-            transfer_matrices.append(transfer)
+        transfer = prism_layer @ np.transpose(quartz_eigenvectors,(0,2,1))
 
-        transfer_matrices = np.asarray(transfer_matrices)
+        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer)
 
-        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
         reflectivities.append([r_pp,r_ps,r_sp,r_ss])
-
 
     reflectivities = np.asarray(reflectivities)
 
