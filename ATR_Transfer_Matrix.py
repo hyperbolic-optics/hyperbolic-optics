@@ -171,13 +171,22 @@ def air_tensor():
 def ambient_incident_prism(eps_prism, theta):
     n = np.sqrt(eps_prism)
 
-    matrix = 0.5 * np.array([
-        [np.zeros_like(theta), -1. * np.ones_like(theta), -1./(n * np.cos(theta)), np.zeros_like(theta)],
-        [np.zeros_like(theta), np.ones_like(theta), 1./(n * np.cos(theta)), np.zeros_like(theta)],
-        [1./np.cos(theta), np.zeros_like(theta), np.zeros_like(theta), np.ones_like(theta) * 1./n],
-        [-1./np.cos(theta),np.zeros_like(theta), np.zeros_like(theta), np.ones_like(theta) * 1./n]
-    ])
-    matrix = np.transpose(matrix, (2,0,1))
+    cos_theta = np.cos(theta)
+    n_cos_theta = n * cos_theta
+    one_over_cos_theta = 1. / cos_theta
+    one_over_n = 1. / n
+    one_over_n_cos_theta = 1. / n_cos_theta
+
+    matrix = np.zeros((theta.size, 4, 4))
+
+    matrix[:, 0, 1] = 0.5
+    matrix[:, 1, 1] = 0.5
+    matrix[:, 0, 2] = -0.5 * one_over_n_cos_theta
+    matrix[:, 1, 2] = 0.5 * one_over_n_cos_theta
+    matrix[:, 2, 0] = 0.5 * one_over_cos_theta
+    matrix[:, 3, 0] = -0.5 * one_over_cos_theta
+    matrix[:, 2, 3] = 0.5 * one_over_n
+    matrix[:, 3, 3] = 0.5 * one_over_n
 
     return matrix
 
@@ -219,17 +228,13 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
     if quartz:
     
         order = (1.j * eigenvalues).argsort(axis=1)
-        vector = np.transpose(vector,(0,2,1))
-
-        vector = np.take_along_axis(vector, order[...,None],1)
         value = np.take_along_axis(eigenvalues, order ,1)
+        vector = np.transpose(vector, (0,2,1))
 
-        print(vector[0])
-        exit()
+        order_ext = order[:, :, np.newaxis]
+        vector = np.take_along_axis(vector, order_ext, axis=1)
 
         return vector
-    
-    exit()
     
     if magnet:
         idx = (eigenvalues).argsort()[::-1]
@@ -237,9 +242,20 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
         vector = vector[:,idx]
         return vector.T
 
-    eigenvalues = np.diag(eigenvalues)
-    partial = expm((1.j * eigenvalues * k0 * thickness))
-    partial_complete = vector @ partial @ np.linalg.inv(vector)
+    # Reshape eigenvalues for broadcasting
+    eigenvalues = eigenvalues[:, :, np.newaxis]
+
+    # Create diagonal matrix using broadcasting, result is of shape (300, 4, 4)
+    eigenvalues_diag = np.eye(4) * eigenvalues
+
+    # Compute exponential matrix
+    partial = expm((1.j * eigenvalues_diag * k0 * thickness))
+
+    # Compute inverse of vector
+    vector_inv = np.linalg.inv(vector)
+
+    # Perform matrix multiplications
+    partial_complete = vector @ partial @ vector_inv
 
     return partial_complete
 
@@ -247,18 +263,10 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, magnet = False, quart
 def vector_sort(eigenvectors):
     
     eigenvectors[:, 2:4] = 0
+    eigenvectors[:,2] = eigenvectors[:,1]
+    eigenvectors[:,1] = 0
     eigenvectors = np.transpose(eigenvectors, (0,2,1))
 
-    exit()
-
-    # eigenvector_columns = np.array([
-    #     eigenvectors[:,0],
-    #     np.zeros_like(eigenvectors[:,0]),
-    #     eigenvectors[:,1],
-    #     np.zeros_like(eigenvectors[:,0])
-    # ]).T
-    # print(eigenvector_columns.shape)
-    
     return eigenvectors
     
 
@@ -274,42 +282,8 @@ def reflection_coefficients(T):
 
     r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / bottom_line  
 
-    exit()
 
     return r_pp, r_ps, r_sp, r_ss
-
-
-def plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, theta, rotation_z, anisotropy, distance):
-    reflection1 = (r_pp * np.conj(r_pp)).real
-    reflection2 = (r_ss * np.conj(r_ss)).real
-    reflection3 = ((r_sp) * np.conj(r_sp)).real
-    reflection4 = ((r_ps) * np.conj(r_ps)).real
-    
-    plt.rcParams["figure.figsize"] = (8,7)
-    fig, (ax, ax2, ax3, ax4) = plt.subplots(ncols=4,figsize=(12,6), sharey=True)#gridspec_kw={"width_ratios":[1,1, 0.05]})
-    fig.subplots_adjust(wspace=0.3)
-    fig.suptitle("ATR for $\\theta$ = " + str(int(round(np.degrees(theta),1))) + " $\phi_x$ = " + str(int(round((anisotropy),1))) + "$^\circ$, $\phi_z$ = " + str(int(round((rotation_z),1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
-
-    ax.set_title('$|r_{pp}|^2$')
-    ax.plot(reflection1, frequency)
-    ax.set(xlabel = '$|r_{pp}|^2$')
-    ax.set(ylabel='$\omega/2\pi c (cm^{-1})$')
-
-    ax2.set_title('$|r_{ss}|^2$')
-    ax2.plot(reflection2, frequency)
-    ax2.set(xlabel = '$|r_{ss}|^2$')
-
-    ax3.set_title('$|r_{sp}|^2$')
-    ax3.plot(reflection3, frequency)
-    ax3.set(xlabel = '$|r_{sp}|^2$')
-
-    ax4.set_title('$|r_{ps}|^2$')
-    ax4.plot(reflection4, frequency)
-    ax4.set(xlabel = '$|r_{ps}|^2$')
-
-    # plt.tight_layout()
-    plt.show()
-
 
 
 def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
@@ -321,11 +295,11 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
 
     x_axis = np.degrees(x_axis)
 
-    R_pp = (r_pp * np.conj(r_pp)).real.T
-    R_ps = (r_ps * np.conj(r_ps)).real.T
+    R_pp = (r_pp * np.conj(r_pp)).real
+    R_ps = (r_ps * np.conj(r_ps)).real
 
-    R_sp = (r_sp * np.conj(r_sp)).real.T
-    R_ss = (r_ss * np.conj(r_ss)).real.T
+    R_sp = (r_sp * np.conj(r_sp)).real
+    R_ss = (r_ss * np.conj(r_ss)).real
 
     R_pp_total = R_pp + R_ps
     R_ss_total = R_ss + R_sp
@@ -388,167 +362,6 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     plt.close()
 
 
-def contour_z_rotation(wavenumber, x_axis, distance, anisotropy_rotation_x, incident_angle, reflectivities):
-
-    r_pp = reflectivities[:,0]
-    r_ps = reflectivities[:,1]
-    r_sp = reflectivities[:,2]
-    r_ss = reflectivities[:,3]
-
-    R_pp = (r_pp * np.conj(r_pp)).real.T
-    R_ps = (r_ps * np.conj(r_ps)).real.T
-    R_sp = (r_sp * np.conj(r_sp)).real.T
-    R_ss = (r_ss * np.conj(r_ss)).real.T
-
-    R_pp_total = R_pp + R_ps
-    R_ss_total = R_ss + R_sp
-
-    params = {'mathtext.default': 'regular' }          
-    plt.rcParams.update(params)
-
-    fig, ax = plt.subplots(2,3, figsize=(12, 7))
-
-    x_axis = np.degrees(x_axis)
-    fig.suptitle("ATR for $\phi_x$ = " + str(int(round(np.degrees(anisotropy_rotation_x),1))) + "$^\circ$, $\\theta$ = " + str(int(round(np.degrees(incident_angle),1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
-
-    reflection_pp = ax[0,0].pcolormesh(x_axis, wavenumber, R_pp, cmap = 'magma')
-    cbar_pp = plt.colorbar(reflection_pp, ax = ax[0,0])
-    # cbar_pp.mappable.set_clim(0., 1.)
-    cbar_pp.set_label("$|r_{pp}|^2$")
-    ax[0,0].set_title("$|r_{pp}|^2$")
-    ax[0,0].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[0,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ps = ax[0,1].pcolormesh(x_axis, wavenumber, R_ps, cmap = 'magma')
-    cbar_ps = plt.colorbar(reflection_ps, ax = ax[0,1])
-    # cbar_ps.mappable.set_clim(0., 1.)
-    cbar_ps.set_label("$|r_{ps}|^2$")
-    ax[0,1].set_title("$|r_{ps}|^2$")
-    ax[0,1].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[0,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_pp_total = ax[0,2].pcolormesh(x_axis, wavenumber, R_pp_total, cmap = 'magma')
-    cbar_pp_total = plt.colorbar(reflection_pp_total, ax = ax[0,2])
-    cbar_pp_total.set_label("$|r_{pp}|^2 + |r_{ps}|^2$")
-    ax[0,2].set_title("$|r_{pp}|^2 + |r_{ps}|^2$")
-    ax[0,2].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[0,2].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_sp = ax[1,0].pcolormesh(x_axis, wavenumber, R_sp, cmap = 'magma')
-    cbar_sp = plt.colorbar(reflection_sp, ax = ax[1,0])
-    # cbar_sp.mappable.set_clim(0., 1.)
-    cbar_sp.set_label("$|r_{sp}|^2$")
-    ax[1,0].set_title("$|r_{sp}|^2$")
-    ax[1,0].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[1,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ss = ax[1,1].pcolormesh(x_axis, wavenumber, R_ss, cmap = 'magma')
-    cbar_ss = plt.colorbar(reflection_ss, ax = ax[1,1])
-    # cbar_pp.mappable.set_clim(0., 1.)
-    cbar_ss.set_label("$|r_{ss}|^2$")
-    ax[1,1].set_title("$|r_{ss}|^2$")
-    ax[1,1].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[1,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ss_total = ax[1,2].pcolormesh(x_axis, wavenumber, R_ss_total, cmap = 'magma')
-    cbar_pp_total = plt.colorbar(reflection_ss_total, ax = ax[1,2])
-    cbar_pp_total.set_label("$|r_{ss}|^2 + |r_{sp}|^2$")
-    ax[1,2].set_title("$|r_{ss}|^2 + |r_{sp}|^2$")
-    ax[1,2].set_xlabel('$\phi_z$ / $^\circ$')
-    ax[1,2].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-    
-    plt.tight_layout()
-    plt.show()
-    plt.close()
-
-
-
-def main_magnet_contour():
-    frequency = np.linspace(52.0, 53.5, 300)
-
-    anisotropy_rotation = np.radians(0)
-    rotation_z = np.radians(0)
-    d = 23.e-4
-
-    parameters = magnetic_parameters()
-    mu_3, mu_t, eps_magnet = fetch_epsilon_mu(*(frequency, *parameters))
-    mu_tensor, magnet_eps_tensor = construct_magnet_tensors(mu_3, mu_t, eps_magnet)
-
-    mu_tensor = anisotropy_rotation_matrix_y(mu_tensor, anisotropy_rotation)
-    mu_tensor = anisotropy_rotation_matrix_z(mu_tensor, rotation_z)
-
-
-    eps_prism = 11.56
-    incident_angle = np.linspace(-np.pi/2., np.pi/2., len(frequency))
-    k0 = frequency * 2. * np.pi
-
-    reflectivities = []
-
-    for angle in incident_angle:
-        prism_layer = ambient_incident_prism(eps_prism, angle)
-        kx = np.sqrt(eps_prism) * np.sin(angle)
-        transfer_matrices = []
-
-        for i in range(0,len(frequency)):
-            vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-            magnet_eigenvectors = vector_sort(vector)
-
-            air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
-
-            transfer = prism_layer @ np.linalg.inv(air_layer) @ magnet_eigenvectors
-            transfer_matrices.append(transfer)
-
-        transfer_matrices = np.asarray(transfer_matrices)
-
-        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
-
-
-        reflectivities.append([r_pp,r_ps,r_sp,r_ss])
-    
-    reflectivities = np.asarray(reflectivities)
-    
-    contour_theta(frequency, incident_angle, d, anisotropy_rotation, rotation_z, reflectivities)
-
-
-def main_magnet():
-    frequency = np.linspace(52.0, 53.5, 300)
-
-    anisotropy_rotation_x = 0.
-    rotation_z = np.radians(45)
-    d = 0.
-
-    parameters = magnetic_parameters()
-    mu_3, mu_t, eps_magnet = fetch_epsilon_mu(*(frequency, *parameters))
-    mu_tensor, magnet_eps_tensor = construct_magnet_tensors(mu_3, mu_t, eps_magnet)
-
-    mu_tensor = anisotropy_rotation_matrix_z(mu_tensor, rotation_z)
-
-
-    eps_prism = 11.56
-    angle = np.radians(45)
-    k0 = frequency * 2. * np.pi
-
-
-    prism_layer = ambient_incident_prism(eps_prism, angle)
-    kx = np.sqrt(eps_prism) * np.sin(angle)
-    transfer_matrices = []
-
-    for i in range(0,len(frequency)):
-        vector = layer_matrix(magnet_eps_tensor, mu_tensor[i], kx, 0, 0, magnet=True)
-        magnet_eigenvectors = vector_sort(vector)
-
-        # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
-
-        transfer = prism_layer @ magnet_eigenvectors
-        transfer_matrices.append(transfer)
-
-    transfer_matrices = np.asarray(transfer_matrices)
-
-    r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
-    
-    plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, angle, rotation_z, 0, d)
-
-
 def main_quartz_contour():
     frequency = np.linspace(410,600,300)
     
@@ -574,11 +387,10 @@ def main_quartz_contour():
 
     for i in range(0,len(frequency)):
         vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
+        air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
         quartz_eigenvectors = vector_sort(vector)
 
-        # air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
-
-        transfer = prism_layer @ np.transpose(quartz_eigenvectors,(0,2,1))
+        transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
 
         r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer)
 
@@ -587,85 +399,6 @@ def main_quartz_contour():
     reflectivities = np.asarray(reflectivities)
 
     contour_theta(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
-
-
-def main_quartz_rotation():
-    frequency = np.linspace(410,600,300)
-    
-    anisotropy_rotation_y = np.radians(45)
-    incident_angle = np.radians(45)
-    rotation_z = np.linspace(0, 2 * np.pi, len(frequency))
-    d = 1.5e-4
-
-    params = permittivity_parameters()
-    eps_ext, eps_ord = permittivity_fetch(frequency, params)
-    quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, anisotropy_rotation_y)
-
-    eps_prism = 5.5
-    k0 = frequency * 2. * np.pi
-
-    reflectivities = []
-
-    for rotation_angle in rotation_z:
-        quartz_tensor_rotated = anisotropy_rotation_matrix_z(quartz_tensor, rotation_angle)
-        prism_layer = ambient_incident_prism(eps_prism, incident_angle)
-        kx = np.sqrt(eps_prism) * np.sin(incident_angle)
-        transfer_matrices = []
-
-        for i in range(0,len(frequency)):
-            vector = layer_matrix(quartz_tensor_rotated[i], air_tensor(), kx, 0, 0, quartz=True)
-            quartz_eigenvectors = vector_sort(vector)
-
-            air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
-
-            transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
-            transfer_matrices.append(transfer)
-
-        transfer_matrices = np.asarray(transfer_matrices)
-
-        r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
-        reflectivities.append([r_pp,r_ps,r_sp,r_ss])
-
-
-    reflectivities = np.asarray(reflectivities)
-
-    contour_z_rotation(frequency, rotation_z, d, anisotropy_rotation_y, incident_angle, reflectivities)
-
-
-def main_quartz():
-    frequency = np.linspace(410,600,300)
-    
-    params = permittivity_parameters()
-    eps_ext, eps_ord = permittivity_fetch(frequency, params)
-    quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_rotation_matrix_y(quartz_tensor, np.radians(30))
-    quartz_tensor = anisotropy_rotation_matrix_z(quartz_tensor, np.radians(30))
-
-
-    eps_prism = 5.5
-    incident_angle = np.radians(45)
-    d=0.
-    
-    k0 = frequency * 2. * np.pi
-    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
-
-    transfer_matrices = []
-    prism_layer = ambient_incident_prism(eps_prism, incident_angle)
-
-    for i in range(0, len(frequency)):
-        vector = layer_matrix(quartz_tensor[i], air_tensor(), kx, 0, 0, quartz=True)
-        quartz_eigenvectors = vector_sort(vector)
-
-        air_layer = layer_matrix(air_tensor(), air_tensor(), kx, k0[i], d)
-
-        transfer = prism_layer @ np.linalg.inv(air_layer) @ quartz_eigenvectors
-        transfer_matrices.append(transfer)
-
-    transfer_matrices = np.asarray(transfer_matrices)
-
-    r_pp, r_ps, r_sp, r_ss = reflection_coefficients(transfer_matrices)
-    plot_various_reflectivities(frequency, r_pp, r_ps, r_sp, r_ss, incident_angle, 45, 45, d)
 
 
 if __name__ == "__main__":
