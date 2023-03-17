@@ -179,16 +179,16 @@ def ambient_incident_prism(eps_prism, theta):
 
     matrix = np.zeros((theta.size, 4, 4))
 
-    matrix[:, 0, 1] = 0.5
-    matrix[:, 1, 1] = 0.5
-    matrix[:, 0, 2] = -0.5 * one_over_n_cos_theta
-    matrix[:, 1, 2] = 0.5 * one_over_n_cos_theta
-    matrix[:, 2, 0] = 0.5 * one_over_cos_theta
-    matrix[:, 3, 0] = -0.5 * one_over_cos_theta
-    matrix[:, 2, 3] = 0.5 * one_over_n
-    matrix[:, 3, 3] = 0.5 * one_over_n
+    matrix[:, 0, 1] = 1.
+    matrix[:, 1, 1] = 1.
+    matrix[:, 0, 2] = -1./ (n * np.cos(theta))
+    matrix[:, 1, 2] = 1./ (n * np.cos(theta))
+    matrix[:, 2, 0] = 1./ np.cos(theta)
+    matrix[:, 3, 0] = -1./ np.cos(theta)
+    matrix[:, 2, 3] = 1./n
+    matrix[:, 3, 3] = 1./n
 
-    return matrix[:,np.newaxis,:,:]
+    return 0.5 * matrix
 
 
 def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, quartz = False):
@@ -217,10 +217,16 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, quartz = False):
 
     delta = np.transpose(delta, (1,0,2,3))
 
+    print(delta[0][0])
+
+    exit()
+
+    print(delta.shape)
+
     eigenvalues, vector = np.linalg.eig(delta)
 
     if quartz:
-    
+        
         order = (1.j * eigenvalues).argsort(axis=-1)[..., np.newaxis]
         vector = np.transpose(vector, (0, 1, 3, 2))
         vector = np.take_along_axis(vector, order, axis=-2)
@@ -228,11 +234,8 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, quartz = False):
         vector[..., 2:4, :] = 0
         vector[..., 2, :] = vector[..., 1, :]
         vector[..., 1, :] = 0
-        # vector = np.transpose(vector, (0, 1, 3, 2))
 
-        print(vector[0,150])
-
-        exit()
+        vector = np.transpose(vector, (0, 1, 3, 2))
 
         return vector
 
@@ -243,33 +246,33 @@ def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, quartz = False):
 
 def reflection_coefficients(T):
 
-    bottom_line = (T[...,0,0] * T[...,2,2] - T[...,0,2] * T[...,2,0])
+    bottom_line = (T[:,0,0] * T[:,2,2] - T[:,0,2] * T[:,2,0])
     
-    r_pp = (T[...,0,0] * T[...,3,2] - T[...,3,0] * T[...,0,2]) / bottom_line
+    r_pp = (T[:,0,0] * T[:,3,2] - T[:,3,0] * T[:,0,2]) / bottom_line
     
-    r_ps = (T[...,0,0] * T[...,1,2] - T[...,1,0] * T[...,0,2]) / bottom_line
+    r_ps = (T[:,0,0] * T[:,1,2] - (T[:,1,0] * T[:,0,2])) / bottom_line
 
-    r_sp = (T[...,3,0] * T[...,2,2] - T[...,3,2] * T[...,2,0]) / bottom_line
+    r_sp = (T[:,3,0] * T[:,2,2] - T[:,3,2] * T[:,2,0]) / bottom_line
 
-    r_ss = (T[...,1,0] * T[...,2,2] - T[...,1,2] * T[...,2,0]) / bottom_line  
-
-    return np.array([r_pp, r_ps, r_sp, r_ss])
+    r_ss = (T[:,1,0] * T[:,2,2] - T[:,1,2] * T[:,2,0]) / bottom_line  
+    
+    return r_pp, r_ps, r_sp, r_ss
 
 
 def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
 
-    r_pp = reflectivities[0]
-    r_ps = reflectivities[1]
-    r_sp = reflectivities[2]
-    r_ss = reflectivities[3]
+    r_pp = reflectivities[:, 0]
+    r_ps = reflectivities[:, 1]
+    r_sp = reflectivities[:, 2]
+    r_ss = reflectivities[:, 3]
 
     x_axis = np.degrees(x_axis)
 
-    R_pp = (r_pp * np.conj(r_pp)).real
-    R_ps = (r_ps * np.conj(r_ps)).real
+    R_pp = (r_pp * np.conj(r_pp)).real.T
+    R_ps = (r_ps * np.conj(r_ps)).real.T
 
-    R_sp = (r_sp * np.conj(r_sp)).real
-    R_ss = (r_ss * np.conj(r_ss)).real
+    R_sp = (r_sp * np.conj(r_sp)).real.T
+    R_ss = (r_ss * np.conj(r_ss)).real.T
 
     R_pp_total = R_pp + R_ps
     R_ss_total = R_ss + R_sp
@@ -358,12 +361,24 @@ def main_quartz_contour():
     
     quartz_eigenvectors = layer_matrix(quartz_tensor, non_magnetic_tensor, kx, 0, 0, quartz=True)
 
+    reflectivities = []
 
-    transfer = prism_layer @ quartz_eigenvectors
+    for i in range(len(quartz_eigenvectors)):
+        transfers = []
+        for j in range(len(prism_layer)):
+            transfer = prism_layer[i] @ quartz_eigenvectors[i][j]
+            transfers.append(transfer)
+        
+        transfers = np.asarray(transfers)
+    
+        reflections = reflection_coefficients(transfers)
+        reflectivities.append(reflections)
+    
+    reflectivities = np.asarray(reflectivities)
 
-    # reflectivities = reflection_coefficients(transfer)
+    print(reflectivities.shape)
 
-    # contour_theta(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
+    contour_theta(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
 
 
 if __name__ == "__main__":
