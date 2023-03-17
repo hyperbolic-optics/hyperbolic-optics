@@ -89,3 +89,35 @@ class Ambient_Incident_Prism(object):
         matrix[:, 3, 3] = 1./n
 
         return 0.5 * matrix
+
+
+    def construct_tensor_singular(self, permittivity, theta):
+        n = np.sqrt(self.permittivity)
+
+        matrix = np.zeros((4, 4))
+
+        matrix[0, 1] = 1.
+        matrix[1, 1] = 1.
+        matrix[0, 2] = -1./ (n * np.cos(self.theta))
+        matrix[1, 2] = 1./ (n * np.cos(self.theta))
+        matrix[2, 0] = 1./ np.cos(self.theta)
+        matrix[3, 0] = -1./ np.cos(self.theta)
+        matrix[2, 3] = 1./n
+        matrix[3, 3] = 1./n
+
+        return 0.5 * matrix
+
+
+class Air(object):
+    def __init__(self):
+        pass
+
+    def construct_tensor_singular(self):
+        tensor = np.array(
+            [
+            [1., 0., 0.],
+            [0., 1., 0.],
+            [0., 0., 1.]
+            ],
+        )
+        return tensor
