@@ -1,69 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-np.set_printoptions(suppress=True)
-from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from scipy.linalg import expm
-from scipy import constants
-  
-plt.rcParams.update({'mathtext.default': 'regular' })
+import material_params
+import plots
 
-def permittivity_parameters():
-    
-    parameters = {
-        "ordinary": {
-            "high_freq": 2.356,
-            "omega_Tn" : np.array([393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0]),
-            "gamma_Tn" : np.array([2.1, 4.5, 13.0, 6.9, 7.2, 9.3]),
-            "omega_Ln" : np.array([403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0]),
-            "gamma_Ln" : np.array([2.8, 3.5, 13.0, 6.9, 12.5, 9.3])
-        },
-        "extraordinary": {
-            "high_freq": 2.383,
-            "omega_Tn" : np.array([363.5, 487.5, 777.0, 1071.0]),
-            "gamma_Tn" : np.array([4.8, 4.0, 6.7, 6.8]),
-            "omega_Ln" : np.array([386.7, 550.0, 790.0, 1229.0]),
-            "gamma_Ln" : np.array([7.0, 3.2, 6.7, 12.0])
-        }
-    }
-
-    return parameters
-
-
-def permittivity_calc(wavenumber, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
-
-    top_line = omega_Ln**2. - wavenumber**2. - 1j *  wavenumber * gamma_Ln
-    bottom_line =  omega_Tn**2. - wavenumber**2. - 1j * wavenumber * gamma_Tn
-    result = top_line / bottom_line
-    
-    return (high_freq * np.prod(result))
-
-
-def permittivity_fetch(wavenumber, params):
-    E_ext = []
-    E_ord = []
-    for element in wavenumber:
-        E_ext.append(permittivity_calc(element, **params["extraordinary"]))
-        E_ord.append(permittivity_calc(element, **params["ordinary"]))
-    
-    E_ext, E_ord = np.asarray(E_ext), np.asarray(E_ord)
-    return E_ext, E_ord
-
-
-def construct_quartz_tensors(eps_ord, eps_ext):
-
-    permittivity = np.array(
-        [
-        [eps_ord, np.zeros_like(eps_ext), np.zeros_like(eps_ext)],
-        [np.zeros_like(eps_ext), eps_ord, np.zeros_like(eps_ext)],
-        [np.zeros_like(eps_ext), np.zeros_like(eps_ext), eps_ext]
-        ]
-    ).T
-    permittivity = np.transpose(permittivity, (0,2,1))
-
-    return permittivity
-
-
-def anisotropy_matrix(matrix, phi, beta):
+def anisotropy_rotation(matrix, phi, beta):
     rotation_y = np.array([
         [np.cos(phi), 0., np.sin(phi)],
         [0., 1., 0.],
@@ -100,26 +40,9 @@ def air_tensor():
     return both_tensor
 
 
-def ambient_incident_prism(eps_prism, theta):
-    n = np.sqrt(eps_prism)
-
-    matrix = np.zeros((theta.size, 4, 4))
-
-    matrix[:, 0, 1] = 1.
-    matrix[:, 1, 1] = 1.
-    matrix[:, 0, 2] = -1./ (n * np.cos(theta))
-    matrix[:, 1, 2] = 1./ (n * np.cos(theta))
-    matrix[:, 2, 0] = 1./ np.cos(theta)
-    matrix[:, 3, 0] = -1./ np.cos(theta)
-    matrix[:, 2, 3] = 1./n
-    matrix[:, 3, 3] = 1./n
-
-    return 0.5 * matrix
-
-
 def layer_matrix(eps_tensor, mu_tensor, kx, k0, thickness, quartz = False):
 
-    delta = np.zeros((300, 300, 4, 4), dtype=np.complex128)
+    delta = np.zeros((len(eps_tensor), len(kx), 4, 4), dtype=np.complex128)
 
     kx = kx[:, np.newaxis]
     eps_tensor = eps_tensor[np.newaxis, ...]
@@ -188,100 +111,33 @@ def reflection_coefficients(T):
     return np.array([r_pp, r_ps, r_sp, r_ss])
 
 
-def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
-    
-    reflectivities = (reflectivities * np.conj(reflectivities)).real
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_pp_total = R_pp + R_ps
-    R_ss_total = R_ss + R_sp
-
-    x_axis = np.degrees(x_axis)
-    fig, ax = plt.subplots(2,3, figsize=(12, 7))
-    fig.suptitle("ATR for $\phi_x$ = " + str(int(round(np.degrees(anisotropy_rotation_x),1))) + "$^\circ$, $\phi_z$ = " + str(int(round(np.degrees(rotation_z),1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
-
-    reflection_pp = ax[0,0].pcolormesh(x_axis, wavenumber, R_pp, cmap = 'magma')
-    cbar_pp = plt.colorbar(reflection_pp, ax = ax[0,0])
-    cbar_pp.mappable.set_clim(0., 1.)
-    cbar_pp.set_label("$|r_{pp}|^2$")
-    ax[0,0].set_title("$|r_{pp}|^2$")
-    ax[0,0].set_xlabel('$k_x / k_0 $')
-    ax[0,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ps = ax[0,1].pcolormesh(x_axis, wavenumber, R_ps, cmap = 'magma')
-    cbar_ps = plt.colorbar(reflection_ps, ax = ax[0,1])
-    cbar_ps.mappable.set_clim(0., 1.)
-    cbar_ps.set_label("$|r_{ps}|^2$")
-    ax[0,1].set_title("$|r_{ps}|^2$")
-    ax[0,1].set_xlabel('$k_x / k_0 $')
-    ax[0,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_pp_total = ax[0,2].pcolormesh(x_axis, wavenumber, R_pp_total, cmap = 'magma')
-    cbar_pp_total = plt.colorbar(reflection_pp_total, ax = ax[0,2])
-    cbar_pp_total.set_label("$|r_{pp}|^2 + |r_{ps}|^2$")
-    ax[0,2].set_title("$|r_{pp}|^2 + |r_{ps}|^2$")
-    ax[0,2].set_xlabel('$k_x / k_0 $')
-    ax[0,2].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_sp = ax[1,0].pcolormesh(x_axis, wavenumber, R_sp, cmap = 'magma')
-    cbar_sp = plt.colorbar(reflection_sp, ax = ax[1,0])
-    cbar_sp.mappable.set_clim(0., 1.)
-    cbar_sp.set_label("$|r_{sp}|^2$")
-    ax[1,0].set_title("$|r_{sp}|^2$")
-    ax[1,0].set_xlabel('$k_x / k_0 $')
-    ax[1,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ss = ax[1,1].pcolormesh(x_axis, wavenumber, R_ss, cmap = 'magma')
-    cbar_ss = plt.colorbar(reflection_ss, ax = ax[1,1])
-    cbar_ss.mappable.set_clim(0., 1.)
-    cbar_ss.set_label("$|r_{ss}|^2$")
-    ax[1,1].set_title("$|r_{ss}|^2$")
-    ax[1,1].set_xlabel('$k_x / k_0 $')
-    ax[1,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-
-    reflection_ss_total = ax[1,2].pcolormesh(x_axis, wavenumber, R_ss_total, cmap = 'magma')
-    cbar_pp_total = plt.colorbar(reflection_ss_total, ax = ax[1,2])
-    cbar_pp_total.set_label("$|r_{ss}|^2 + |r_{sp}|^2$")
-    ax[1,2].set_title("$|r_{ss}|^2 + |r_{sp}|^2$")
-    ax[1,2].set_xlabel('$k_x / k_0 $')
-    ax[1,2].set_ylabel('$\omega/2\pi c (cm^{-1})$')
-    
-    plt.tight_layout()
-    plt.show()
-    plt.close()
-
-
 def main_quartz_contour():
-    frequency = np.linspace(410,600,300)
+    eps_prism = 5.5
+    air_gap_thickness = 0.
+    
+    quartz = material_params.Quartz(300)
+    frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
+
+    incident_angle = np.linspace(-np.pi/2., np.pi/2., quartz.frequency_length)
+    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
     
     anisotropy_rotation_y = np.radians(90)
     rotation_z = np.radians(0)
-    theta_cap = np.radians(90)
-    d = 1.5e-4
-    eps_prism = 5.5
 
-    params = permittivity_parameters()
-    eps_ext, eps_ord = permittivity_fetch(frequency, params)
-    quartz_tensor = construct_quartz_tensors(eps_ord, eps_ext)
-    quartz_tensor = anisotropy_matrix(quartz_tensor, anisotropy_rotation_y, rotation_z)
+    quartz_tensor = quartz.fetch_permittivity_tensor()
+    quartz_tensor = anisotropy_rotation(quartz_tensor, anisotropy_rotation_y, rotation_z)
+    non_magnetic_tensor = np.tile(air_tensor(), (quartz.frequency_length, 1, 1))
 
-    non_magnetic_tensor = np.tile(air_tensor(), (300, 1, 1))
-
-    incident_angle = np.linspace(-theta_cap, theta_cap, len(frequency))
-    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
-
-    prism_layer = ambient_incident_prism(eps_prism, incident_angle)
-    air_layer = np.linalg.inv(layer_matrix(non_magnetic_tensor, non_magnetic_tensor, kx, k0, d))
+    prism_layer = material_params.Ambient_Incident_Prism(eps_prism, incident_angle).construct_tensor()
+    air_layer = np.linalg.inv(layer_matrix(non_magnetic_tensor, non_magnetic_tensor, kx, k0, air_gap_thickness))
     quartz_layer = layer_matrix(quartz_tensor, non_magnetic_tensor, kx, 0, 0, quartz=True)
 
     transfer = prism_layer @ air_layer @ quartz_layer
 
     reflectivities = reflection_coefficients(transfer)
 
-    contour_theta(frequency, incident_angle, d, anisotropy_rotation_y, rotation_z, reflectivities)
+    plots.contour_theta(frequency, incident_angle, air_gap_thickness, anisotropy_rotation_y, rotation_z, reflectivities)
 
 
 if __name__ == "__main__":
