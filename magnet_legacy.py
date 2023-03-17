@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import constants
 
 def magnetic_parameters():
     gamma = 1.05 # cm^-1 / T
