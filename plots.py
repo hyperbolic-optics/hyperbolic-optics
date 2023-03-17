@@ -20,7 +20,7 @@ def plot_base_permittivity(wavenumber, eps_ext, eps_ord):
     plt.show()
 
 
-def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
+def contour_theta(frequency, x_axis, distance, anisotropy_rotation_x, rotation_z, reflectivities):
     
     reflectivities = (reflectivities * np.conj(reflectivities)).real
     R_pp = reflectivities[0]
@@ -30,11 +30,10 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     R_pp_total = R_pp + R_ps
     R_ss_total = R_ss + R_sp
 
-    x_axis = np.degrees(x_axis)
     fig, ax = plt.subplots(2,3, figsize=(12, 7))
     fig.suptitle("ATR for $\phi_x$ = " + str(int(round(np.degrees(anisotropy_rotation_x),1))) + "$^\circ$, $\phi_z$ = " + str(int(round(np.degrees(rotation_z),1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) +"\mu m$")
 
-    reflection_pp = ax[0,0].pcolormesh(x_axis, wavenumber, R_pp, cmap = 'magma')
+    reflection_pp = ax[0,0].pcolormesh(x_axis, frequency, R_pp, cmap = 'magma')
     cbar_pp = plt.colorbar(reflection_pp, ax = ax[0,0])
     cbar_pp.mappable.set_clim(0., 1.)
     cbar_pp.set_label("$|r_{pp}|^2$")
@@ -42,7 +41,7 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     ax[0,0].set_xlabel('$k_x / k_0 $')
     ax[0,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    reflection_ps = ax[0,1].pcolormesh(x_axis, wavenumber, R_ps, cmap = 'magma')
+    reflection_ps = ax[0,1].pcolormesh(x_axis, frequency, R_ps, cmap = 'magma')
     cbar_ps = plt.colorbar(reflection_ps, ax = ax[0,1])
     cbar_ps.mappable.set_clim(0., 1.)
     cbar_ps.set_label("$|r_{ps}|^2$")
@@ -50,14 +49,14 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     ax[0,1].set_xlabel('$k_x / k_0 $')
     ax[0,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    reflection_pp_total = ax[0,2].pcolormesh(x_axis, wavenumber, R_pp_total, cmap = 'magma')
+    reflection_pp_total = ax[0,2].pcolormesh(x_axis, frequency, R_pp_total, cmap = 'magma')
     cbar_pp_total = plt.colorbar(reflection_pp_total, ax = ax[0,2])
     cbar_pp_total.set_label("$|r_{pp}|^2 + |r_{ps}|^2$")
     ax[0,2].set_title("$|r_{pp}|^2 + |r_{ps}|^2$")
     ax[0,2].set_xlabel('$k_x / k_0 $')
     ax[0,2].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    reflection_sp = ax[1,0].pcolormesh(x_axis, wavenumber, R_sp, cmap = 'magma')
+    reflection_sp = ax[1,0].pcolormesh(x_axis, frequency, R_sp, cmap = 'magma')
     cbar_sp = plt.colorbar(reflection_sp, ax = ax[1,0])
     cbar_sp.mappable.set_clim(0., 1.)
     cbar_sp.set_label("$|r_{sp}|^2$")
@@ -65,7 +64,7 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     ax[1,0].set_xlabel('$k_x / k_0 $')
     ax[1,0].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    reflection_ss = ax[1,1].pcolormesh(x_axis, wavenumber, R_ss, cmap = 'magma')
+    reflection_ss = ax[1,1].pcolormesh(x_axis, frequency, R_ss, cmap = 'magma')
     cbar_ss = plt.colorbar(reflection_ss, ax = ax[1,1])
     cbar_ss.mappable.set_clim(0., 1.)
     cbar_ss.set_label("$|r_{ss}|^2$")
@@ -73,7 +72,7 @@ def contour_theta(wavenumber, x_axis, distance, anisotropy_rotation_x, rotation_
     ax[1,1].set_xlabel('$k_x / k_0 $')
     ax[1,1].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    reflection_ss_total = ax[1,2].pcolormesh(x_axis, wavenumber, R_ss_total, cmap = 'magma')
+    reflection_ss_total = ax[1,2].pcolormesh(x_axis, frequency, R_ss_total, cmap = 'magma')
     cbar_pp_total = plt.colorbar(reflection_ss_total, ax = ax[1,2])
     cbar_pp_total.set_label("$|r_{ss}|^2 + |r_{sp}|^2$")
     ax[1,2].set_title("$|r_{ss}|^2 + |r_{sp}|^2$")

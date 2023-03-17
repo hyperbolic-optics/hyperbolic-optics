@@ -113,8 +113,8 @@ def reflection_coefficients(T):
 
 def main_quartz_contour():
     eps_prism = 5.5
-    air_gap_thickness = 0.
-    
+    air_gap_thickness = 1.5e-4
+
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
@@ -122,7 +122,7 @@ def main_quartz_contour():
     incident_angle = np.linspace(-np.pi/2., np.pi/2., quartz.frequency_length)
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
     
-    anisotropy_rotation_y = np.radians(90)
+    anisotropy_rotation_y = np.radians(45)
     rotation_z = np.radians(0)
 
     quartz_tensor = quartz.fetch_permittivity_tensor()
@@ -137,7 +137,7 @@ def main_quartz_contour():
 
     reflectivities = reflection_coefficients(transfer)
 
-    plots.contour_theta(frequency, incident_angle, air_gap_thickness, anisotropy_rotation_y, rotation_z, reflectivities)
+    plots.contour_theta(frequency, kx, air_gap_thickness, anisotropy_rotation_y, rotation_z, reflectivities)
 
 
 if __name__ == "__main__":
