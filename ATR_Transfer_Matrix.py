@@ -34,9 +34,9 @@ def main_quartz_contour():
     kx = compute_kx(eps_prism, incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(45)
-    rotation_z = np.radians(45)
-    anisotropy_rotation_x = np.radians(45)
+    anisotropy_rotation_y = np.radians(60)
+    rotation_z = np.radians(20)
+    anisotropy_rotation_x = np.radians(80)
 
     # Create permittivity tensors for quartz and air
     quartz_tensor = quartz.fetch_permittivity_tensor()
@@ -59,18 +59,18 @@ def main_quartz_contour():
 
 def main_quartz_rotation_z():
     eps_prism = 5.5
-    air_gap_thickness = 0.
+    air_gap_thickness =0.
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
 
-    incident_angle = np.radians(30) 
+    incident_angle = np.radians(45) 
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(45)
+    anisotropy_rotation_y = np.radians(60)
     rotation_z = np.linspace(np.radians(0), np.radians(360), 300)
-    anisotropy_rotation_x = np.radians(0)
+    anisotropy_rotation_x = np.radians(80)
 
     quartz_tensor = quartz.fetch_permittivity_tensor()
     non_magnetic_tensor = np.tile(material_params.Air().construct_tensor_singular(), (quartz.frequency_length, 1, 1))
