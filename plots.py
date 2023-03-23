@@ -84,7 +84,7 @@ def contour_theta(frequency, x_axis, distance, anisotropy_rotation_y, rotation_z
     plt.close()
 
 
-def contour_azimuth(frequency, x_axis, distance, anisotropy_rotation_y, rotation_x, reflectivities):
+def contour_azimuth(frequency, x_axis, incident_angle, distance, anisotropy_rotation_y, rotation_x, reflectivities):
 
     reflectivities = (reflectivities * np.conj(reflectivities)).real
     R_pp = reflectivities[0]
@@ -95,7 +95,7 @@ def contour_azimuth(frequency, x_axis, distance, anisotropy_rotation_y, rotation
     R_ss_total = R_ss + R_sp
 
     fig, ax = plt.subplots(2, 3, figsize=(12, 7))
-    fig.suptitle("ATR for $\phi_y$ = " + str(int(round(np.degrees(anisotropy_rotation_y), 1))) + "$^\circ$, $\phi_x$ = " + str(int(round(np.degrees(rotation_x), 1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) + "\mu m$")
+    fig.suptitle("ATR for $\phi_y$ = " + str(int(round(np.degrees(anisotropy_rotation_y), 1))) + "$^\circ$, $\\theta$ = " + str(int(round(np.degrees(incident_angle), 1))) + "$^\circ$, $\phi_x$ = " + str(int(round(np.degrees(rotation_x), 1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) + "\mu m$")
 
     ax_to_plot = [
         (R_pp, "$|r_{pp}|^2$", 0, 0),
@@ -131,7 +131,7 @@ def contour_y_anisotropy(frequency, x_axis, distance, incident_angle, rotation_z
     R_ss_total = R_ss + R_sp
 
     fig, ax = plt.subplots(2, 3, figsize=(12, 7))
-    fig.suptitle("ATR for $\phi_z$ = " + str(int(round(np.degrees(rotation_z), 1))) + "$^\circ$, $\\theta$ = " + str(int(round(np.degrees(incident_angle), 1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) + "\mu m$")
+    fig.suptitle("ATR for $\phi_z$ = " + str(int(round(np.degrees(rotation_z), 1))) + "$^\circ$, $\\theta$ = " + str(int(round(np.degrees(incident_angle), 1))) + "$^\circ$, $\phi_x$ = " + str(int(round(np.degrees(rotation_x), 1))) + "$^\circ$, $d = " + str(round(distance * 1e4, 3)) + "\mu m$")
 
     ax_to_plot = [
         (R_pp, "$|r_{pp}|^2$", 0, 0),
