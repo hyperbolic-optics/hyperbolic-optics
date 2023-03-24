@@ -69,7 +69,7 @@ def main_quartz_rotation_z():
 
     # Define rotation angles
     anisotropy_rotation_y = np.radians(45)
-    rotation_z = np.linspace(np.radians(0), np.radians(360), 300)
+    rotation_z = np.linspace(np.radians(0), np.radians(360), 360)
     anisotropy_rotation_x = np.radians(0)
 
     quartz_tensor = quartz.fetch_permittivity_tensor()

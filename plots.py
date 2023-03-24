@@ -107,7 +107,7 @@ def contour_azimuth(frequency, x_axis, incident_angle, distance, anisotropy_rota
     ]
 
     for data, title, row, col in ax_to_plot:
-        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis),1), frequency, data.T, cmap='magma')
+        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis),1), frequency, data, cmap='magma')
         cbar = plt.colorbar(im, ax=ax[row, col])
         cbar.mappable.set_clim(0., 1.)
         cbar.set_label(title)
@@ -143,7 +143,7 @@ def contour_y_anisotropy(frequency, x_axis, distance, incident_angle, rotation_z
     ]
 
     for data, title, row, col in ax_to_plot:
-        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis), 1), frequency, data.T, cmap='magma')
+        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis), 1), frequency, data, cmap='magma')
         cbar = plt.colorbar(im, ax=ax[row, col])
         cbar.mappable.set_clim(0., 1.)
         cbar.set_label(title)
@@ -179,7 +179,7 @@ def contour_x_anisotropy(frequency, x_axis, distance, incident_angle, rotation_y
     ]
 
     for data, title, row, col in ax_to_plot:
-        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis), 1), frequency, data.T, cmap='magma')
+        im = ax[row, col].pcolormesh(np.round(np.degrees(x_axis), 1), frequency, data, cmap='magma')
         cbar = plt.colorbar(im, ax=ax[row, col])
         cbar.mappable.set_clim(0., 1.)
         cbar.set_label(title)
