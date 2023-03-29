@@ -20,9 +20,9 @@ def reflection_coefficients(T):
     return np.array([r_pp, r_ps, r_sp, r_ss])
 
 
-def main_quartz_contour():
+def main_quartz_theta():
     eps_prism = 5.5
-    air_gap_thickness = 1.5e-4
+    air_gap_thickness = 0.e-4
 
     # Create quartz material and define frequency-related variables
     quartz = material_params.Quartz(300)
@@ -34,8 +34,8 @@ def main_quartz_contour():
     kx = compute_kx(eps_prism, incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(45)
-    rotation_z = np.radians(0)
+    anisotropy_rotation_y = np.radians(90)
+    rotation_z = np.radians(45)
     anisotropy_rotation_x = np.radians(0)
 
     # Create permittivity tensors for quartz and air
@@ -54,23 +54,23 @@ def main_quartz_contour():
     reflectivities = reflection_coefficients(transfer)
 
     # Plot the reflectivities
-    plots.contour_theta(frequency, kx, air_gap_thickness, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x, reflectivities)
+    plots.contour_theta(frequency, kx, air_gap_thickness, anisotropy_rotation_x, anisotropy_rotation_y, rotation_z, reflectivities)
 
 
 def main_quartz_rotation_z():
     eps_prism = 5.5
-    air_gap_thickness = 0.
+    air_gap_thickness = 0.e-4
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
 
-    incident_angle = np.radians(45) 
+    incident_angle = np.radians(45.) 
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(45)
-    rotation_z = np.linspace(np.radians(0), np.radians(360), 360)
-    anisotropy_rotation_x = np.radians(0)
+    anisotropy_rotation_y = np.radians(90.)
+    rotation_z = np.linspace(np.radians(0), np.radians(360), 360) + np.pi/2.
+    anisotropy_rotation_x = np.radians(0.)
 
     quartz_tensor = quartz.fetch_permittivity_tensor()
     non_magnetic_tensor = np.tile(material_params.Air().construct_tensor_singular(), (quartz.frequency_length, 1, 1))
@@ -93,14 +93,14 @@ def main_quartz_rotation_z():
 
 
 def main_quartz_rotation_y():
-    eps_prism = 1.
-    air_gap_thickness = 1.5e-4
+    eps_prism = 5.5
+    air_gap_thickness = 0.e-4
 
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
 
-    incident_angle = np.radians(30) 
+    incident_angle = np.radians(45) 
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
 
     # Define rotation angles
@@ -130,7 +130,7 @@ def main_quartz_rotation_y():
 
 def main_quartz_rotation_x():
     eps_prism = 5.5
-    air_gap_thickness = 1.5e-4
+    air_gap_thickness = 0.e-4
 
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
@@ -166,3 +166,4 @@ def main_quartz_rotation_x():
 
 if __name__ == "__main__":
     main_quartz_rotation_z()
+    # main_quartz_rotation_x()
