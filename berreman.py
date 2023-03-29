@@ -83,8 +83,6 @@ def layer_matrix_incidence_azimuth(eps_tensor, mu_tensor, kx, k0, thickness, qua
     delta[..., 3, 2] = np.zeros_like(kx)
     delta[..., 3, 3] = -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
 
-    delta = np.transpose(delta, (1,0,2,3))
-
     eigenvalues, vector = np.linalg.eig(delta)
 
     if quartz:

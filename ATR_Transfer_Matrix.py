@@ -20,7 +20,7 @@ def reflection_coefficients(T):
     return np.array([r_pp, r_ps, r_sp, r_ss])
 
 
-def main_quartz_contour():
+def main_quartz_theta():
     eps_prism = 5.5
     air_gap_thickness = 1.5e-4
 
@@ -34,9 +34,9 @@ def main_quartz_contour():
     kx = compute_kx(eps_prism, incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(60)
-    rotation_z = np.radians(20)
-    anisotropy_rotation_x = np.radians(80)
+    anisotropy_rotation_y = np.radians(90.)
+    rotation_z = np.radians(45.)
+    anisotropy_rotation_x = np.radians(0.)
 
     # Create permittivity tensors for quartz and air
     quartz_tensor = quartz.fetch_permittivity_tensor()
@@ -53,59 +53,32 @@ def main_quartz_contour():
     transfer = prism_layer @ air_layer @ quartz_layer
     reflectivities = reflection_coefficients(transfer)
 
-    # Plot the reflectivities
-    plots.contour_theta(frequency, kx, air_gap_thickness, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x, reflectivities)
+    # # Plot the reflectivities
 
+    plot_type = 'theta'
+    plots.contour_plot(plot_type, 
+                       frequency, 
+                       incident_angle, 
+                       air_gap_thickness, 
+                       None, 
+                       anisotropy_rotation_x, 
+                       anisotropy_rotation_y, 
+                       rotation_z, 
+                       reflectivities)
 
 def main_quartz_rotation_z():
     eps_prism = 5.5
-    air_gap_thickness =0.
+    air_gap_thickness = 0.e-4
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
     k0 = frequency * 2. * np.pi
 
-    incident_angle = np.radians(45) 
+    incident_angle = np.radians(45.) 
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(60)
-    rotation_z = np.linspace(np.radians(0), np.radians(360), 300)
-    anisotropy_rotation_x = np.radians(80)
-
-    quartz_tensor = quartz.fetch_permittivity_tensor()
-    non_magnetic_tensor = np.tile(material_params.Air().construct_tensor_singular(), (quartz.frequency_length, 1, 1))
-
-    rotated_quartz_tensors = anisotropy_rotation(quartz_tensor, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x)
-    non_magnetic_tensor = anisotropy_rotation(non_magnetic_tensor, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x)
-
-    prism_layer = material_params.Ambient_Incident_Prism(eps_prism, incident_angle).construct_tensor_singular(eps_prism, incident_angle)
-    
-    air_layer = np.linalg.inv(layer_matrix_incidence_azimuth(non_magnetic_tensor, non_magnetic_tensor, kx, k0, air_gap_thickness))
-    
-    quartz_layer = layer_matrix_incidence_azimuth(rotated_quartz_tensors, non_magnetic_tensor, kx, 0, 0, quartz=True)
-
-    transfer = prism_layer[np.newaxis, ...] @ air_layer @ quartz_layer
-
-    reflectivities = reflection_coefficients(transfer)
-
-
-    plots.contour_azimuth(frequency, rotation_z, air_gap_thickness, anisotropy_rotation_y, anisotropy_rotation_x, reflectivities)
-
-
-def main_quartz_rotation_y():
-    eps_prism = 5.5
-    air_gap_thickness = 1.5e-4
-
-    quartz = material_params.Quartz(300)
-    frequency = quartz.frequency
-    k0 = frequency * 2. * np.pi
-
-    incident_angle = np.radians(30) 
-    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
-
-    # Define rotation angles
-    anisotropy_rotation_y = np.linspace(np.radians(0), np.radians(360), 300)
-    rotation_z = np.radians(45.)
+    anisotropy_rotation_y = np.radians(90.)
+    rotation_z = np.linspace(np.radians(0), np.radians(360), 360) + np.pi/2.
     anisotropy_rotation_x = np.radians(0.)
 
     quartz_tensor = quartz.fetch_permittivity_tensor()
@@ -124,13 +97,20 @@ def main_quartz_rotation_y():
 
     reflectivities = reflection_coefficients(transfer)
 
+    plot_type = 'azimuth'
+    plots.contour_plot(plot_type, 
+                       frequency, 
+                       rotation_z, 
+                       air_gap_thickness, 
+                       incident_angle, 
+                       anisotropy_rotation_x, 
+                       anisotropy_rotation_y, 
+                       None, 
+                       reflectivities)
 
-    plots.contour_y_anisotropy(frequency, anisotropy_rotation_y, air_gap_thickness, incident_angle, rotation_z, anisotropy_rotation_x, reflectivities)
-
-
-def main_quartz_rotation_x():
+def main_quartz_rotation_y():
     eps_prism = 5.5
-    air_gap_thickness = 1.5e-4
+    air_gap_thickness = 0.e-4
 
     quartz = material_params.Quartz(300)
     frequency = quartz.frequency
@@ -140,7 +120,50 @@ def main_quartz_rotation_x():
     kx = np.sqrt(eps_prism) * np.sin(incident_angle)
 
     # Define rotation angles
-    anisotropy_rotation_y = np.radians(70.)
+    anisotropy_rotation_y = np.linspace(np.radians(0), np.radians(360), 300)
+    rotation_z = np.radians(45.)
+    anisotropy_rotation_x = np.radians(45.)
+
+    quartz_tensor = quartz.fetch_permittivity_tensor()
+    non_magnetic_tensor = np.tile(material_params.Air().construct_tensor_singular(), (quartz.frequency_length, 1, 1))
+
+    rotated_quartz_tensors = anisotropy_rotation(quartz_tensor, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x)
+    non_magnetic_tensor = anisotropy_rotation(non_magnetic_tensor, anisotropy_rotation_y, rotation_z, anisotropy_rotation_x)
+
+    prism_layer = material_params.Ambient_Incident_Prism(eps_prism, incident_angle).construct_tensor_singular(eps_prism, incident_angle)
+    
+    air_layer = np.linalg.inv(layer_matrix_incidence_azimuth(non_magnetic_tensor, non_magnetic_tensor, kx, k0, air_gap_thickness))
+    
+    quartz_layer = layer_matrix_incidence_azimuth(rotated_quartz_tensors, non_magnetic_tensor, kx, 0, 0, quartz=True)
+
+    transfer = prism_layer[np.newaxis, ...] @ air_layer @ quartz_layer
+
+    reflectivities = reflection_coefficients(transfer)
+
+    plot_type = 'y_anisotropy'
+    plots.contour_plot(plot_type, 
+                       frequency, 
+                       anisotropy_rotation_y, 
+                       air_gap_thickness, 
+                       incident_angle, 
+                       anisotropy_rotation_x, 
+                       None, 
+                       rotation_z, 
+                       reflectivities)
+
+def main_quartz_rotation_x():
+    eps_prism = 5.5
+    air_gap_thickness = 0.e-4
+
+    quartz = material_params.Quartz(300)
+    frequency = quartz.frequency
+    k0 = frequency * 2. * np.pi
+
+    incident_angle = np.radians(45) 
+    kx = np.sqrt(eps_prism) * np.sin(incident_angle)
+
+    # Define rotation angles
+    anisotropy_rotation_y = np.radians(45.)
     rotation_z = np.radians(45.)
     anisotropy_rotation_x = np.linspace(np.radians(0), np.radians(360), 300)
 
@@ -160,9 +183,21 @@ def main_quartz_rotation_x():
 
     reflectivities = reflection_coefficients(transfer)
 
-    plots.contour_x_anisotropy(frequency, anisotropy_rotation_x, air_gap_thickness, incident_angle, anisotropy_rotation_y, rotation_z, reflectivities)
-
+    plot_type = 'x_anisotropy'
+    plots.contour_plot(plot_type, 
+                       frequency, 
+                       anisotropy_rotation_x, 
+                       air_gap_thickness, 
+                       incident_angle, 
+                       None, 
+                       anisotropy_rotation_y, 
+                       rotation_z, 
+                       reflectivities)
 
 
 if __name__ == "__main__":
-    main_quartz_rotation_x()
+    # main_quartz_rotation_x()
+    # main_quartz_rotation_y()
+    main_quartz_rotation_z()
+    # main_quartz_theta()
+    
