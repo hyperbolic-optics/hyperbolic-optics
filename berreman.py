@@ -1,5 +1,40 @@
 import numpy as np
 from scipy.linalg import expm
+from device_config import run_on_device
+
+import tensorflow as tf
+
+@run_on_device
+def tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor):
+    """Constructs the Berreman matrix for a given kx and a given rotation for a range of frequencies."""
+
+    element11 = - kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]
+    element12 = kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
+    element13 = (mu_tensor[..., 1, 0] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]))
+    element14 = mu_tensor[..., 1, 1] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - (kx ** 2) / eps_tensor[..., 2, 2]
+    
+    element21 = tf.zeros_like(eps_tensor.shape[0])
+    element22 = -kx * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2]
+    element23 = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 0])
+    element24 = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 1])
+
+    element31 = ((eps_tensor[..., 1, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]) - eps_tensor[..., 1, 0])
+    element32 = (kx ** 2) / mu_tensor[..., 2, 2] - eps_tensor[..., 1, 1] + (eps_tensor[..., 1, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])
+    element33 = -kx * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]
+    element34 = kx * ((eps_tensor[..., 1, 2] / eps_tensor[..., 2, 2]) - (mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]))
+
+    element41 = (eps_tensor[..., 0, 0] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]))
+    element42 = (eps_tensor[..., 0, 1] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
+    element43 = tf.zeros_like(eps_tensor.shape[0])
+    element44 = -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
+
+    first_row = tf.stack([element11, element12, element13, element14], axis=-1)
+    second_row = tf.stack([element21, element22, element23, element24], axis=-1)
+    third_row = tf.stack([element31, element32, element33, element34], axis=-1)
+    fourth_row = tf.stack([element41, element42, element43, element44], axis=-1)
+
+    return first_row, second_row, third_row, fourth_row
+
 
 
 
@@ -108,3 +143,18 @@ def layer_matrix_incidence_azimuth(eps_tensor, mu_tensor, kx, k0, thickness, qua
 
     return partial_complete
 
+if __name__ == '__main__':
+    import math as m
+    from device_config import run_on_device
+    from material_params import Quartz, Ambient_Incident_Prism, Air
+
+    eps_prism = 5.5
+    incident_angle = m.pi/4.
+    kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex128)
+
+    quartz = Quartz(frequency_length=300, run_on_device_decorator=run_on_device)
+    ext, ord = quartz.permittivity_fetch()
+    eps_tensor = quartz.fetch_permittivity_tensor()
+
+    mu_tensor = Air(run_on_device_decorator=run_on_device).construct_tensor_singular() * tf.ones_like(eps_tensor)
+    a,b,c,d = tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor)
