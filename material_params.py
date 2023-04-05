@@ -68,56 +68,59 @@ class Quartz(object):
         return eps_tensor
 
 
-# class Ambient_Incident_Prism(object):
+class Ambient_Incident_Prism(object):
 
-#     def __init__(self, permittivity, theta) :
-#         self.permittivity = permittivity
-#         self.theta = theta
+    def __init__(self, permittivity, theta, run_on_device_decorator) :
+        self.permittivity = permittivity
+        self.theta = theta
+        self.run_on_device = run_on_device_decorator
 
-#     def construct_tensor(self):
-#         n = np.sqrt(self.permittivity)
+    @run_on_device
+    def construct_tensor(self):
+        n = tf.sqrt(self.permittivity) 
+        cos_theta = tf.cos(self.theta)
+        n_cos_theta = n * cos_theta
 
-#         matrix = np.zeros((self.theta.size, 4, 4))
+        # Combine updates into a single tensor with shape [180, 4, 4]
+        element1 = tf.stack([tf.zeros_like(self.theta), tf.ones_like(self.theta), -1./n_cos_theta, tf.zeros_like(self.theta)], axis=-1)
+        element2 = tf.stack([tf.zeros_like(self.theta), tf.ones_like(self.theta), 1./n_cos_theta, tf.zeros_like(self.theta)],axis=-1)
+        element3 = tf.stack([1./cos_theta, tf.zeros_like(self.theta), tf.zeros_like(self.theta), 1./n * tf.ones_like(self.theta)],axis=-1)
+        element4 = tf.stack([-1./cos_theta, tf.zeros_like(self.theta), tf.zeros_like(self.theta), 1./n * tf.ones_like(self.theta)],axis=-1)
+        
+        matrix = tf.stack([element1, element2, element3, element4], axis=1)
 
-#         matrix[:, 0, 1] = 1.
-#         matrix[:, 1, 1] = 1.
-#         matrix[:, 0, 2] = -1./ (n * np.cos(self.theta))
-#         matrix[:, 1, 2] = 1./ (n * np.cos(self.theta))
-#         matrix[:, 2, 0] = 1./ np.cos(self.theta)
-#         matrix[:, 3, 0] = -1./ np.cos(self.theta)
-#         matrix[:, 2, 3] = 1./n
-#         matrix[:, 3, 3] = 1./n
-
-#         return 0.5 * matrix
-
-
-#     def construct_tensor_singular(self, permittivity, theta):
-#         n = np.sqrt(self.permittivity)
-
-#         matrix = np.zeros((4, 4))
-
-#         matrix[0, 1] = 1.
-#         matrix[1, 1] = 1.
-#         matrix[0, 2] = -1./ (n * np.cos(self.theta))
-#         matrix[1, 2] = 1./ (n * np.cos(self.theta))
-#         matrix[2, 0] = 1./ np.cos(self.theta)
-#         matrix[3, 0] = -1./ np.cos(self.theta)
-#         matrix[2, 3] = 1./n
-#         matrix[3, 3] = 1./n
-
-#         return 0.5 * matrix
+        return 0.5 * tf.cast(matrix, dtype=tf.complex128)
 
 
-# class Air(object):
-#     def __init__(self):
-#         pass
+    @run_on_device
+    def construct_tensor_singular(self):
+        n = tf.sqrt(self.permittivity) 
+        cos_theta = tf.cos(self.theta)
+        n_cos_theta = n * cos_theta
 
-#     def construct_tensor_singular(self):
-#         tensor = np.array(
-#             [
-#             [1., 0., 0.],
-#             [0., 1., 0.],
-#             [0., 0., 1.]
-#             ],
-#         )
-#         return tensor
+        # Combine updates into a single tensor with shape [180, 4, 4]
+        element1 = tf.stack([0., 1., -1./n_cos_theta, 0.])
+        element2 = tf.stack([0., 1., 1./n_cos_theta, 0.])
+        element3 = tf.stack([1./cos_theta, 0., 0., 1./n])
+        element4 = tf.stack([-1./cos_theta, 0., 0., 1./n])
+        
+        matrix = tf.stack([element1, element2, element3, element4], axis=0)
+
+        return 0.5 * tf.cast(matrix, dtype=tf.complex128)
+
+
+class Air(object):
+    def __init__(self, run_on_device_decorator):
+        self.run_on_device = run_on_device_decorator
+        pass
+    
+    @run_on_device
+    def construct_tensor_singular(self):
+        tensor = tf.constant(
+            [
+            [1., 0., 0.],
+            [0., 1., 0.],
+            [0., 0., 1.]
+            ],
+        dtype= tf.complex128)
+        return tensor
