@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 plt.rcParams.update({'mathtext.default': 'regular' })
 
@@ -7,12 +8,12 @@ plt.rcParams.update({'mathtext.default': 'regular' })
 def plot_base_permittivity(wavenumber, eps_ext, eps_ord):
     fig, axs = plt.subplots(2, figsize=(5, 4))
     fig.suptitle('Permittivities')
-    axs[0].plot(wavenumber, eps_ext.real)
-    axs[0].plot(wavenumber, eps_ext.imag)
+    axs[0].plot(wavenumber, tf.math.real(eps_ext))
+    axs[0].plot(wavenumber, tf.math.imag(eps_ext))
     axs[0].set(xlabel='Wavenumber', ylabel = 'Extraordinary')
 
-    axs[1].plot(wavenumber, eps_ord.real)
-    axs[1].plot(wavenumber, eps_ord.imag)
+    axs[1].plot(wavenumber, tf.math.real(eps_ord))
+    axs[1].plot(wavenumber, tf.math.imag(eps_ord))
     axs[1].set(xlabel='Wavenumber', ylabel = 'Ordinary')
     
     plt.tight_layout()
