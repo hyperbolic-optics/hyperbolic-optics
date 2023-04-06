@@ -20,7 +20,7 @@ def plot_base_permittivity(wavenumber, eps_ext, eps_ord):
     plt.show()
 
 
-def contour_plot(plot_type, frequency, x_axis, distance, incident_angle, rotation_x, rotation_y, rotation_z, reflectivities):
+def contour_plot(plot_type, reflectivities, frequency, x_axis, distance, incident_angle, rotation_x, rotation_y, rotation_z):
     
     x_axis = np.round(np.degrees(x_axis),1)
 

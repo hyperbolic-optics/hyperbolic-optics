@@ -1,23 +1,12 @@
 import numpy as np
 import material_params
 import plots
-from berreman import layer_matrix_incidence, layer_matrix_incidence_azimuth
+from berreman import layer_matrix_incidence, layer_matrix_incidence_azimuth, reflection_coefficients
 from anisotropy_utils import anisotropy_rotation
 
 
 def compute_kx(eps_prism, incident_angle):
     return np.sqrt(eps_prism) * np.sin(incident_angle)
-
-
-def reflection_coefficients(T):
-
-    bottom_line = (T[...,0,0] * T[...,2,2] - T[...,0,2] * T[...,2,0])
-    r_pp = (T[...,0,0] * T[...,3,2] - T[...,3,0] * T[...,0,2]) / bottom_line
-    r_ps = (T[...,0,0] * T[...,1,2] - (T[...,1,0] * T[...,0,2])) / bottom_line
-    r_sp = (T[...,3,0] * T[...,2,2] - T[...,3,2] * T[...,2,0]) / bottom_line
-    r_ss = (T[...,1,0] * T[...,2,2] - T[...,1,2] * T[...,2,0]) / bottom_line  
-    
-    return np.array([r_pp, r_ps, r_sp, r_ss])
 
 
 def main_quartz_theta():
