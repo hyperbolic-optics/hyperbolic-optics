@@ -13,7 +13,7 @@ def tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor):
     element13 = (mu_tensor[..., 1, 0] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]))
     element14 = mu_tensor[..., 1, 1] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - (kx ** 2) / eps_tensor[..., 2, 2]
     
-    element21 = tf.zeros_like(eps_tensor.shape[0])
+    element21 = tf.zeros(eps_tensor.shape[0], dtype= tf.complex128)
     element22 = -kx * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2]
     element23 = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 0])
     element24 = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 1])
@@ -25,15 +25,19 @@ def tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor):
 
     element41 = (eps_tensor[..., 0, 0] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]))
     element42 = (eps_tensor[..., 0, 1] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
-    element43 = tf.zeros_like(eps_tensor.shape[0])
+    element43 = tf.zeros(eps_tensor.shape[0],dtype= tf.complex128)
     element44 = -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
 
-    first_row = tf.stack([element11, element12, element13, element14], axis=-1)
-    second_row = tf.stack([element21, element22, element23, element24], axis=-1)
-    third_row = tf.stack([element31, element32, element33, element34], axis=-1)
-    fourth_row = tf.stack([element41, element42, element43, element44], axis=-1)
 
-    return first_row, second_row, third_row, fourth_row
+    first_row = tf.stack([element11, element12, element13, element14], axis=1)
+    second_row = tf.stack([element21, element22, element23, element24], axis=1)
+    third_row = tf.stack([element31, element32, element33, element34], axis=1)
+    fourth_row = tf.stack([element41, element42, element43, element44], axis=1)
+
+    overall_matrix = tf.stack([first_row, second_row, third_row, fourth_row], axis=2)
+
+
+    return overall_matrix
 
 
 
@@ -155,6 +159,7 @@ if __name__ == '__main__':
     quartz = Quartz(frequency_length=300, run_on_device_decorator=run_on_device)
     ext, ord = quartz.permittivity_fetch()
     eps_tensor = quartz.fetch_permittivity_tensor()
-
     mu_tensor = Air(run_on_device_decorator=run_on_device).construct_tensor_singular() * tf.ones_like(eps_tensor)
-    a,b,c,d = tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor)
+    quartz_layer = tensorflow_berreman_matrix(kx, eps_tensor, mu_tensor)
+
+    print(quartz_layer.shape)
