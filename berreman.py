@@ -7,10 +7,15 @@ import tensorflow as tf
 import math as m
 from device_config import run_on_device
 from material_params import Quartz, Ambient_Incident_Prism, Air
-from anisotropy_utils import anisotropy_rotation_one_axis
+from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_all_axes
 
 from plots import contour_plot
+
+@run_on_device
+def compute_kx(eps_prism, incident_angle):
+    return tf.sqrt(eps_prism) * tf.sin(incident_angle)
  
+
 @run_on_device
 def reflection_coefficients(T):
 
@@ -192,116 +197,55 @@ def layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, mu_tens
     
     return partial
 
+@run_on_device
+def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex128), semi_infinite = False):
 
+    berreman_matrix = tf.transpose(tf.stack([
+        [
+        - kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2],
+        kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])),
+        (mu_tensor[..., 1, 0] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2])) * tf.ones_like(kx),
+        mu_tensor[..., 1, 1] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - (kx ** 2) / eps_tensor[..., 2, 2]
+        ],
+        [
+        tf.zeros_like(- kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]),
+        -kx * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2],
+        ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 0]) * tf.ones_like(kx),
+        ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 1]) * tf.ones_like(kx)
+        ],
+        [
+        ((eps_tensor[..., 1, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]) - eps_tensor[..., 1, 0]) * tf.ones_like(kx),
+        (kx ** 2) / mu_tensor[..., 2, 2] - eps_tensor[..., 1, 1] + (eps_tensor[..., 1, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]),
+        -kx * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2],
+        kx * ((eps_tensor[..., 1, 2] / eps_tensor[..., 2, 2]) - (mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]))
+        ],
+        [
+        (eps_tensor[..., 0, 0] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2])) * tf.ones_like(kx),
+        (eps_tensor[..., 0, 1] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])) * tf.ones_like(kx),
+        tf.zeros_like(- kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]),
+        -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
+        ]
+    ], axis=-1), perm = [2,1,3,4,5,6,0])
 
-
-def layer_matrix_incidence(eps_tensor, mu_tensor, kx, k0, thickness = 0., quartz = False):
-
-    delta = np.zeros((len(eps_tensor), len(kx), 4, 4), dtype=np.complex128)
-
-    kx = kx[:, np.newaxis]
-    eps_tensor = eps_tensor[np.newaxis, ...]
-    mu_tensor = mu_tensor[np.newaxis, ...]
-
-    delta[..., 0, 0] = -kx * (eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2])
-    delta[..., 0, 1] = kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
-    delta[..., 0, 2] = (mu_tensor[..., 1, 0] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]))
-    delta[..., 0, 3] = mu_tensor[..., 1, 1] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - (kx ** 2) / eps_tensor[..., 2, 2]
-
-    delta[..., 1, 0] = np.zeros_like(kx)
-    delta[..., 1, 1] = -kx * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2]
-    delta[..., 1, 2] = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 0])
-    delta[..., 1, 3] = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 1])
-
-    delta[..., 2, 0] = ((eps_tensor[..., 1, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]) - eps_tensor[..., 1, 0])
-    delta[..., 2, 1] = (kx ** 2) / mu_tensor[..., 2, 2] - eps_tensor[..., 1, 1] + (eps_tensor[..., 1, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])
-    delta[..., 2, 2] = -kx * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]
-    delta[..., 2, 3] = kx * ((eps_tensor[..., 1, 2] / eps_tensor[..., 2, 2]) - (mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]))
-
-    delta[..., 3, 0] = (eps_tensor[..., 0, 0] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]))
-    delta[..., 3, 1] = (eps_tensor[..., 0, 1] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
-    delta[..., 3, 2] = np.zeros_like(kx)
-    delta[..., 3, 3] = -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
-
-    delta = np.transpose(delta, (1,0,2,3))
-
-    eigenvalues, vector = np.linalg.eig(delta)
-
-    if quartz:
-        
-        order = (1.j * eigenvalues).argsort(axis=-1)[..., np.newaxis]
-        vector = np.transpose(vector, (0, 1, 3, 2))
-        vector = np.take_along_axis(vector, order, axis=-2)
-
-        vector[..., 2:4, :] = 0
-        vector[..., 2, :] = vector[..., 1, :]
-        vector[..., 1, :] = 0
-
-        vector = np.transpose(vector, (0, 1, 3, 2))
-
-        return vector
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
     
-    eye_matrix = np.eye(4, dtype=np.complex128)
-    eigenvalues_diag = eye_matrix * eigenvalues[..., np.newaxis]
+    if semi_infinite:
+        # Sort indices of eigenvalues in descending order
+        sorted_indices = tf.argsort(tf.math.imag(eigenvalues), axis=-1, direction='DESCENDING')
 
-    k0_expanded = k0[:, np.newaxis, np.newaxis]
-    partial = expm(1.j * eigenvalues_diag * k0_expanded * thickness)
-    partial_complete = vector @ partial @ np.linalg.inv(vector)
+        # Reorder eigenvectors using sorted_indices
+        ordered_eigenvectors = tf.gather(eigenvectors, sorted_indices, axis=-1, batch_dims=5)
 
-    return partial_complete
-
-
-def layer_matrix_incidence_azimuth(eps_tensor, mu_tensor, kx, k0, thickness, quartz=False):
-
-    delta = np.zeros((eps_tensor.shape[0], eps_tensor.shape[1], 4, 4), dtype=np.complex128)
-
-    delta[..., 0, 0] = -kx * (eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2])
-    delta[..., 0, 1] = kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
-    delta[..., 0, 2] = (mu_tensor[..., 1, 0] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]))
-    delta[..., 0, 3] = mu_tensor[..., 1, 1] - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - (kx ** 2) / eps_tensor[..., 2, 2]
-
-    delta[..., 1, 0] = np.zeros_like(kx)
-    delta[..., 1, 1] = -kx * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2]
-    delta[..., 1, 2] = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 0])
-    delta[..., 1, 3] = ((mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]) - mu_tensor[..., 0, 1])
-
-    delta[..., 2, 0] = ((eps_tensor[..., 1, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]) - eps_tensor[..., 1, 0])
-    delta[..., 2, 1] = (kx ** 2) / mu_tensor[..., 2, 2] - eps_tensor[..., 1, 1] + (eps_tensor[..., 1, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])
-    delta[..., 2, 2] = -kx * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2]
-    delta[..., 2, 3] = kx * ((eps_tensor[..., 1, 2] / eps_tensor[..., 2, 2]) - (mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2]))
-
-    delta[..., 3, 0] = (eps_tensor[..., 0, 0] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]))
-    delta[..., 3, 1] = (eps_tensor[..., 0, 1] - (eps_tensor[..., 0, 2] * eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
-    delta[..., 3, 2] = np.zeros_like(kx)
-    delta[..., 3, 3] = -kx * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2]
-
-    eigenvalues, vector = np.linalg.eig(delta)
-
-    if quartz:
+        # Replace the third column with the second column and set columns 2 and 4 to 0
+        ordered_eigenvectors = tf.stack([ordered_eigenvectors[:,:,:,:,:, :,0], tf.zeros_like(ordered_eigenvectors[:,:,:,:,:,:,1]),
+                                    ordered_eigenvectors[:,:,:,:,:,:,1], tf.zeros_like(ordered_eigenvectors[:,:,:,:,:,:,3])], axis=-1)
         
-        order = (1.j * eigenvalues).argsort(axis=-1)[..., np.newaxis]
-        vector = np.transpose(vector, (0, 1, 3, 2))
-        vector = np.take_along_axis(vector, order, axis=-2)
-
-        vector[..., 2:4, :] = 0
-        vector[..., 2, :] = vector[..., 1, :]
-        vector[..., 1, :] = 0
-
-        vector = np.transpose(vector, (0, 1, 3, 2))
-
-        return vector
+        partial = ordered_eigenvectors
     
-    eye_matrix = np.eye(4, dtype=np.complex128)
-    eigenvalues_diag = eye_matrix * eigenvalues[..., np.newaxis]
-
-    k0_expanded = k0[:, np.newaxis, np.newaxis, np.newaxis]
-    partial = expm(1.j * eigenvalues_diag * k0_expanded * thickness)
-    partial_complete = vector @ partial @ np.linalg.inv(vector)
-
-    return partial_complete
+    return partial
 
 @run_on_device
-def main_incident():
+def main_incident_one_axis_anisotropy():
 
     eps_prism = 5.5
     incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 180)
@@ -327,10 +271,6 @@ def main_incident():
     eps_tensor = tf.expand_dims(eps_tensor, axis=0)
     non_magnetic_tensor = tf.expand_dims(non_magnetic_tensor, axis=0)
 
-    print(kx.shape)
-    print(eps_tensor.shape)
-    print(non_magnetic_tensor.shape)
-
     quartz_layer = layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, non_magnetic_tensor, semi_infinite=True)
     prism_layer = tf.expand_dims(prism_layer, axis=1)
     prism_layer = tf.expand_dims(prism_layer, axis=0)
@@ -342,9 +282,44 @@ def main_incident():
     contour_plot('theta', r[:,:,:,99].numpy(),  quartz.frequency.numpy().real, incident_angle.numpy().real, 0., None, rotation_x = 0., rotation_y = 0., rotation_z = 0.)
 
 
+@run_on_device
+def main_all_anisotropy_axes():
 
+    eps_prism = 5.5
+    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 180)
+    
+    kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex128)
+
+    quartz = Quartz(frequency_length=100, run_on_device_decorator=run_on_device)
+    eps_tensor = quartz.fetch_permittivity_tensor()
+
+    x_rotation = tf.cast(tf.linspace(0.,np.pi/2.,3), dtype = tf.complex128)
+    y_rotation = tf.cast(tf.linspace(0.,np.pi/2.,3), dtype = tf.complex128)
+    z_rotation = tf.cast(tf.linspace(0.,2 * np.pi,6), dtype = tf.complex128)
+
+    eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
+    non_magnetic_tensor = (Air(run_on_device_decorator=run_on_device).construct_tensor_singular() * tf.ones_like(eps_tensor))
+
+    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
+
+    quartz_layer = berreman_all_anisotropy(kx, eps_tensor, non_magnetic_tensor, semi_infinite=True)
+
+    prism_layer = Ambient_Incident_Prism(eps_prism, incident_angle, run_on_device_decorator=run_on_device).construct_tensor()[tf.newaxis,:, tf.newaxis,tf.newaxis, tf.newaxis, :, :]
+
+    T = tf.matmul(prism_layer, quartz_layer)
+    r = reflection_coefficients(T)
+
+    contour_plot('theta',
+                r[:,:,:,0,1,0].numpy(),
+                quartz.frequency.numpy().real,
+                incident_angle.numpy().real,
+                0.,
+                None,
+                rotation_x = 0.,
+                rotation_y = 0.,
+                rotation_z = 0.)
 
 
 if __name__ == '__main__':
-    main_incident()
+    main_all_anisotropy_axes()
 
