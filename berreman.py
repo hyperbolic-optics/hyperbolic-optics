@@ -7,7 +7,7 @@ from device_config import run_on_device
 from material_params import Quartz, Ambient_Incident_Prism, Air
 from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_all_axes
 
-from plots import contour_plot, all_axis_plot
+from plots import contour_plot, all_axis_plot, azimuthal_slider_plot
 
 @run_on_device
 def compute_kx(eps_prism, incident_angle):
@@ -221,6 +221,7 @@ def layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, mu_tens
     
     return partial
 
+
 @run_on_device
 def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
 
@@ -325,18 +326,18 @@ def main_incident_one_axis_anisotropy():
 def main_all_anisotropy_axes():
 
     eps_prism = 5.5
-    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 180)
+    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 110)
     kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
     distance = 1.5e-4
 
-    quartz = Quartz(frequency_length=120, run_on_device_decorator=run_on_device)
+    quartz = Quartz(frequency_length=140, run_on_device_decorator=run_on_device)
     
     k0 = quartz.frequency * 2. * m.pi
     eps_tensor = quartz.fetch_permittivity_tensor()
 
-    x_rotation = tf.cast(tf.linspace(0.,np.pi/2.,3), dtype = tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.,np.pi/2.,30), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,2 * np.pi,30), dtype = tf.complex64)
+    x_rotation = tf.cast(tf.linspace(0.,np.pi/2.,2), dtype = tf.complex64)
+    y_rotation = tf.cast(tf.linspace(0.,np.pi/2.,45), dtype = tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.,2 * np.pi,60), dtype = tf.complex64)
 
     eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
 
@@ -360,6 +361,7 @@ def main_all_anisotropy_axes():
 
     all_axis_plot(r.numpy(), incident_angle.numpy().real, quartz.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, distance)
 
+    # azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, quartz.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, distance)
 
 if __name__ == '__main__':
     # main_incident_one_axis_anisotropy()
