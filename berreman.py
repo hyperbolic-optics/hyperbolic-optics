@@ -134,15 +134,17 @@ def berreman_incidence(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.cons
         # Create diagonal matrix with eigenvalues
         eye_matrix = tf.eye(4, batch_shape=[eigenvalues.shape[0]], dtype=tf.complex64)
 
-        eigenvalues_diag = (eye_matrix * eigenvalues[:, :, tf.newaxis])[:,tf.newaxis,:,:]
+        eigenvalues_diag = (eye_matrix * eigenvalues[:, :, tf.newaxis])[tf.newaxis,:,tf.newaxis,:,:]
         
         # Compute partial using the exponential function
-        k0_expanded = k0[tf.newaxis, :, tf.newaxis, tf.newaxis]
+        k0_expanded = k0[tf.newaxis,tf.newaxis, :, tf.newaxis, tf.newaxis]
+        thickness = thickness[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
 
+    
         partial = tf.linalg.expm(1j * eigenvalues_diag * k0_expanded * thickness)
 
         # Compute partial_complete using the @ symbol for matrix multiplication
-        partial = tf.transpose(eigenvectors @ partial @ tf.linalg.inv(eigenvectors), perm = [1,0,2,3])
+        partial = tf.transpose(eigenvectors @ partial @ tf.linalg.inv(eigenvectors), perm = [0,2,1,3,4])
     
     return partial
 
