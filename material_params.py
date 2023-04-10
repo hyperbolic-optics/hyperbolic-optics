@@ -1,36 +1,11 @@
 import tensorflow as tf
 from device_config import run_on_device
 
-
-class Quartz(object):
-
+class AnisotropicMaterial(object):
+    
     def __init__(self, frequency_length, run_on_device_decorator):
         self.frequency_length = frequency_length
-        self.name = "Quartz"
-        self.frequency = tf.cast(tf.linspace(410.0, 600.0, frequency_length), dtype=tf.complex64)
         self.run_on_device = run_on_device_decorator
-
-    @run_on_device
-    def permittivity_parameters(self):
-    
-        parameters = {
-            "ordinary": {
-                "high_freq": tf.constant(2.356, dtype = tf.complex64),
-                "omega_Tn" : tf.constant([393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0], dtype = tf.complex64),
-                "gamma_Tn" : tf.constant([2.1, 4.5, 13.0, 6.9, 7.2, 9.3], dtype = tf.complex64),
-                "omega_Ln" : tf.constant([403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0], dtype = tf.complex64),
-                "gamma_Ln" : tf.constant([2.8, 3.5, 13.0, 6.9, 12.5, 9.3], dtype = tf.complex64)
-            },
-            "extraordinary": {
-                "high_freq": tf.constant(2.383,dtype = tf.complex64),
-                "omega_Tn" : tf.constant([363.5, 487.5, 777.0, 1071.0], dtype = tf.complex64),
-                "gamma_Tn" : tf.constant([4.8, 4.0, 6.7, 6.8], dtype = tf.complex64),
-                "omega_Ln" : tf.constant([386.7, 550.0, 790.0, 1229.0], dtype = tf.complex64),
-                "gamma_Ln" : tf.constant([7.0, 3.2, 6.7, 12.0], dtype = tf.complex64)
-            }
-        }
-
-        return parameters
 
     @run_on_device
     def permittivity_calc(self, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
@@ -65,6 +40,37 @@ class Quartz(object):
         eps_tensor = tf.linalg.diag(diag_tensors)
         
         return eps_tensor
+
+
+
+class Quartz(AnisotropicMaterial):
+
+    def __init__(self, frequency_length, run_on_device_decorator):
+        super().__init__(frequency_length, run_on_device_decorator)
+        self.name = "Quartz"
+        self.frequency = tf.cast(tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64)
+
+    @run_on_device
+    def permittivity_parameters(self):
+    
+        parameters = {
+            "ordinary": {
+                "high_freq": tf.constant(2.356, dtype = tf.complex64),
+                "omega_Tn" : tf.constant([393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([2.1, 4.5, 13.0, 6.9, 7.2, 9.3], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([2.8, 3.5, 13.0, 6.9, 12.5, 9.3], dtype = tf.complex64)
+            },
+            "extraordinary": {
+                "high_freq": tf.constant(2.383,dtype = tf.complex64),
+                "omega_Tn" : tf.constant([363.5, 487.5, 777.0, 1071.0], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([4.8, 4.0, 6.7, 6.8], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([386.7, 550.0, 790.0, 1229.0], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([7.0, 3.2, 6.7, 12.0], dtype = tf.complex64)
+            }
+        }
+
+        return parameters
 
 
 class Ambient_Incident_Prism(object):
