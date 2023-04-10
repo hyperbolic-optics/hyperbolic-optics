@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from matplotlib.widgets import Slider
 
 plt.rcParams.update({'mathtext.default': 'regular' })
 
@@ -7,19 +9,19 @@ plt.rcParams.update({'mathtext.default': 'regular' })
 def plot_base_permittivity(wavenumber, eps_ext, eps_ord):
     fig, axs = plt.subplots(2, figsize=(5, 4))
     fig.suptitle('Permittivities')
-    axs[0].plot(wavenumber, eps_ext.real)
-    axs[0].plot(wavenumber, eps_ext.imag)
+    axs[0].plot(wavenumber, tf.math.real(eps_ext))
+    axs[0].plot(wavenumber, tf.math.imag(eps_ext))
     axs[0].set(xlabel='Wavenumber', ylabel = 'Extraordinary')
 
-    axs[1].plot(wavenumber, eps_ord.real)
-    axs[1].plot(wavenumber, eps_ord.imag)
+    axs[1].plot(wavenumber, tf.math.real(eps_ord))
+    axs[1].plot(wavenumber, tf.math.imag(eps_ord))
     axs[1].set(xlabel='Wavenumber', ylabel = 'Ordinary')
     
     plt.tight_layout()
     plt.show()
 
 
-def contour_plot(plot_type, frequency, x_axis, distance, incident_angle, rotation_x, rotation_y, rotation_z, reflectivities):
+def contour_plot(plot_type, reflectivities, frequency, x_axis, distance, incident_angle, rotation_x, rotation_y, rotation_z):
     
     x_axis = np.round(np.degrees(x_axis),1)
 
@@ -74,5 +76,197 @@ def contour_plot(plot_type, frequency, x_axis, distance, incident_angle, rotatio
         ax[row, col].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
     plt.tight_layout()
+    plt.show()
+    plt.close()
+
+
+def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotation_y, rotation_z, air_gap_thickness):
+
+    incident_angle = np.round(np.degrees(incident_angle),1)
+
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    R_pp = reflectivities[0]
+    R_ps = reflectivities[1]
+    R_sp = reflectivities[2]
+    R_ss = reflectivities[3]
+    R_pp_total = R_pp + R_ps
+    R_ss_total = R_ss + R_sp
+
+    # Create a function to update the plots
+    def update(_):
+        rotation_x_val = rotation_x_slider.val
+        rotation_y_val = rotation_y_slider.val
+        rotation_z_val = rotation_z_slider.val
+        air_gap_thickness_val = air_gap_thickness_slider.val
+
+        index_x = np.argmin(np.abs(rotation_x - rotation_x_val))
+        index_y = np.argmin(np.abs(rotation_y - rotation_y_val))
+        index_z = np.argmin(np.abs(rotation_z - rotation_z_val))
+        index_thickness = np.argmin(np.abs(air_gap_thickness - air_gap_thickness_val))
+
+        data_list = [R_pp, R_ps, R_pp_total, R_sp, R_ss, R_ss_total]
+
+        title = (
+        "ATR for $\phi_x = "
+        + str(int(round(np.degrees(rotation_x_slider.val), 1)))
+        + "^\circ, \phi_y = "
+        + str(int(round(np.degrees(rotation_y_slider.val), 1)))
+        + "^\circ, \phi_z = "
+        + str(int(round(np.degrees(rotation_z_slider.val), 1)))
+        + "^\circ, d = "
+        + str(round(air_gap_thickness_val * 1e4, 3))
+        + "\mu m$"
+        )
+        fig.suptitle(title)
+
+        for i, (_, title, row, col) in enumerate(ax_to_plot):
+            new_data = data_list[i][index_thickness, :, :, index_x, index_y, index_z]
+            im = ax[row, col].collections[0]
+            im.set_array(new_data.ravel())
+            im.set_clim(vmin=0, vmax=new_data.max())  # Update the colorbar limits
+            colorbar_list[i].mappable.set_clim(0,)  # Update the colorbar limits correctly
+            colorbar_list[i].draw_all()
+
+    fig, ax = plt.subplots(2, 3, figsize=(14, 7))
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.15, top=0.9, hspace=0.5, wspace=0.4)
+
+    ax_to_plot = [
+        (R_pp, "$|r_{pp}|^2$", 0, 0),
+        (R_ps, "$|r_{ps}|^2$", 0, 1),
+        (R_pp_total, "$|r_{pp}|^2 + |r_{ps}|^2$", 0, 2),
+        (R_sp, "$|r_{sp}|^2$", 1, 0),
+        (R_ss, "$|r_{ss}|^2$", 1, 1),
+        (R_ss_total, "$|r_{ss}|^2 + |r_{sp}|^2$", 1, 2),
+    ]
+
+    colorbar_list = []
+    for data, title, row, col in ax_to_plot:
+        im = ax[row, col].pcolormesh(incident_angle, frequency, data[0, :, :, 0, 0, 0], cmap='magma')
+        cbar = plt.colorbar(im, ax=ax[row, col])
+        colorbar_list.append(cbar)
+        cbar.mappable.set_clim(0,)
+        cbar.set_label(title)
+        ax[row, col].set_title(title)
+        ax[row, col].set_xticks(np.linspace(incident_angle.min(), incident_angle.max(), 5))
+        ax[row, col].set_xlabel('Incident Angle / $^\circ$')
+        ax[row, col].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+
+    slider_thickness_ax = plt.axes([0.2, 0.07, 0.6, 0.02])
+    slider_x_ax = plt.axes([0.2, 0.05, 0.6, 0.02])
+    slider_y_ax = plt.axes([0.2, 0.03, 0.6, 0.02])
+    slider_z_ax = plt.axes([0.2, 0.01, 0.6, 0.02])
+
+    class DegreeSlider(Slider):
+        def _format(self, val):
+            return f'{np.degrees(val):.1f}$^\circ$'
+
+    # Create DegreeSlider instances instead of Slider instances
+    rotation_x_slider = DegreeSlider(slider_x_ax, 'Rotation X', rotation_x.min(), rotation_x.max(), valinit=rotation_x[0], valstep=np.diff(rotation_x).mean())
+    rotation_y_slider = DegreeSlider(slider_y_ax, 'Rotation Y', rotation_y.min(), rotation_y.max(), valinit=rotation_y[0], valstep=np.diff(rotation_y).mean())
+    rotation_z_slider = DegreeSlider(slider_z_ax, 'Rotation Z', rotation_z.min(), rotation_z.max(), valinit=rotation_z[0], valstep=np.diff(rotation_z).mean())
+    air_gap_thickness_slider = Slider(slider_thickness_ax, 'Air Gap Thickness', air_gap_thickness.min().real, air_gap_thickness.max().real, valinit=air_gap_thickness[0].real, valstep=np.diff(air_gap_thickness.real).mean())
+
+    rotation_x_slider.on_changed(update)
+    rotation_y_slider.on_changed(update)
+    rotation_z_slider.on_changed(update)
+    air_gap_thickness_slider.on_changed(update)
+
+    update(None)
+
+    plt.show()
+    plt.close()
+
+
+def azimuthal_slider_plot(reflectivities, incident_angle, frequency, rotation_x, rotation_y, rotation_z, air_gap_thickness):
+
+    rotation_z = np.round(np.degrees(rotation_z), 1)
+
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    R_pp = reflectivities[0]
+    R_ps = reflectivities[1]
+    R_sp = reflectivities[2]
+    R_ss = reflectivities[3]
+    R_pp_total = R_pp + R_ps
+    R_ss_total = R_ss + R_sp
+
+    def update(_):
+        incident_angle_val = incident_angle_slider.val
+        rotation_x_val = rotation_x_slider.val
+        rotation_y_val = rotation_y_slider.val
+        air_gap_thickness_val = air_gap_thickness_slider.val
+        index_incident = np.argmin(np.abs(incident_angle - incident_angle_val))
+        index_x = np.argmin(np.abs(rotation_x - rotation_x_val))
+        index_y = np.argmin(np.abs(rotation_y - rotation_y_val))
+        index_thickness = np.argmin(np.abs(air_gap_thickness - air_gap_thickness_val))
+
+        data_list = [R_pp, R_ps, R_pp_total, R_sp, R_ss, R_ss_total]
+
+        title = (
+            "ATR for $\\theta_i = "
+            + str(int(round(np.degrees(incident_angle_slider.val), 1)))
+            + "^\circ, \phi_x = "
+            + str(int(round(np.degrees(rotation_x_slider.val), 1)))
+            + "^\circ, \phi_y = "
+            + str(int(round(np.degrees(rotation_y_slider.val), 1)))
+            + "^\circ, d = "
+            + str(round(air_gap_thickness_val * 1e4, 3))
+            + "\mu m$"
+        )
+        fig.suptitle(title)
+
+        for i, (_, title, row, col) in enumerate(ax_to_plot):
+            new_data = data_list[i][index_thickness, :, index_incident, index_x, index_y, :]
+            im = ax[row, col].collections[0]
+            im.set_array(new_data.ravel())
+            im.set_clim(vmin=0, vmax=new_data.max())
+            colorbar_list[i].mappable.set_clim(0,)
+            colorbar_list[i].draw_all()
+
+    fig, ax = plt.subplots(2, 3, figsize=(14, 7))
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.15, top=0.9, hspace=0.5, wspace=0.4)
+
+    ax_to_plot = [
+        (R_pp, "$|r_{pp}|^2$", 0, 0),
+        (R_ps, "$|r_{ps}|^2$", 0, 1),
+        (R_pp_total, "$|r_{pp}|^2 + |r_{ps}|^2$", 0, 2),
+        (R_sp, "$|r_{sp}|^2$", 1, 0),
+        (R_ss, "$|r_{ss}|^2$", 1, 1),
+        (R_ss_total, "$|r_{ss}|^2 + |r_{sp}|^2$", 1, 2),
+    ]
+
+    colorbar_list = []
+    for data, title, row, col in ax_to_plot:
+        im = ax[row, col].pcolormesh(rotation_z, frequency, data[0, :, 0, 0, 0, :], cmap='magma')
+        cbar = plt.colorbar(im, ax=ax[row, col])
+        colorbar_list.append(cbar)
+        cbar.mappable.set_clim(0,)
+        cbar.set_label(title)
+        ax[row, col].set_title(title)
+        ax[row, col].set_xticks(np.linspace(rotation_z.min(), rotation_z.max(), 5))
+        ax[row, col].set_xlabel('Rotation Z / $^\circ$')
+        ax[row, col].set_ylabel('$\omega/2\pi c (cm^{-1})$')
+
+    slider_thickness_ax = plt.axes([0.2, 0.07, 0.6, 0.02])
+    slider_incident_ax = plt.axes([0.2, 0.05, 0.6, 0.02])
+    slider_x_ax = plt.axes([0.2, 0.03, 0.6, 0.02])
+    slider_y_ax = plt.axes([0.2, 0.01, 0.6, 0.02])
+
+    class DegreeSlider(Slider):
+        def _format(self, val):
+            return f'{np.degrees(val):.1f}$^\circ$'
+
+    # Create DegreeSlider instances instead of Slider instances
+    incident_angle_slider = DegreeSlider(slider_incident_ax, 'Incident Angle', incident_angle.min(), incident_angle.max(), valinit=incident_angle[0], valstep=np.diff(incident_angle).mean())
+    rotation_x_slider = DegreeSlider(slider_x_ax, 'Rotation X', rotation_x.min(), rotation_x.max(), valinit=rotation_x[0], valstep=np.diff(rotation_x).mean())
+    rotation_y_slider = DegreeSlider(slider_y_ax, 'Rotation Y', rotation_y.min(), rotation_y.max(), valinit=rotation_y[0], valstep=np.diff(rotation_y).mean())
+    air_gap_thickness_slider = Slider(slider_thickness_ax, 'Air Gap Thickness', air_gap_thickness.min().real, air_gap_thickness.max().real, valinit=air_gap_thickness[0].real, valstep=np.diff(air_gap_thickness.real).mean())
+
+    incident_angle_slider.on_changed(update)
+    rotation_x_slider.on_changed(update)
+    rotation_y_slider.on_changed(update)
+    air_gap_thickness_slider.on_changed(update)
+
+    update(None)
+
     plt.show()
     plt.close()

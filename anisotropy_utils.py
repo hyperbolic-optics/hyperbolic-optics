@@ -1,36 +1,77 @@
-import numpy as np
+import tensorflow as tf
+from device_config import run_on_device
 
+@run_on_device
+def anisotropy_rotation_one_axis(matrix, theta, phi, beta):
 
-def anisotropy_rotation(matrix, phi, beta, theta):
+    cos_theta = tf.math.cos(theta)
+    sin_theta = tf.math.sin(theta)
+    rotation_x = tf.stack([
+        tf.stack([tf.ones_like(theta), tf.zeros_like(theta), tf.zeros_like(theta)], axis=-1),
+        tf.stack([tf.zeros_like(theta), cos_theta, -sin_theta], axis=-1),
+        tf.stack([tf.zeros_like(theta), sin_theta, cos_theta], axis=-1)
+    ], axis=-2)
 
-    rotation_x = np.zeros((theta.size, 3, 3))
-    rotation_x[:, 0, 0] = 1.
-    rotation_x[:, 1, 1] = np.cos(theta)
-    rotation_x[:, 1, 2] = -np.sin(theta)
-    rotation_x[:, 2, 1] = np.sin(theta)
-    rotation_x[:, 2, 2] = np.cos(theta)
-    
+    cos_phi = tf.math.cos(phi)
+    sin_phi = tf.math.sin(phi)
+    rotation_y = tf.stack([
+        tf.stack([cos_phi, tf.zeros_like(phi), sin_phi], axis=-1),
+        tf.stack([tf.zeros_like(phi), tf.ones_like(phi), tf.zeros_like(phi)], axis=-1),
+        tf.stack([-sin_phi, tf.zeros_like(phi), cos_phi], axis=-1)
+    ], axis=-2)
 
-    rotation_y = np.zeros((phi.size, 3, 3))
-    rotation_y[:, 0, 0] = np.cos(phi)
-    rotation_y[:, 0, 2] = np.sin(phi)
-    rotation_y[:, 1, 1] = 1.
-    rotation_y[:, 2, 0] = -np.sin(phi)
-    rotation_y[:, 2, 2] = np.cos(phi)
-    
-
-    rotation_z = np.zeros((beta.size, 3, 3))
-    rotation_z[:, 0, 0] = np.cos(beta)
-    rotation_z[:, 0, 1] = -np.sin(beta)
-    rotation_z[:, 1, 0] = np.sin(beta)
-    rotation_z[:, 1, 1] = np.cos(beta)
-    rotation_z[:, 2, 2] = 1.
+    cos_beta = tf.math.cos(beta)
+    sin_beta = tf.math.sin(beta)
+    rotation_z = tf.stack([
+        tf.stack([cos_beta, -sin_beta, tf.zeros_like(beta)], axis=-1),
+        tf.stack([sin_beta, cos_beta, tf.zeros_like(beta)], axis=-1),
+        tf.stack([tf.zeros_like(beta), tf.zeros_like(beta), tf.ones_like(beta)], axis=-1)
+    ], axis=-2)
 
     total_rotation = rotation_z @ rotation_y @ rotation_x
 
-    matrix = matrix[..., np.newaxis, :, :]
-    total_rotation = total_rotation[np.newaxis, ...]
+    matrix = matrix[:, tf.newaxis, :, :]
+    total_rotation = total_rotation[tf.newaxis, :, :, :]
 
-    result = total_rotation @ matrix @ np.transpose(total_rotation, (0, 1, 3, 2))
+    result = total_rotation @ matrix @ tf.linalg.matrix_transpose(total_rotation)
+
+    return result
+
+
+def anisotropy_rotation_all_axes(matrix, theta, phi, beta):
+    cos_theta = tf.math.cos(theta)
+    sin_theta = tf.math.sin(theta)
+    rotation_x = tf.stack([
+        tf.stack([tf.ones_like(theta), tf.zeros_like(theta), tf.zeros_like(theta)], axis=-1),
+        tf.stack([tf.zeros_like(theta), cos_theta, -sin_theta], axis=-1),
+        tf.stack([tf.zeros_like(theta), sin_theta, cos_theta], axis=-1)
+    ], axis=-2)
+
+    cos_phi = tf.math.cos(phi)
+    sin_phi = tf.math.sin(phi)
+    rotation_y = tf.stack([
+        tf.stack([cos_phi, tf.zeros_like(phi), sin_phi], axis=-1),
+        tf.stack([tf.zeros_like(phi), tf.ones_like(phi), tf.zeros_like(phi)], axis=-1),
+        tf.stack([-sin_phi, tf.zeros_like(phi), cos_phi], axis=-1)
+    ], axis=-2)
+
+    cos_beta = tf.math.cos(beta)
+    sin_beta = tf.math.sin(beta)
+    rotation_z = tf.stack([
+        tf.stack([cos_beta, -sin_beta, tf.zeros_like(beta)], axis=-1),
+        tf.stack([sin_beta, cos_beta, tf.zeros_like(beta)], axis=-1),
+        tf.stack([tf.zeros_like(beta), tf.zeros_like(beta), tf.ones_like(beta)], axis=-1)
+    ], axis=-2)
+
+    rotation_x = rotation_x[:, tf.newaxis, tf.newaxis, :, :]
+    rotation_y = rotation_y[tf.newaxis, :, tf.newaxis, :, :]
+    rotation_z = rotation_z[tf.newaxis, tf.newaxis, :, :, :]
+
+    total_rotation = rotation_z @ rotation_y @ rotation_x
+
+    matrix = matrix[:, tf.newaxis,tf.newaxis, tf.newaxis, :, :]
+    total_rotation = total_rotation[tf.newaxis, ...]
+
+    result = total_rotation @ matrix @ tf.linalg.matrix_transpose(total_rotation)
 
     return result
