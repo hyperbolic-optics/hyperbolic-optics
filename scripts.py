@@ -48,24 +48,24 @@ def main_incident_one_axis_anisotropy():
 def main_all_anisotropy_axes():
 
     eps_prism = 5.5
-    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 100)
+    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 20)
     kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
     distance = 1.5e-4
 
-    quartz = Quartz(frequency_length=140, run_on_device_decorator=run_on_device)
+    quartz = Quartz(frequency_length=40, run_on_device_decorator=run_on_device)
     
     k0 = quartz.frequency * 2. * m.pi
     eps_tensor = quartz.fetch_permittivity_tensor()
 
-    x_rotation = tf.cast(tf.linspace(0.,np.pi/2.,2), dtype = tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.,np.pi/2.,45), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,2 * np.pi,65), dtype = tf.complex64)
+    x_rotation = tf.cast(tf.linspace(0.,m.pi/2.,10), dtype = tf.complex64)
+    y_rotation = tf.cast(tf.linspace(0.,m.pi/2.,45), dtype = tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.,2 * m.pi,65), dtype = tf.complex64)
 
     eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
 
     non_magnetic_tensor = (Air(run_on_device_decorator=run_on_device).construct_tensor_singular())
     
-    air_layer = (tf.linalg.inv(berreman_incidence_one_anisotropy(kx, non_magnetic_tensor, non_magnetic_tensor, k0, thickness = distance)))[:,:,tf.newaxis, tf.newaxis, tf.newaxis, :, :]
+    air_layer = (tf.linalg.inv(berreman_incidence(kx, non_magnetic_tensor, non_magnetic_tensor, k0, thickness = distance)))[:,:,tf.newaxis, tf.newaxis, tf.newaxis, :, :]
 
 
     kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
@@ -86,5 +86,5 @@ def main_all_anisotropy_axes():
     azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, quartz.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, distance)
 
 if __name__ == '__main__':
-    main_incident_one_axis_anisotropy()
-    # main_all_anisotropy_axes()
+    # main_incident_one_axis_anisotropy()
+    main_all_anisotropy_axes()
