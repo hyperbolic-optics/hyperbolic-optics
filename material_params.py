@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 from device_config import run_on_device
 

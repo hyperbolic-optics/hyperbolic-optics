@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from matplotlib.widgets import Slider
-import matplotlib.ticker as mticker
 
 plt.rcParams.update({'mathtext.default': 'regular' })
 

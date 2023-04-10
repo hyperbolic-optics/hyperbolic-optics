@@ -1,20 +1,7 @@
-import numpy as np
 from device_config import run_on_device
 import tensorflow as tf
-
-import math as m
-from device_config import run_on_device
-from material_params import Quartz, Ambient_Incident_Prism, Air
-from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_all_axes
-
-from plots import contour_plot, all_axis_plot, azimuthal_slider_plot
-
-@run_on_device
-def compute_kx(eps_prism, incident_angle):
-    return tf.sqrt(eps_prism) * tf.sin(incident_angle)
  
 
-@run_on_device
 def reflection_coefficients(T):
 
     bottom_line = (T[...,0,0] * T[...,2,2] - T[...,0,2] * T[...,2,0])
@@ -25,11 +12,8 @@ def reflection_coefficients(T):
     
     return tf.stack([r_pp, r_ps, r_sp, r_ss])
 
-@run_on_device
-def layer_matrix_one_theta_tensorflow(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
-    """Constructs the Berreman matrix for a given kx and a given rotation for a range of frequencies."""
 
-    print("hello")
+def berreman_one_angle(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
 
     element11 = - kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]
     element12 = kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
@@ -93,8 +77,7 @@ def layer_matrix_one_theta_tensorflow(kx, eps_tensor, mu_tensor, k0 = None, thic
     return partial
 
 
-@run_on_device
-def layer_matrix_incidence_tensorflow(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
+def berreman_incidence(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
     """Constructs the Berreman matrix for a range of kx values and a range of frequencies"""
 
     element11 = - kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]
@@ -164,8 +147,7 @@ def layer_matrix_incidence_tensorflow(kx, eps_tensor, mu_tensor, k0 = None, thic
     return partial
 
 
-@run_on_device
-def layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
+def berreman_incidence_one_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
 
     element11 = - kx * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]
     element12 = kx * ((mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2]) - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2]))
@@ -222,7 +204,6 @@ def layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, mu_tens
     return partial
 
 
-@run_on_device
 def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
 
     berreman_matrix = tf.transpose(tf.stack([
@@ -283,87 +264,4 @@ def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf
         exit()
 
     return 0.
-
-@run_on_device
-def main_incident_one_axis_anisotropy():
-
-    eps_prism = 5.5
-    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 180)
-    
-    kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
-
-    quartz = Quartz(frequency_length=200, run_on_device_decorator=run_on_device)
-    k0 = quartz.frequency * 2. * m.pi
-    
-    ext, ord = quartz.permittivity_fetch()
-    eps_tensor = quartz.fetch_permittivity_tensor()
-
-    x_rotation = tf.constant(0., dtype = tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.,m.pi/2.,100), dtype = tf.complex64)
-    z_rotation = tf.constant(m.radians(340), dtype = tf.complex64)
-
-    eps_tensor = anisotropy_rotation_one_axis(eps_tensor, x_rotation, y_rotation, z_rotation)
-    non_magnetic_tensor = Air(run_on_device_decorator=run_on_device).construct_tensor_singular() * tf.ones_like(eps_tensor)
-
-    prism_layer = Ambient_Incident_Prism(eps_prism, incident_angle, run_on_device_decorator=run_on_device).construct_tensor()
-    # # air_layer = tf.linalg.inv(layer_matrix_one_theta_tensorflow(kx, non_magnetic_tensor, non_magnetic_tensor, k0, thickness = 1.5e-4))
-    kx = kx[:, tf.newaxis, tf.newaxis]
-    eps_tensor = tf.expand_dims(eps_tensor, axis=0)
-    non_magnetic_tensor = tf.expand_dims(non_magnetic_tensor, axis=0)
-
-    quartz_layer = layer_matrix_anisotropy_one_axis_rotation_tensorflow(kx, eps_tensor, non_magnetic_tensor, semi_infinite=True)
-    prism_layer = tf.expand_dims(prism_layer, axis=1)
-    prism_layer = tf.expand_dims(prism_layer, axis=0)
-
-    T = tf.matmul(prism_layer, quartz_layer)
-    r = reflection_coefficients(T)
-    print(r.shape)
-
-    contour_plot('theta', r[:,:,:,99].numpy(),  quartz.frequency.numpy().real, incident_angle.numpy().real, 0., None, rotation_x = 0., rotation_y = 0., rotation_z = 0.)
-
-
-@run_on_device
-def main_all_anisotropy_axes():
-
-    eps_prism = 5.5
-    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 110)
-    kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
-    distance = 1.5e-4
-
-    quartz = Quartz(frequency_length=140, run_on_device_decorator=run_on_device)
-    
-    k0 = quartz.frequency * 2. * m.pi
-    eps_tensor = quartz.fetch_permittivity_tensor()
-
-    x_rotation = tf.cast(tf.linspace(0.,np.pi/2.,2), dtype = tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.,np.pi/2.,45), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,2 * np.pi,60), dtype = tf.complex64)
-
-    eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
-
-    non_magnetic_tensor = (Air(run_on_device_decorator=run_on_device).construct_tensor_singular())
-    
-    air_layer = (tf.linalg.inv(layer_matrix_incidence_tensorflow(kx, non_magnetic_tensor, non_magnetic_tensor, k0, thickness = distance)))[:,:,tf.newaxis, tf.newaxis, tf.newaxis, :, :]
-
-
-    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
-
-    quartz_layer = berreman_all_anisotropy(kx, eps_tensor, non_magnetic_tensor * tf.ones_like(eps_tensor), semi_infinite=True)
-
-    prism_layer = Ambient_Incident_Prism(eps_prism, incident_angle, run_on_device_decorator=run_on_device).construct_tensor()[tf.newaxis,:, tf.newaxis,tf.newaxis, tf.newaxis, :, :]
-    
-
-    T = prism_layer @ air_layer @ quartz_layer
-
-    del quartz_layer, air_layer, prism_layer, kx, eps_tensor, non_magnetic_tensor
-    
-    r = reflection_coefficients(T)
-
-    all_axis_plot(r.numpy(), incident_angle.numpy().real, quartz.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, distance)
-
-    # azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, quartz.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, distance)
-
-if __name__ == '__main__':
-    # main_incident_one_axis_anisotropy()
-    main_all_anisotropy_axes()
 
