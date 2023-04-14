@@ -71,6 +71,49 @@ class Quartz(AnisotropicMaterial):
         }
 
         return parameters
+    
+
+class Calcite(AnisotropicMaterial):
+
+    def __init__(self, frequency_length, run_on_device_decorator):
+        super().__init__(frequency_length, run_on_device_decorator)
+
+    @run_on_device
+    def permittivity_parameters(self):
+    
+        parameters = {
+            "ordinary": {
+                "high_freq": tf.constant(2.7, dtype = tf.complex64),
+                "omega_Tn" : tf.constant([712, 1407., 297., 223., 102.], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([4., 10., 14.4, 11.4, 5.7], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([715, 1549., 381., 239., 123.], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([4., 10., 14.4, 11.4, 5.7], dtype = tf.complex64)
+            },
+            "extraordinary": {
+                "high_freq": tf.constant(2.4,dtype = tf.complex64),
+                "omega_Tn" : tf.constant([872., 303., 92.], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([1.3, 9.1, 5.6], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([890., 387., 136.], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([1.3, 9.1, 5.6], dtype = tf.complex64)
+            }
+        }
+
+        return parameters
+
+
+
+class CalciteLower(Calcite):
+    def __init__(self, frequency_length, run_on_device_decorator):
+        super().__init__(frequency_length, run_on_device_decorator)
+        self.name = "Calcite-Lower"
+        self.frequency = tf.cast(tf.linspace(820., 970., self.frequency_length), dtype=tf.complex64)
+
+
+class CalciteUpper(Calcite):
+    def __init__(self, frequency_length, run_on_device_decorator):
+        super().__init__(frequency_length, run_on_device_decorator)
+        self.name = "Calcite-Upper"
+        self.frequency = tf.cast(tf.linspace(1200., 1700., self.frequency_length), dtype=tf.complex64)
 
 
 class Ambient_Incident_Prism(object):
