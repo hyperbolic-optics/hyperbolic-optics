@@ -206,7 +206,7 @@ def berreman_incidence_one_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thic
     return partial
 
 
-def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False):
+def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf.constant(0.5e-4, dtype=tf.complex64), semi_infinite = False, magnet = False):
 
     berreman_matrix = tf.transpose(tf.stack([
         [
@@ -240,8 +240,11 @@ def berreman_all_anisotropy(kx, eps_tensor, mu_tensor, k0 = None, thickness = tf
     del berreman_matrix
     
     if semi_infinite:
-        # Sort indices of eigenvalues in descending order
-        sorted_indices = tf.argsort(tf.math.imag(eigenvalues), axis=-1, direction='DESCENDING')
+        if magnet:
+            # Sort indices of eigenvalues in descending order
+            sorted_indices = tf.argsort(tf.math.real(eigenvalues), axis=-1, direction='DESCENDING')
+        else:
+            sorted_indices = tf.argsort(tf.math.imag(eigenvalues), axis=-1, direction='DESCENDING')
 
         # Reorder eigenvectors using sorted_indices
         ordered_eigenvectors = tf.gather(eigenvectors, sorted_indices, axis=-1, batch_dims=5)

@@ -1,5 +1,6 @@
 import tensorflow as tf
 from device_config import run_on_device
+from scipy import constants
 
 class AnisotropicMaterial(object):
     
@@ -114,6 +115,58 @@ class CalciteUpper(Calcite):
         super().__init__(frequency_length, run_on_device_decorator)
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(tf.linspace(1200., 1700., self.frequency_length), dtype=tf.complex64)
+
+
+class Antiferromagnet(object):
+
+    @run_on_device
+    def __init__(self, frequency_length, run_on_device_decorator):
+        self.frequency_length = frequency_length
+        self.run_on_device = run_on_device_decorator
+        self.frequency = tf.cast(tf.linspace(52.0, 54.0, self.frequency_length), dtype=tf.complex64)
+        
+        self.gamma = tf.cast(1.05, dtype=tf.complex64) # cm^-1 / T
+        self.B0 = tf.cast(0.3, dtype=tf.complex64) # T
+        self.Ba = tf.cast(19.745, dtype=tf.complex64) # T
+        self.Be = tf.cast(53.313, dtype=tf.complex64) # T
+        self.magnetisation = tf.cast(445633.84, dtype=tf.complex64) #A/cm
+
+        self.resonant_frequency_squared = self.gamma**2. * (2. * self.Ba * self.Be + self.Ba ** 2.)
+        self.damping_parameter = 1.27e-4 * tf.sqrt(self.resonant_frequency_squared)
+    
+    @run_on_device
+    def fetch_epsilon_mu(self):
+
+        X = 1./(self.resonant_frequency_squared - (self.frequency + self.B0 * self.gamma + tf.constant(1j, dtype=tf.complex64) * self.damping_parameter)**2.)
+        Y = 1./(self.resonant_frequency_squared - (self.frequency - self.B0 * self.gamma + tf.constant(1j, dtype=tf.complex64) * self.damping_parameter)**2.)
+
+        mu_3 = 1. + constants.mu_0 * self.gamma**2. * self.Ba * self.magnetisation * (X + Y)
+        mu_t = constants.mu_0 * self.gamma**2. * self.Ba * self.magnetisation * (X-Y)
+        
+        magnet_permittivity = tf.constant(5.5 + 0.j, dtype=tf.complex64)
+
+        return mu_3, mu_t, magnet_permittivity
+    
+    @run_on_device
+    def magnet_tensors(self):
+
+        mu_3, mu_t, magnet_permittivity = self.fetch_epsilon_mu()
+
+        permeability_tensor = tf.stack(
+            [
+            [mu_3, tf.zeros_like(mu_3), -tf.constant(1.j, dtype=tf.complex64) * mu_t],
+            [tf.zeros_like(mu_3), tf.ones_like(mu_3), tf.zeros_like(mu_3)],
+            [tf.constant(1.j, dtype=tf.complex64) * mu_t, tf.zeros_like(mu_3), mu_3]
+            ], axis=-1)
+        permeability_tensor = tf.transpose(permeability_tensor, perm=[1, 0, 2])
+
+        permittivity_tensor = tf.stack([
+            [magnet_permittivity, 0., 0.],
+            [0., magnet_permittivity, 0.],
+            [0., 0., magnet_permittivity]
+            ], axis=-1) * tf.ones_like(permeability_tensor)
+        
+        return permeability_tensor, permittivity_tensor
 
 
 class Ambient_Incident_Prism(object):
