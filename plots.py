@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from matplotlib.widgets import Slider, Button, CheckButtons
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import os
 
 plt.rcParams.update({'mathtext.default': 'regular' })
 
@@ -81,9 +81,13 @@ def contour_plot(plot_type, reflectivities, frequency, x_axis, distance, inciden
     plt.close()
 
 
-def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotation_y, rotation_z, air_gap_thickness):
+def all_axis_plot(reflectivities, incident_angle, material, rotation_x, rotation_y, rotation_z, air_gap_thickness):
     incident_angle = np.round(np.degrees(incident_angle),1)
     reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+
+    frequency = material.frequency.numpy().real
+    material = material.name
+    
     R_pp = reflectivities[0]
     R_ps = reflectivities[1]
     R_sp = reflectivities[2]
@@ -140,7 +144,12 @@ def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotatio
 
         data_list = [R_pp, R_ps, R_pp_total, R_sp, R_ss, R_ss_total]
 
-        filename_prefix = f"ATR_phi_x_{np.degrees(rotation_x_val):.1f}_phi_y_{np.degrees(rotation_y_val):.1f}_phi_z_{np.degrees(rotation_z_val):.1f}_d_{air_gap_thickness_val * 1e4:.3f}_mu"
+        filename_prefix = (
+            f"{material}/X_{int(round(np.degrees(rotation_x_val)))}"
+            f"_Y_{int(round(np.degrees(rotation_y_val)))}"
+            f"_Z_{int(round(np.degrees(rotation_z_val)))}"
+            f"_D_{int(round(air_gap_thickness_val * 1e4))}"
+        )
 
         # Save all subplots
         if subplot_checkboxes.get_status()[-1]:
@@ -156,6 +165,11 @@ def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotatio
                 cbar.mappable.set_clim(0, )  # Set the clim minimum to 0 for each subplot
                 cbar.draw_all()
 
+            # Create the necessary directories
+            directory = os.path.dirname(filename_prefix)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
             clean_fig.savefig(f"{filename_prefix}_all_subplots.png", dpi=300, bbox_inches='tight')
             plt.close(clean_fig)
             
@@ -168,6 +182,7 @@ def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotatio
         for i, (data, _, row, col) in enumerate(ax_to_plot[:-1]):  # Exclude the last 'Total' item
             if subplot_checkboxes.get_status()[i]:
                 title = subplot_labels[i]
+                filetitle = titles[i]
                 single_fig, single_ax = plt.subplots()
                 single_ax.pcolormesh(incident_angle, frequency, data[0, :, :, 0, 0, 0], cmap='magma')
                 single_ax.set_title(title)
@@ -176,7 +191,7 @@ def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotatio
                 single_ax.set_ylabel('$\omega/2\pi c (cm^{-1})$')
                 single_fig.colorbar(single_ax.collections[0], ax=single_ax)
                 single_ax.collections[0].set_clim(0,)  # Add this line
-                single_fig.savefig(f"{filename_prefix}_{title}.png", dpi=300, bbox_inches='tight')
+                single_fig.savefig(f"{material}_{filename_prefix}_{filetitle}.png", dpi=300, bbox_inches='tight')
                 plt.close(single_fig)
 
             # Restore the original button color after a short pause
@@ -231,6 +246,7 @@ def all_axis_plot(reflectivities, incident_angle, frequency, rotation_x, rotatio
 
     # Create the checkboxes
     subplot_labels = ['$|R_{pp}|^2$', '$|R_{ps}|^2$', '$|R_{pp}|^2 + |R_{ps}|^2$', '$|R_{sp}|^2$', '$|R_{ss}|^2$', '$|R_{ss}|^2 + |R_{sp}|^2$', 'Total']
+    titles = ['Rpp', 'Rps', 'Rp', 'Rsp', 'Rss', 'Rs', 'Total']
     checkboxes_ax = plt.axes([0.05, 0.6, 0.1, 0.25])
     subplot_checkboxes = CheckButtons(checkboxes_ax, subplot_labels, [False] * 7)
 
