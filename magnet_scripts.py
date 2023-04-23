@@ -47,7 +47,7 @@ def main_incident_one_axis_anisotropy():
 def main_all_anisotropy_axes():
 
     eps_prism = 11.56
-    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2., tf.constant(m.pi, dtype=tf.float32) / 2., 180)
+    incident_angle = tf.linspace(-tf.constant(0, dtype=tf.float32) / 2., tf.constant(m.pi, dtype=tf.float32) / 2., 15)
     kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
 
     mnf2 = Antiferromagnet(frequency_length=200, run_on_device_decorator=run_on_device)
@@ -60,7 +60,7 @@ def main_all_anisotropy_axes():
 
     x_rotation = tf.cast(tf.linspace(0.,2 * m.pi,2), dtype = tf.complex64)
     y_rotation = tf.cast(tf.linspace(0.,2 * m.pi,2), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,m.pi,15), dtype = tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.,2 * m.pi,360), dtype = tf.complex64)
 
     eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
     permeability_tensor = anisotropy_rotation_all_axes(permeability_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
@@ -78,9 +78,9 @@ def main_all_anisotropy_axes():
     
     r = reflection_coefficients(T)
 
-    all_axis_plot(r.numpy(), incident_angle.numpy().real, mnf2.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
+    # all_axis_plot(r.numpy(), incident_angle.numpy().real, mnf2, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
 
-    # azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, mnf2.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
+    azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, mnf2, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
 
 if __name__ == '__main__':
     # main_incident_one_axis_anisotropy()

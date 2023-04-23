@@ -102,7 +102,6 @@ class Calcite(AnisotropicMaterial):
         return parameters
 
 
-
 class CalciteLower(Calcite):
     def __init__(self, frequency_length, run_on_device_decorator):
         super().__init__(frequency_length, run_on_device_decorator)
@@ -114,7 +113,35 @@ class CalciteUpper(Calcite):
     def __init__(self, frequency_length, run_on_device_decorator):
         super().__init__(frequency_length, run_on_device_decorator)
         self.name = "Calcite-Upper"
-        self.frequency = tf.cast(tf.linspace(1200., 1700., self.frequency_length), dtype=tf.complex64)
+        self.frequency = tf.cast(tf.linspace(1300., 1800., self.frequency_length), dtype=tf.complex64)
+
+
+class Sapphire(AnisotropicMaterial):
+
+    def __init__(self, frequency_length, run_on_device_decorator):
+        super().__init__(frequency_length, run_on_device_decorator)
+        self.frequency = tf.cast(tf.linspace(350.0, 650.0, self.frequency_length), dtype=tf.complex64)
+
+    @run_on_device
+    def permittivity_parameters(self):
+    
+        parameters = {
+            "ordinary": {
+                "high_freq": tf.constant(3.077, dtype = tf.complex64),
+                "omega_Tn" : tf.constant([384.99, 439.1, 569.0, 633.63], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([3.3, 3.1, 4.7, 5.0], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([387.60, 481.68, 629.50, 906.6], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([3.1, 1.9, 5.9, 14.7], dtype = tf.complex64)
+            },
+            "extraordinary": {
+                "high_freq": tf.constant(3.072,dtype = tf.complex64),
+                "omega_Tn" : tf.constant([397.52, 582.41], dtype = tf.complex64),
+                "gamma_Tn" : tf.constant([5.3, 3.0], dtype = tf.complex64),
+                "omega_Ln" : tf.constant([510.87, 881.1], dtype = tf.complex64),
+                "gamma_Ln" : tf.constant([1.1, 15.4], dtype = tf.complex64)
+            }
+        }
+        return parameters
 
 
 class Antiferromagnet(object):
@@ -124,6 +151,7 @@ class Antiferromagnet(object):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
         self.frequency = tf.cast(tf.linspace(52.0, 54.0, self.frequency_length), dtype=tf.complex64)
+        self.name = "MnF2"
         
         self.gamma = tf.cast(1.05, dtype=tf.complex64) # cm^-1 / T
         self.B0 = tf.cast(0.3, dtype=tf.complex64) # T
