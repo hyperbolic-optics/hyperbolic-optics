@@ -191,7 +191,13 @@ def all_axis_plot(reflectivities, incident_angle, material, rotation_x, rotation
                 single_ax.set_ylabel('$\omega/2\pi c (cm^{-1})$')
                 single_fig.colorbar(single_ax.collections[0], ax=single_ax)
                 single_ax.collections[0].set_clim(0,)  # Add this line
-                single_fig.savefig(f"{material}_{filename_prefix}_{filetitle}.png", dpi=300, bbox_inches='tight')
+
+                # Create the necessary directories
+                directory = os.path.dirname(filename_prefix)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+
+                single_fig.savefig(f"{filename_prefix}_{filetitle}.png", dpi=300, bbox_inches='tight')
                 plt.close(single_fig)
 
             # Restore the original button color after a short pause
@@ -199,9 +205,8 @@ def all_axis_plot(reflectivities, incident_angle, material, rotation_x, rotation
             save_button.color = 'lightblue'
             plt.draw()
 
-    # Main plot setup
-    fig, ax = plt.subplots(2, 3, figsize=(14, 7))
-    plt.subplots_adjust(left=0.15, right=0.9, bottom=0.2, top=0.85, hspace=0.5, wspace=0.4)
+    fig, ax = plt.subplots(2, 3, figsize=(18, 7))
+    plt.subplots_adjust(left=0.15, right=0.9, bottom=0.25, top=0.85, hspace=0.5, wspace=0.4)
 
     ax_to_plot = [
         (R_pp, "$|R_{pp}|^2$", 0, 0),
@@ -224,10 +229,10 @@ def all_axis_plot(reflectivities, incident_angle, material, rotation_x, rotation
         ax[row, col].set_xlabel('Incident Angle / $^\circ$')
         ax[row, col].set_ylabel('$\omega/2\pi c (cm^{-1})$')
 
-    slider_thickness_ax = plt.axes([0.2, 0.07, 0.6, 0.02])
-    slider_x_ax = plt.axes([0.2, 0.05, 0.6, 0.02])
-    slider_y_ax = plt.axes([0.2, 0.03, 0.6, 0.02])
-    slider_z_ax = plt.axes([0.2, 0.01, 0.6, 0.02])
+    slider_thickness_ax = plt.axes([0.4, 0.07, 0.5, 0.02])
+    slider_x_ax = plt.axes([0.4, 0.05, 0.5, 0.02])
+    slider_y_ax = plt.axes([0.4, 0.03, 0.5, 0.02])
+    slider_z_ax = plt.axes([0.4, 0.01, 0.5, 0.02])
 
     class DegreeSlider(Slider):
         def _format(self, val):
@@ -245,15 +250,15 @@ def all_axis_plot(reflectivities, incident_angle, material, rotation_x, rotation
     air_gap_thickness_slider.on_changed(update)
 
     # Create the checkboxes
-    subplot_labels = ['$|R_{pp}|^2$', '$|R_{ps}|^2$', '$|R_{pp}|^2 + |R_{ps}|^2$', '$|R_{sp}|^2$', '$|R_{ss}|^2$', '$|R_{ss}|^2 + |R_{sp}|^2$', 'Total']
+    subplot_labels = ['$|r_{pp}|^2$', '$|r_{ps}|^2$', '$|r_{pp}|^2 + |r_{ps}|^2$', '$|r_{sp}|^2$', '$|r_{ss}|^2$', '$|r_{ss}|^2 + |r_{sp}|^2$', 'Total']
     titles = ['Rpp', 'Rps', 'Rp', 'Rsp', 'Rss', 'Rs', 'Total']
-    checkboxes_ax = plt.axes([0.05, 0.6, 0.1, 0.25])
+    checkboxes_ax = plt.axes([0.01, 0.4, 0.08, 0.5])
     subplot_checkboxes = CheckButtons(checkboxes_ax, subplot_labels, [False] * 7)
 
     subplot_checkboxes.on_clicked(update)
 
     # Create a save button
-    save_button_ax = plt.axes([0.05, 0.3, 0.1, 0.05])
+    save_button_ax = plt.axes([0.01, 0.1, 0.05, 0.2])
     save_button = Button(save_button_ax, 'Save plots')
     save_button.on_clicked(save_plots)
 
