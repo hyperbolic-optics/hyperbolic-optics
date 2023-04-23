@@ -120,6 +120,7 @@ class Sapphire(AnisotropicMaterial):
 
     def __init__(self, frequency_length, run_on_device_decorator):
         super().__init__(frequency_length, run_on_device_decorator)
+        self.name = "Sapphire"
         self.frequency = tf.cast(tf.linspace(350.0, 650.0, self.frequency_length), dtype=tf.complex64)
 
     @run_on_device
