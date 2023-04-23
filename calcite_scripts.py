@@ -48,18 +48,18 @@ def main_incident_one_axis_anisotropy():
 def main_all_anisotropy_axes():
 
     eps_prism = 5.5
-    incident_angle = tf.linspace(-tf.constant(m.radians(0), dtype=tf.float32), tf.constant(m.radians(90), dtype=tf.float32), 40)
+    incident_angle = tf.linspace(-tf.constant(m.pi, dtype=tf.float32) / 2, tf.constant(m.pi, dtype=tf.float32) / 2, 30)
     kx = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype = tf.complex64)
 
-    calcite = CalciteUpper(frequency_length=88, run_on_device_decorator=run_on_device)
+    calcite = CalciteUpper(frequency_length=300, run_on_device_decorator=run_on_device)
     
     k0 = calcite.frequency * 2. * m.pi
     eps_tensor = calcite.fetch_permittivity_tensor()
 
-    air_gap_thickness = tf.cast(tf.linspace(0.,3.e-4, 10), dtype = tf.complex64)
+    air_gap_thickness = tf.cast(tf.linspace(0.e-4,3.e-4, 7), dtype = tf.complex64)
     x_rotation = tf.cast(tf.linspace(0.,2 * m.pi,2), dtype = tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.,m.radians(90),30), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,2 * m.pi,90), dtype = tf.complex64)
+    y_rotation = tf.cast(tf.linspace(0.,m.pi/2.,7), dtype = tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.,2 * m.pi,180), dtype = tf.complex64)
 
     eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
 
@@ -79,9 +79,9 @@ def main_all_anisotropy_axes():
     
     r = reflection_coefficients(T)
 
-    # all_axis_plot(r.numpy(), incident_angle.numpy().real, calcite.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
+    # all_axis_plot(r.numpy(), incident_angle.numpy().real, calcite, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
 
-    azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, calcite.frequency.numpy().real, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
+    azimuthal_slider_plot(r.numpy(), incident_angle.numpy().real, calcite, x_rotation.numpy().real, y_rotation.numpy().real, z_rotation.numpy().real, air_gap_thickness.numpy())
 
 if __name__ == '__main__':
     # main_incident_one_axis_anisotropy()

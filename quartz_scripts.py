@@ -60,7 +60,7 @@ def main_all_anisotropy_axes():
     air_gap_thickness = tf.cast(tf.linspace(0.e-4,2.5e-4, 6), dtype = tf.complex64)
     x_rotation = tf.cast(tf.linspace(0.,2 * m.pi,2), dtype = tf.complex64)
     y_rotation = tf.cast(tf.linspace(0.,m.pi/2.,7), dtype = tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.,m.pi,4), dtype = tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.,2 * m.pi,10), dtype = tf.complex64)
 
     eps_tensor = anisotropy_rotation_all_axes(eps_tensor, x_rotation, y_rotation, z_rotation)[tf.newaxis, ...]
 
