@@ -22,6 +22,29 @@ def plot_base_permittivity(wavenumber, eps_ext, eps_ord):
     plt.show()
 
 
+def plot_permittivity(material, eps_ext, eps_ord):
+    fig, axs = plt.subplots(2, figsize=(5,4), sharex=True, gridspec_kw={'hspace': 0.1})
+
+    axs[0].plot(material.frequency, tf.math.real(eps_ext), label=r'$\mathrm{Re}(\varepsilon_\mathrm{ext})$')
+    axs[0].plot(material.frequency, tf.math.real(eps_ord), label=r'$\mathrm{Re}(\varepsilon_\mathrm{ord})$')
+    axs[0].axhline(y=0, color='black', linewidth=1)
+    axs[0].set(ylabel='$\mathrm{Re}(\epsilon_{\mathrm{ext}})$, $\mathrm{Re}(\epsilon_{\mathrm{ord}})$')
+    axs[0].text(0.1, 0.95, '(a)', transform=axs[0].transAxes, fontsize=12, va='top', ha='right')
+    axs[0].legend()
+
+    axs[1].plot(material.frequency, tf.math.imag(eps_ext), label=r'$\mathrm{Im}(\varepsilon_\mathrm{ext})$')
+    axs[1].plot(material.frequency, tf.math.imag(eps_ord), label=r'$\mathrm{Im}(\varepsilon_\mathrm{ord})$')
+    axs[1].set(xlabel=r'Wavenumber (cm$^{-1})$', ylabel='$\mathrm{Im}(\epsilon_{\mathrm{ext}})$, $\mathrm{Im}(\epsilon_{\mathrm{ord}})$')
+    axs[1].set_xlim(material.frequency[0].numpy(), material.frequency[-1].numpy())
+    axs[1].set_ylim(0,)
+    axs[1].text(0.1, 0.95, '(b)', transform=axs[1].transAxes, fontsize=12, va='top', ha='right')
+    axs[1].legend()
+
+    plt.savefig(material.name + 'Spectrum.png', dpi=300, bbox_inches='tight')
+    plt.subplots_adjust(hspace=0.1)
+    plt.show()
+    plt.close()
+
 def contour_plot(plot_type, reflectivities, frequency, x_axis, distance, incident_angle, rotation_x, rotation_y, rotation_z):
     
     x_axis = np.round(np.degrees(x_axis),1)
