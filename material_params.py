@@ -150,7 +150,7 @@ class Sapphire(AnisotropicMaterial):
         super().__init__(frequency_length, run_on_device_decorator)
         self.name = "Sapphire"
         self.frequency = tf.cast(
-            tf.linspace(350.0, 650.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64
         )
 
     @run_on_device
@@ -334,6 +334,58 @@ class Ambient_Incident_Prism(object):
         matrix = tf.stack([element1, element2, element3, element4], axis=0)
 
         return 0.5 * tf.cast(matrix, dtype=tf.complex64)
+
+
+class Ambient_Exit_Medium(object):
+    def __init__(self, incident_prism, permittivity_exit):
+        self.theta_incident = incident_prism.theta
+        self.N_exit = tf.sqrt(permittivity_exit)
+        self.N_incident = tf.sqrt(incident_prism.permittivity)
+        self.run_on_device = incident_prism.run_on_device
+
+    @run_on_device
+    def construct_tensor(self):
+        sin_theta_incident = tf.sin(self.theta_incident)
+        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.
+        expr_inside_sqrt_complex = tf.cast(expr_inside_sqrt, dtype=tf.complex64)
+        cos_theta_f = tf.sqrt(expr_inside_sqrt_complex)
+        self.N_exit = tf.cast(self.N_exit, dtype=tf.complex64)
+        Nf_cos_theta_f = self.N_exit * cos_theta_f
+
+        element1 = tf.stack([
+            tf.zeros_like(cos_theta_f),
+            tf.zeros_like(cos_theta_f), 
+            cos_theta_f, 
+            -cos_theta_f], 
+            axis=-1)
+        
+        element2 = tf.stack([
+            tf.ones_like(cos_theta_f), 
+            tf.ones_like(cos_theta_f), 
+            tf.zeros_like(cos_theta_f), 
+            tf.zeros_like(cos_theta_f)], 
+            axis=-1)
+        
+        element3 = tf.stack([
+            -Nf_cos_theta_f, 
+            Nf_cos_theta_f, 
+            tf.zeros_like(cos_theta_f), 
+            tf.zeros_like(cos_theta_f)], 
+            axis=-1)
+        
+        element4 = tf.stack([
+            tf.zeros_like(cos_theta_f), 
+            tf.zeros_like(cos_theta_f), 
+            self.N_exit * tf.ones_like(cos_theta_f), 
+            self.N_exit * tf.ones_like(cos_theta_f)], 
+            axis=-1)
+
+        # Stack the elements
+        matrix = tf.stack([element1, element2, element3, element4], axis=1)
+
+
+        return tf.cast(matrix, dtype=tf.complex64)
+
 
 
 class Air(object):
