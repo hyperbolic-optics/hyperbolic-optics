@@ -215,6 +215,7 @@ def main_propagation(material_type):
 
 @run_on_device
 def anisotropy_testing(material_type):
+    air_gap_thickness = 1.5e-4
     material = material_type(frequency_length=300, run_on_device_decorator=run_on_device)
     
     eps_prism = 5.5
@@ -233,7 +234,7 @@ def anisotropy_testing(material_type):
 
     x_rotation = tf.constant(0.)
     y_rotation = tf.constant(m.pi/4.)
-    z_rotation = tf.constant(0.)
+    z_rotation = tf.constant(m.pi/6.)
 
     eps_tensor = anisotropy_rotation_one_value(
         eps_tensor, x_rotation, y_rotation, z_rotation
@@ -243,6 +244,18 @@ def anisotropy_testing(material_type):
     non_magnetic_tensor = Air(
         run_on_device_decorator=run_on_device
     ).construct_tensor_singular()
+
+    # Construct the air layer.
+    air_layer = (
+            transfer_matrix_wrapper(
+                k_x,
+                non_magnetic_tensor,
+                non_magnetic_tensor,
+                k_0,
+                thickness=air_gap_thickness,
+                mode = "airgap"
+            )
+        )
 
     # Construct the prism layer.
     incident_prism = Ambient_Incident_Prism(
@@ -264,12 +277,12 @@ def anisotropy_testing(material_type):
         semi_infinite=True,
         mode = "single_rotation"
     )
-
+    
     ### Reshaping
     prism_layer = prism_layer[tf.newaxis, ...]
 
     ### Multilayer
-    transfer_matrix = prism_layer @ semi_infinite_layer
+    transfer_matrix = prism_layer @ air_layer @ semi_infinite_layer
 
     ### Reflection Coefficient
     reflectivity_values = reflection_coefficients(transfer_matrix)

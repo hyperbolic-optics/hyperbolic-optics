@@ -171,7 +171,7 @@ def berreman_method_general(kx, eps_tensor, mu_tensor):
 
 
 @run_on_device
-def berreman_air_gap_configurable_thickness(
+def berreman_air_gap(
     kx,
     eps_tensor,
     mu_tensor,
@@ -202,10 +202,16 @@ def berreman_air_gap_configurable_thickness(
     else:
         eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
-        eigenvalues_diag = eigenvalues_diag[tf.newaxis, tf.newaxis, :, :, :]
-        k0 = k0[tf.newaxis, :, tf.newaxis, tf.newaxis, tf.newaxis]
-        thickness = thickness[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
-        eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, :, :, :]
+        eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+        k0 = k0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+        eigenvectors = eigenvectors[tf.newaxis, ...]
+
+        if tf.is_tensor(thickness):
+            thickness = thickness[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
+            eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+            k0 = k0[tf.newaxis, ...]
+            eigenvectors = eigenvectors[tf.newaxis, ...]
+
 
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
 
@@ -328,7 +334,7 @@ def transfer_matrix_wrapper(
     mode="simple",
 ):
     if mode == "airgap":
-        berreman_matrix_incidence = berreman_air_gap_configurable_thickness(
+        berreman_matrix_incidence = berreman_air_gap(
             kx,
             eps_tensor,
             mu_tensor,
