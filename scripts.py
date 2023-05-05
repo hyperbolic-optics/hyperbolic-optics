@@ -3,14 +3,14 @@ Computing the transfer matrix for a semi infinite anisotropic material
 """
 import math as m
 import tensorflow as tf
-from anisotropy_utils import (anisotropy_rotation_all_axes)
+from anisotropy_utils import (anisotropy_rotation_all_axes, anisotropy_rotation_one_value)
 from berreman import (transfer_matrix_wrapper,
                       reflection_coefficients)
 from device_config import run_on_device
 from material_params import (Air, Ambient_Incident_Prism, Ambient_Exit_Medium,
                             CalciteLower,
                             CalciteUpper, Quartz, Sapphire)
-from plots import (all_axis_plot, azimuthal_slider_plot)
+from plots import (all_axis_plot, azimuthal_slider_plot, contour_plot_simple_incidence)
 
 @run_on_device
 def main_all_anisotropy_axes(material_type):
@@ -74,8 +74,6 @@ def main_all_anisotropy_axes(material_type):
         eps_tensor,
         non_magnetic_tensor,
         semi_infinite=True,
-        #thickness = 5.5e-4,
-        #k0 = k_0,
         mode = "all_anisotropy"
     )
 
@@ -215,9 +213,82 @@ def main_propagation(material_type):
     )
 
 
+@run_on_device
+def anisotropy_testing(material_type):
+    material = material_type(frequency_length=300, run_on_device_decorator=run_on_device)
+    
+    eps_prism = 5.5
+    eps_exit = 4.0
+
+    incident_angle = tf.linspace(
+        -tf.constant(m.pi, dtype=tf.float32) / 2,
+        tf.constant(m.pi, dtype=tf.float32) / 2,
+        180,
+    )
+
+    k_x = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype=tf.complex64)
+    k_0 = material.frequency * 2.0 * m.pi
+
+    eps_tensor = material.fetch_permittivity_tensor()
+
+    x_rotation = tf.constant(0.)
+    y_rotation = tf.constant(m.pi/4.)
+    z_rotation = tf.constant(0.)
+
+    eps_tensor = anisotropy_rotation_one_value(
+        eps_tensor, x_rotation, y_rotation, z_rotation
+    )
+
+    # Construct the non-magnetic tensor.
+    non_magnetic_tensor = Air(
+        run_on_device_decorator=run_on_device
+    ).construct_tensor_singular()
+
+    # Construct the prism layer.
+    incident_prism = Ambient_Incident_Prism(
+        eps_prism, incident_angle, run_on_device_decorator=run_on_device
+    )
+    prism_layer = incident_prism.construct_tensor()
+
+    # Construct the ambient exit layer
+    ambient_exit_medium = Ambient_Exit_Medium(
+        incident_prism, eps_exit
+    )
+    ambient_exit_layer = ambient_exit_medium.construct_tensor()
+
+    #semi_infinite end layer
+    semi_infinite_layer = transfer_matrix_wrapper(
+        k_x,
+        eps_tensor,
+        non_magnetic_tensor,
+        semi_infinite=True,
+        mode = "single_rotation"
+    )
+
+    ### Reshaping
+    prism_layer = prism_layer[tf.newaxis, ...]
+
+    ### Multilayer
+    transfer_matrix = prism_layer @ semi_infinite_layer
+
+    ### Reflection Coefficient
+    reflectivity_values = reflection_coefficients(transfer_matrix)
+
+    ### Plotting
+    contour_plot_simple_incidence(
+        reflectivity_values.numpy(),
+        material,
+        incident_angle.numpy().real,
+        x_rotation.numpy().real,
+        y_rotation.numpy().real,
+        z_rotation.numpy().real
+        )
+
+
+
 
 
 if __name__ == "__main__":
-
-    main_propagation(Quartz)
+    anisotropy_testing(Quartz)
+    # main_propagation(Quartz)
     # main_all_anisotropy_axes(Quartz)

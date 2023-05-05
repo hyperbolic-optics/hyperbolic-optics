@@ -3,7 +3,9 @@ import tensorflow as tf
 from device_config import run_on_device
 
 
+@run_on_device
 def anisotropy_rotation_one_value(matrix, theta, phi, beta):
+
     cos_theta = tf.math.cos(theta)
     sin_theta = tf.math.sin(theta)
     rotation_x = tf.stack(
@@ -44,11 +46,7 @@ def anisotropy_rotation_one_value(matrix, theta, phi, beta):
         axis=-2,
     )
 
-    total_rotation = rotation_z @ rotation_y @ rotation_x
-
-    matrix = matrix[:, tf.newaxis, :, :]
-    total_rotation = total_rotation[tf.newaxis, :, :, :]
-
+    total_rotation = tf.cast(rotation_z @ rotation_y @ rotation_x, dtype=tf.complex64)
     result = total_rotation @ matrix @ tf.linalg.matrix_transpose(total_rotation)
 
     return result

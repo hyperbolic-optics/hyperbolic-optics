@@ -171,7 +171,7 @@ def berreman_method_general(kx, eps_tensor, mu_tensor):
 
 
 @run_on_device
-def berreman_air_gap(
+def berreman_air_gap_configurable_thickness(
     kx,
     eps_tensor,
     mu_tensor,
@@ -212,6 +212,57 @@ def berreman_air_gap(
         transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
 
         return transfer_matrix
+
+
+@run_on_device
+def berreman_single_rotation(
+        kx,
+        eps_tensor,
+        mu_tensor,
+        k0=None,
+        thickness=tf.constant(0.5e-4, dtype=tf.complex64),
+        semi_infinite=False,
+        magnet=False,
+):
+    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis]
+    eps_tensor = eps_tensor[tf.newaxis, ...]
+    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
+    
+    berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                   perm = [4,1,5,0,2,3])
+    berreman_matrix = tf.squeeze(berreman_matrix, axis = [-1,-2])
+
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
+
+    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
+        eigenvalues,
+        eigenvectors,
+        batch_dims=2,
+        magnet=magnet,
+        semi_infinite=semi_infinite,
+    )
+
+    del berreman_matrix
+
+    if semi_infinite:
+        return eigenvectors
+
+    else:
+
+        exit()
+        eigenvalues_diag = tf.linalg.diag(eigenvalues)
+
+        eigenvalues_diag = eigenvalues_diag[tf.newaxis, tf.newaxis, :, :, :]
+        k0 = k0[tf.newaxis, :, tf.newaxis, tf.newaxis, tf.newaxis]
+        thickness = thickness[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
+        eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, :, :, :]
+
+        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
+
+        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+
+        return transfer_matrix
+
 
 
 @run_on_device
@@ -277,7 +328,7 @@ def transfer_matrix_wrapper(
     mode="simple",
 ):
     if mode == "airgap":
-        berreman_matrix_incidence = berreman_air_gap(
+        berreman_matrix_incidence = berreman_air_gap_configurable_thickness(
             kx,
             eps_tensor,
             mu_tensor,
@@ -298,6 +349,18 @@ def transfer_matrix_wrapper(
             magnet=magnet,
         )
         return berreman_matrix_all_anisotropy
+    
+    elif mode == "single_rotation":
+        berreman_matrix_single_rotation = berreman_single_rotation(
+            kx,
+            eps_tensor,
+            mu_tensor,
+            k0=k0,
+            thickness=thickness,
+            semi_infinite=semi_infinite,
+            magnet=magnet,
+        )
+        return berreman_matrix_single_rotation
 
     else:
         raise ValueError(
