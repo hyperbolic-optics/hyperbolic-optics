@@ -254,14 +254,8 @@ def berreman_single_rotation(
         return eigenvectors
 
     else:
-
-        exit()
         eigenvalues_diag = tf.linalg.diag(eigenvalues)
-
-        eigenvalues_diag = eigenvalues_diag[tf.newaxis, tf.newaxis, :, :, :]
-        k0 = k0[tf.newaxis, :, tf.newaxis, tf.newaxis, tf.newaxis]
-        thickness = thickness[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
-        eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, :, :, :]
+        k0 = k0[:, tf.newaxis, tf.newaxis, tf.newaxis]
 
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
 
@@ -370,5 +364,5 @@ def transfer_matrix_wrapper(
 
     else:
         raise ValueError(
-            "Invalid mode specified. Choose from 'simple', 'incidence', or 'all_anisotropy'."
+            "Invalid mode specified. Choose from 'airgap', 'all_anisotropy', or 'single_rotation'."
         )

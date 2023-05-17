@@ -186,7 +186,7 @@ class Antiferromagnet(object):
         self.frequency = tf.cast(
             tf.linspace(52.0, 54.0, self.frequency_length), dtype=tf.complex64
         )
-        self.name = "MnF2"
+        self.name = "FeF2"
 
         self.gamma = tf.cast(1.05, dtype=tf.complex64)  # cm^-1 / T
         self.B0 = tf.cast(0.3, dtype=tf.complex64)  # T

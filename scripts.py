@@ -3,6 +3,9 @@ Computing the transfer matrix for a semi infinite anisotropic material
 """
 import math as m
 import tensorflow as tf
+import functools
+import operator
+
 from anisotropy_utils import (anisotropy_rotation_all_axes, anisotropy_rotation_one_value)
 from berreman import (transfer_matrix_wrapper,
                       reflection_coefficients)
@@ -13,29 +16,29 @@ from material_params import (Air, Ambient_Incident_Prism, Ambient_Exit_Medium,
 from plots import (all_axis_plot, azimuthal_slider_plot, contour_plot_simple_incidence)
 
 @run_on_device
-def main_all_anisotropy_axes(material_type):
+def main_semi_infinite(material_type):
     """
     Computing the transfer matrix for a semi infinite anisotropic material,
       for all possible anisotropy rotations.
     """
-    eps_prism = 5.5
+    eps_prism = 11.56
     eps_exit = 1.0
     incident_angle = tf.linspace(
         -tf.constant(m.pi, dtype=tf.float32) / 2,
         tf.constant(m.pi, dtype=tf.float32) / 2,
-        45,
+        60,
     )
     k_x = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype=tf.complex64)
 
-    material = material_type(frequency_length=70, run_on_device_decorator=run_on_device)
+    material = material_type(frequency_length=100, run_on_device_decorator=run_on_device)
 
     k_0 = material.frequency * 2.0 * m.pi
     eps_tensor = material.fetch_permittivity_tensor()
 
-    air_gap_thickness = tf.cast(tf.linspace(0.0e-4, 2.5e-4, 2), dtype=tf.complex64)
+    air_gap_thickness = tf.cast(tf.linspace(0.0e-4, 10e-4, 60), dtype=tf.complex64)
     x_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 2), dtype=tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.0, m.pi / 2.0, 3), dtype=tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 3), dtype=tf.complex64)
+    y_rotation = tf.cast(tf.linspace(0.0, m.pi / 2.0, 18), dtype=tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 18), dtype=tf.complex64)
 
     # Construct the anisotropic permittivity tensor with all axes rotated
     # by the same amount.
@@ -112,23 +115,23 @@ def main_propagation(material_type):
       for all possible anisotropy rotations.
     """
     eps_prism = 5.5
-    eps_exit = 4.0
+    eps_exit = 1.0
     incident_angle = tf.linspace(
-        -tf.constant(m.pi, dtype=tf.float32) / 2,
+        -tf.constant(0, dtype=tf.float32) / 2,
         tf.constant(m.pi, dtype=tf.float32) / 2,
-        80,
+        90,
     )
     k_x = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype=tf.complex64)
 
-    material = material_type(frequency_length=150, run_on_device_decorator=run_on_device)
+    material = material_type(frequency_length=100, run_on_device_decorator=run_on_device)
 
     k_0 = material.frequency * 2.0 * m.pi
     eps_tensor = material.fetch_permittivity_tensor()
 
-    air_gap_thickness = tf.cast(tf.linspace(0.0e-4, 4.5e-4, 30), dtype=tf.complex64)
-    x_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 3), dtype=tf.complex64)
-    y_rotation = tf.cast(tf.linspace(0.0, m.pi / 2.0, 10), dtype=tf.complex64)
-    z_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 10), dtype=tf.complex64)
+    air_gap_thickness = tf.cast(tf.linspace(0.0e-4, 1e-4, 15), dtype=tf.complex64)
+    x_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 2), dtype=tf.complex64)
+    y_rotation = tf.cast(tf.linspace(0., m.pi/2., 15), dtype=tf.complex64)
+    z_rotation = tf.cast(tf.linspace(0.0, m.pi/2., 15), dtype=tf.complex64)
 
     # Construct the anisotropic permittivity tensor with all axes rotated
     # by the same amount.
@@ -166,15 +169,15 @@ def main_propagation(material_type):
         )
 
     # Construct the material layer.
-    # material_layer = transfer_matrix_wrapper(
-    #     k_x,
-    #     eps_tensor,
-    #     non_magnetic_tensor,
-    #     semi_infinite=False,
-    #     thickness = 9.e-5,
-    #     k0 = k_0,
-    #     mode = "all_anisotropy"
-    # )
+    material_layer = transfer_matrix_wrapper(
+        k_x,
+        eps_tensor,
+        non_magnetic_tensor,
+        semi_infinite=False,
+        thickness = 1.e-5,
+        k0 = k_0,
+        mode = "all_anisotropy"
+    )
 
     #semi_infinite end layer
     semi_infinite_layer = transfer_matrix_wrapper(
@@ -198,7 +201,7 @@ def main_propagation(material_type):
     ambient_exit_layer = ambient_exit_layer[tf.newaxis, tf.newaxis, :, tf.newaxis, tf.newaxis, tf.newaxis, :, :]
 
     # Transfer Matrix
-    transfer_matrix = prism_layer @ air_layer @ semi_infinite_layer
+    transfer_matrix = prism_layer @ air_layer @ material_layer @ semi_infinite_layer
     # Reflection Coefficient
     reflectivity_values = reflection_coefficients(transfer_matrix)
 
@@ -214,11 +217,11 @@ def main_propagation(material_type):
 
 
 @run_on_device
-def anisotropy_testing(material_type):
-    air_gap_thickness = 1.5e-4
-    material = material_type(frequency_length=300, run_on_device_decorator=run_on_device)
+def multilayer_testing():
+    air_gap_thickness = 1.e-4
+    quartz = Quartz(frequency_length=300, run_on_device_decorator=run_on_device)
     
-    eps_prism = 5.5
+    eps_prism = 11.56
     eps_exit = 4.0
 
     incident_angle = tf.linspace(
@@ -228,16 +231,32 @@ def anisotropy_testing(material_type):
     )
 
     k_x = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype=tf.complex64)
-    k_0 = material.frequency * 2.0 * m.pi
+    k_0 = quartz.frequency * 2.0 * m.pi
 
-    eps_tensor = material.fetch_permittivity_tensor()
+    quartz_eps_tensor = quartz.fetch_permittivity_tensor()
 
-    x_rotation = tf.constant(0.)
-    y_rotation = tf.constant(m.pi/4.)
-    z_rotation = tf.constant(m.pi/6.)
+    x_rotation_1 = tf.constant(0.)
+    y_rotation_1 = tf.constant(m.pi/4.)
+    z_rotation_1 = tf.constant(0.)
 
-    eps_tensor = anisotropy_rotation_one_value(
-        eps_tensor, x_rotation, y_rotation, z_rotation
+    eps_tensor_1 = anisotropy_rotation_one_value(
+        quartz_eps_tensor, x_rotation_1, y_rotation_1, z_rotation_1
+    )
+
+    x_rotation_2 = tf.constant(0.)
+    y_rotation_2 = tf.constant(m.pi/2.)
+    z_rotation_2 = tf.constant(m.pi/4.)
+
+    eps_tensor_2 = anisotropy_rotation_one_value(
+        quartz_eps_tensor, x_rotation_2, y_rotation_2, z_rotation_2
+    )
+
+    x_rotation_3 = tf.constant(0.)
+    y_rotation_3 = tf.constant(m.pi/4.)
+    z_rotation_3 = tf.constant(m.pi/2.)
+
+    semi_infinite_eps_tensor = anisotropy_rotation_one_value(
+        quartz_eps_tensor, x_rotation_3, y_rotation_3, z_rotation_3
     )
 
     # Construct the non-magnetic tensor.
@@ -272,36 +291,62 @@ def anisotropy_testing(material_type):
     #semi_infinite end layer
     semi_infinite_layer = transfer_matrix_wrapper(
         k_x,
-        eps_tensor,
+        semi_infinite_eps_tensor,
         non_magnetic_tensor,
         semi_infinite=True,
         mode = "single_rotation"
     )
-    
+
+    # Thin film material
+    material_layer_1 = transfer_matrix_wrapper(
+        k_x,
+        eps_tensor_1,
+        non_magnetic_tensor,
+        semi_infinite=False,
+        thickness = 1.e-5,
+        k0 = k_0,
+        mode = "single_rotation"
+    )
+
+    material_layer_2 = transfer_matrix_wrapper(
+        k_x,
+        eps_tensor_2,
+        non_magnetic_tensor,
+        semi_infinite=False,
+        thickness = 1.e-5,
+        k0 = k_0,
+        mode = "single_rotation"
+    )
+
     ### Reshaping
     prism_layer = prism_layer[tf.newaxis, ...]
+    ambient_exit_layer = ambient_exit_layer[tf.newaxis, ...]
+
+    # Define Multilayer
+    num_of_repeats = 3
+    layers = (
+        [prism_layer, air_layer]
+        + [layer for _ in range(num_of_repeats) for layer in [material_layer_1, material_layer_2]]
+        + [semi_infinite_layer]
+    )
 
     ### Multilayer
-    transfer_matrix = prism_layer @ air_layer @ semi_infinite_layer
-
+    # Apply matrix multiplication successively using functools.reduce and operator.matmul
+    transfer_matrix = functools.reduce(operator.matmul, layers)
     ### Reflection Coefficient
     reflectivity_values = reflection_coefficients(transfer_matrix)
 
     ### Plotting
     contour_plot_simple_incidence(
         reflectivity_values.numpy(),
-        material,
+        quartz,
         incident_angle.numpy().real,
-        x_rotation.numpy().real,
-        y_rotation.numpy().real,
-        z_rotation.numpy().real
+        x_rotation_1.numpy().real,
+        y_rotation_1.numpy().real,
+        z_rotation_1.numpy().real
         )
 
 
-
-
-
 if __name__ == "__main__":
-    anisotropy_testing(Quartz)
-    # main_propagation(Quartz)
-    # main_all_anisotropy_axes(Quartz)
+    multilayer_testing()
+
