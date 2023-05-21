@@ -317,6 +317,41 @@ def berreman_all_anisotropy(
         return transfer_matrix
 
 
+
+@run_on_device
+def berreman_dispersion(
+    kx,
+    eps_tensor,
+    mu_tensor,
+    k0=None,
+    thickness=tf.constant(0.5e-4, dtype=tf.complex64),
+    semi_infinite=False,
+    magnet=False,
+):
+    
+    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis]
+    eps_tensor = eps_tensor[tf.newaxis, ...]
+    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
+    
+    berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                   perm = [4,1,5,0,2,3])
+    berreman_matrix = tf.squeeze(berreman_matrix, axis = [-1,-2])
+
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
+
+    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
+        eigenvalues,
+        eigenvectors,
+        batch_dims=2,
+        magnet=magnet,
+        semi_infinite=semi_infinite,
+    )
+
+    return eigenvalues
+
+
+
+
 def transfer_matrix_wrapper(
     kx,
     eps_tensor,
@@ -361,6 +396,18 @@ def transfer_matrix_wrapper(
             magnet=magnet,
         )
         return berreman_matrix_single_rotation
+    
+    elif mode == "dispersion":
+        dispersion_values = berreman_dispersion(
+            kx,
+            eps_tensor,
+            mu_tensor,
+            k0=k0,
+            thickness=thickness,
+            semi_infinite=semi_infinite,
+            magnet=magnet,
+        )
+        return dispersion_values
 
     else:
         raise ValueError(
