@@ -5,16 +5,13 @@ import functools
 import operator
 import json
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:8080'])
 
 from anisotropy_utils import anisotropy_rotation_one_value
 from berreman import transfer_matrix_wrapper, reflection_coefficients
 from device_config import run_on_device
 from material_params import (Air, Ambient_Incident_Prism, CalciteUpper, Quartz, Sapphire)
-from plots import contour_plot_simple_incidence
 
 
 def mock_payload():
