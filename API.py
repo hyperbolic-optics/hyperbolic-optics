@@ -1,10 +1,14 @@
 import math as m
+import base64
 import tensorflow as tf
 import functools
 import operator
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app, origins=['http://localhost:8080'])
 
 from anisotropy_utils import anisotropy_rotation_one_value
 from berreman import transfer_matrix_wrapper, reflection_coefficients
@@ -28,9 +32,7 @@ def mock_payload():
     return payload
 
 
-def parse_json_initial(json_payload):
-    # Parse JSON
-    data = json.loads(json_payload)
+def parse_json_initial(data):
 
     # Extract parameters from JSON
     scenario = data.get("scenario")
@@ -153,13 +155,24 @@ def incident_api_situation(params):
     ### Reflection Coefficient
     reflectivity_values = reflection_coefficients(transfer_matrix)
 
-    return reflectivity_values
+    reflectivity_values = tf.cast(reflectivity_values * tf.math.conj(reflectivity_values), dtype = tf.float32)
 
-@app.route('/api/perform_calculation', methods=['POST'])
+    return reflectivity_values.numpy(), material.frequency.numpy()
+
+@app.route('/api/calculate', methods=['POST'])
 def perform_calculation():
-    payload = mock_payload()
+    payload = request.json
     params = parse_json_initial(payload)
-    result = incident_api_situation(params)
-    # Convert your result to a JSON serializable format here
-    # jsonify function from Flask can help with that
-    return result
+    reflectivity, frequency = incident_api_situation(params)
+    reflectivity_b64 = base64.b64encode(reflectivity.tobytes()).decode('utf-8')
+    frequency_b64 = base64.b64encode(frequency.tobytes()).decode('utf-8')
+    result_to_send = {
+        'reflectivity': reflectivity_b64,
+        'frequency': frequency_b64,
+        'shape': reflectivity.shape
+    }
+    return jsonify(result_to_send)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
