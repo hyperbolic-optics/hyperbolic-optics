@@ -5,8 +5,11 @@ import functools
 import operator
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
 
 app = Flask(__name__)
+CORS(app)
 
 from anisotropy_utils import anisotropy_rotation_one_value
 from berreman import transfer_matrix_wrapper, reflection_coefficients
@@ -171,5 +174,4 @@ def perform_calculation():
     return jsonify(result_to_send)
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))

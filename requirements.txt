@@ -1,3 +1,4 @@
 tensorflow
 flask
+flask-cors
 
