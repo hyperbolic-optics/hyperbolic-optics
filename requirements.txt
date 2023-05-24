@@ -1,0 +1,6 @@
+base64
+tensorflow
+functools
+flask
+operator
+json
