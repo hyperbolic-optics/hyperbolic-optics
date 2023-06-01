@@ -224,18 +224,17 @@ def plot_rpp(rpp, material, incident_angle, z_rotation, eps_prism):
     plt.close()
 
 
-def contour_plot_simple_incidence(
-        reflectivities,
-        material, 
-        incident_angle,
-        rotation_x,
-        rotation_y,
-        rotation_z
-        ):
-    x_axis = np.round(np.degrees(incident_angle), 1)
-    frequency = material.frequency.numpy().real
+def contour_plot_simple_incidence(data):
+
+    x_axis = np.round(np.degrees(data["incident_angle"]), 1)
+    frequency = data["material"].frequency.numpy().real
+    reflectivities = data["reflectivity"].numpy()
+    rotation_x = data["x_rotation"]
+    rotation_y = data["y_rotation"]
+    rotation_z = data["z_rotation"]
 
     reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    # reflectivities = np.round(reflectivities.imag, 6)
     R_pp = reflectivities[0]
     R_ps = reflectivities[1]
     R_sp = reflectivities[2]
@@ -266,9 +265,9 @@ def contour_plot_simple_incidence(
     for data, title, row, col in ax_to_plot:
         im = ax[row, col].pcolormesh(x_axis, frequency, data, cmap="magma")
         cbar = plt.colorbar(im, ax=ax[row, col])
-        cbar.mappable.set_clim(
-            0.0,
-        )
+        # cbar.mappable.set_clim(
+        #     0.0,
+        # )
         cbar.set_label(title)
         ax[row, col].set_title(title)
         ax[row, col].set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
@@ -280,18 +279,11 @@ def contour_plot_simple_incidence(
     plt.close()
 
 
-def contour_plot_3D(
-    plot_type,
-    reflectivities,
-    frequency,
-    x_axis,
-    distance,
-    incident_angle,
-    rotation_x,
-    rotation_y,
-    rotation_z,
-):
-    x_axis = np.round(np.degrees(x_axis), 1)
+def contour_plot_simple_azimuthal(data):
+    
+    x_axis = np.round(np.degrees(data["z_rotation"]), 1)
+    frequency = data['material'].frequency.numpy().real
+    reflectivities = data['reflectivity'].numpy()
 
     reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
     R_pp = reflectivities[0]
@@ -303,58 +295,7 @@ def contour_plot_3D(
 
     fig, ax = plt.subplots(2, 3, figsize=(12, 7))
 
-    if plot_type == "theta":
-        fig.suptitle(
-            "ATR for $\phi_y = "
-            + str(int(round(np.degrees(rotation_y), 1)))
-            + "^\circ, \phi_z = "
-            + str(int(round(np.degrees(rotation_z), 1)))
-            + "^\circ, \phi_x = "
-            + str(int(round(np.degrees(rotation_x), 1)))
-            + "^\circ, d = "
-            + str(round(distance * 1e4, 3))
-            + "\mu m$"
-        )
-
-    elif plot_type == "azimuth":
-        fig.suptitle(
-            "ATR for $\phi_y$ = "
-            + str(int(round(np.degrees(rotation_y), 1)))
-            + "$^\circ$, $\\theta$ = "
-            + str(int(round(np.degrees(incident_angle), 1)))
-            + "$^\circ$, $\phi_x$ = "
-            + str(int(round(np.degrees(rotation_x), 1)))
-            + "$^\circ$, $d = "
-            + str(round(distance * 1e4, 3))
-            + "\mu m$"
-        )
-
-    elif plot_type == "y_anisotropy":
-        fig.suptitle(
-            "ATR for $\phi_z$ = "
-            + str(int(round(np.degrees(rotation_z), 1)))
-            + "$^\circ$, $\\theta$ = "
-            + str(int(round(np.degrees(incident_angle), 1)))
-            + "$^\circ$, $\phi_x$ = "
-            + str(int(round(np.degrees(rotation_x), 1)))
-            + "$^\circ$, $d = "
-            + str(round(distance * 1e4, 3))
-            + "\mu m$"
-        )
-
-    elif plot_type == "x_anisotropy":
-        fig.suptitle(
-            "ATR for $\phi_z$ = "
-            + str(int(round(np.degrees(rotation_z), 1)))
-            + "$^\circ$, $\phi_y$ = "
-            + str(int(round(np.degrees(rotation_y), 1)))
-            + "$^\circ$, $\\theta$ = "
-            + str(int(round(np.degrees(incident_angle), 1)))
-            + "$^\circ$, $d = "
-            + str(round(distance * 1e4, 3))
-            + "\mu m$"
-        )
-
+    
     ax_to_plot = [
         (R_pp, "$|r_{pp}|^2$", 0, 0),
         (R_ps, "$|r_{ps}|^2$", 0, 1),
@@ -373,13 +314,74 @@ def contour_plot_3D(
         cbar.set_label(title)
         ax[row, col].set_title(title)
         ax[row, col].set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
-        ax[row, col].set_xlabel(plot_type.capitalize() + " Rotation / $^\circ$")
+        ax[row, col].set_xlabel("Azimuthal Rotation / $^\circ$")
         ax[row, col].set_ylabel("$\omega/2\pi c (cm^{-1})$")
 
     plt.tight_layout()
     plt.show()
     plt.close()
 
+
+def contour_plot_simple_dispersion(dataset):
+    
+    frequency = dataset['frequency']
+    reflectivities = dataset['reflectivity'].numpy()
+    material = dataset['material'].name
+    incident_angle = dataset['incident_angle'].numpy().real
+    x_rotation = dataset['x_rotation']
+    y_rotation = dataset['y_rotation']
+    z_rotation = dataset['z_rotation'].numpy().real
+
+    # reflectivities = np.round((reflectivities * np.conj(reflectivities)), 6).real
+
+    reflectivities = np.round(reflectivities.imag, 6)
+
+    R_pp = reflectivities[0]
+    R_ps = reflectivities[1]
+    R_sp = reflectivities[2]
+    R_ss = reflectivities[3]
+    R_pp_total = R_pp + R_ps
+    R_ss_total = R_ss + R_sp
+
+
+    fig, ax = plt.subplots(2, 3, figsize=(18, 7), subplot_kw= dict(projection = 'polar'))
+    plt.subplots_adjust(
+        left=0.15, right=0.9, bottom=0.25, top=0.85, hspace=0.5, wspace=0.4
+    )
+
+    ax_to_plot = [
+        (R_pp, "$|R_{pp}|^2$", 0, 0),
+        (R_ps, "$|R_{ps}|^2$", 0, 1),
+        (R_pp_total, "$|R_{pp}|^2 + |R_{ps}|^2$", 0, 2),
+        (R_sp, "$|R_{sp}|^2$", 1, 0),
+        (R_ss, "$|R_{ss}|^2$", 1, 1),
+        (R_ss_total, "$|R_{ss}|^2 + |R_{sp}|^2$", 1, 2),
+    ]
+
+    colorbar_list = []
+    for data, title, row, col in ax_to_plot:
+        im = ax[row, col].pcolormesh(
+            z_rotation, incident_angle,  data, cmap="magma"
+        )
+        cbar = plt.colorbar(im, ax=ax[row, col])
+        colorbar_list.append(cbar)
+        # cbar.mappable.set_clim(
+        #     0,
+        # )
+        cbar.set_label(title)
+        ax[row, col].set_title(title)
+        # Adjust labels and ticks
+        ax[row, col].set_xticks(np.linspace(0, 2*np.pi, 5))
+        ax[row, col].set_xticklabels(['0', '90', '180', '270', '360'])  # azimuthal rotation in degrees
+        ax[row, col].set_yticklabels("")  # incident angle in degrees
+
+        # Remove the labels, polar coordinates speak for themselves
+        ax[row, col].set_xlabel("")
+        ax[row, col].set_ylabel("")
+    
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
 def all_axis_plot(
     reflectivities,

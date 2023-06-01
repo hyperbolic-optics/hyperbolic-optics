@@ -5,9 +5,47 @@ from device_config import run_on_device
 
 
 class AnisotropicMaterial(object):
-    def __init__(self, frequency_length, run_on_device_decorator):
+    def __init__(self, frequency_length = 300, run_on_device_decorator = run_on_device):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
+
+
+    @run_on_device
+    def permittivity_calc_for_freq(self, frequency, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
+        frequency = tf.expand_dims(tf.constant([frequency], dtype=tf.complex64), 0)
+        omega_Ln_expanded = tf.expand_dims(omega_Ln, 1)
+        gamma_Ln_expanded = tf.expand_dims(gamma_Ln, 1)
+        omega_Tn_expanded = tf.expand_dims(omega_Tn, 1)
+        gamma_Tn_expanded = tf.expand_dims(gamma_Tn, 1)
+        complex_one_j = tf.constant(1j, dtype=tf.complex64)
+
+        top_line = (
+            omega_Ln_expanded**2.0
+            - frequency**2.0    
+            - complex_one_j * frequency * gamma_Ln_expanded
+        )
+        bottom_line = (
+            omega_Tn_expanded**2.0
+            - frequency**2.0
+            - complex_one_j * frequency * gamma_Tn_expanded
+        )
+        result = top_line / bottom_line
+
+        return (high_freq * tf.reduce_prod(result, axis=0))[0]
+
+
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        params = self.permittivity_parameters()
+
+        eps_ext = self.permittivity_calc_for_freq(requested_frequency, **params["extraordinary"])
+        eps_ord = self.permittivity_calc_for_freq(requested_frequency, **params["ordinary"])
+
+        diag_tensors = tf.stack([eps_ord, eps_ord, eps_ext], axis=0)
+        eps_tensor = tf.linalg.diag(diag_tensors)
+
+        return eps_tensor    
+
 
     @run_on_device
     def permittivity_calc(self, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
@@ -20,7 +58,7 @@ class AnisotropicMaterial(object):
 
         top_line = (
             omega_Ln_expanded**2.0
-            - frequency**2.0
+            - frequency**2.0    
             - complex_one_j * frequency * gamma_Ln_expanded
         )
         bottom_line = (
@@ -52,11 +90,11 @@ class AnisotropicMaterial(object):
 
 
 class Quartz(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+        super().__init__()
         self.name = "Quartz"
         self.frequency = tf.cast(
-            tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
     @run_on_device
@@ -94,8 +132,9 @@ class Quartz(AnisotropicMaterial):
 
 
 class Calcite(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+
+    def __init__(self):
+        super().__init__()
 
     @run_on_device
     def permittivity_parameters(self):
@@ -128,29 +167,29 @@ class Calcite(AnisotropicMaterial):
 
 
 class CalciteLower(Calcite):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 820.0, freq_max = 970.0):
+        super().__init__()
         self.name = "Calcite-Lower"
         self.frequency = tf.cast(
-            tf.linspace(820.0, 970.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 1300.0, freq_max = 1800.0):
+        super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
-            tf.linspace(1300.0, 1800.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
 
 class Sapphire(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+        super().__init__()
         self.name = "Sapphire"
         self.frequency = tf.cast(
-            tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
     @run_on_device
