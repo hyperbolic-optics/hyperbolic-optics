@@ -8,12 +8,15 @@ from abc import abstractmethod
 from anisotropy_utils import anisotropy_rotation_one_value, anisotropy_rotation_one_axis
 from berreman import transfer_matrix_wrapper, reflection_coefficients
 from device_config import run_on_device
-from material_params import (Air, Ambient_Incident_Prism, CalciteUpper, Quartz, Sapphire, Ambient_Exit_Medium)
+from material_params import (Air, AmbientIncidentMedium, CalciteUpper, Quartz, Sapphire, Ambient_Exit_Medium)
 from plots import contour_plot_simple_incidence, contour_plot_simple_azimuthal, contour_plot_simple_dispersion
 
+from payloads import mock_incident_payload, mock_azimuthal_payload, mock_dispersion_payload, mock_dispersion_payload_full
 
 
-class Scenario:
+from abc import ABC, abstractmethod
+
+class Scenario(ABC):
     def __init__(self, data):
         self.x_rotation = m.radians(float(data.get("rotationX")))
         self.y_rotation = m.radians(float(data.get("rotationY")))
@@ -25,10 +28,25 @@ class Scenario:
         material_classes = {"Quartz": Quartz, "Sapphire": Sapphire, "Calcite": CalciteUpper}
         return material_classes[material_name]()
 
-    @abstractmethod
-    def preprocess_data(self):
-        pass
+    def prepare_data(self, reflectivity_values):
+        data = {
+            "reflectivity": reflectivity_values,
+            "material": self.material,
+            "incident_angle": self.incident_angle,
+            "x_rotation": self.x_rotation,
+            "y_rotation": self.y_rotation,
+            "z_rotation": self.z_rotation,
+            "eps_prism": self.eps_prism,
+            "air_gap_thickness": self.air_gap_thickness,
+        }
+        # include frequency if exists in params
+        if hasattr(self, "requested_frequency"):
+            data["frequency"] = self.requested_frequency
+        return data
 
+    @abstractmethod
+    def execute(self):
+        pass
 
 class IncidentScenario(Scenario):
     def __init__(self, data):
@@ -43,7 +61,8 @@ class IncidentScenario(Scenario):
             )
 
     def execute(self):
-        return incident_situation(self.__dict__)
+        reflectivity_values = IncidentSituation(self.__dict__)
+        return self.prepare_data(reflectivity_values)
 
 
 class AzimuthalScenario(Scenario):
@@ -59,7 +78,8 @@ class AzimuthalScenario(Scenario):
             )
     
     def execute(self):
-        return azimuthal_situation(self.__dict__)
+        reflectivity_values = AzimuthalSituation(self.__dict__)
+        return self.prepare_data(reflectivity_values)
 
 
 class DispersionScenario(Scenario):
@@ -84,7 +104,8 @@ class DispersionScenario(Scenario):
         self.requested_frequency = float(data.get("frequency"))
 
     def execute(self):
-        return dispersion_situation(self.__dict__)
+        reflectivity_values = DispersionSituation(self.__dict__)
+        return self.prepare_data(reflectivity_values)
 
 
 def parse_json_initial(data):
@@ -94,261 +115,179 @@ def parse_json_initial(data):
     return scenario_classes[data.get("scenario")](data)
 
 
-def prepare_data(reflectivity_values, params):
-    data = {
-        "reflectivity": reflectivity_values,
-        "material": params.get("material"),
-        "incident_angle": params.get("incident_angle"),
-        "x_rotation": params.get("x_rotation"),
-        "y_rotation": params.get("y_rotation"),
-        "z_rotation": params.get("z_rotation"),
-        "eps_prism": params.get("eps_prism"),
-        "air_gap_thickness": params.get("air_gap_thickness"),
-    }
-    # include frequency if exists in params
-    if "requested_frequency" in params:
-        data["frequency"] = params.get("requested_frequency")
-    return data
+class Situation:
+    def __init__(self, params):
+
+        self.eps_prism = params.get("eps_prism")
+        self.air_gap_thickness = params.get("air_gap_thickness")
+        self.material = params.get("material")
+        self.x_rotation = params.get("x_rotation")
+        self.y_rotation = params.get("y_rotation")
+        self.z_rotation = params.get("z_rotation")
+        self.incident_angle = params.get("incident_angle")
+        self.requested_frequency = params.get("frequency", None)
 
 
+    def prepare_common(self, rotation_func, prism_construct, airgap_mode):
 
-def prepare_situation_common(params, rotation_func = anisotropy_rotation_one_value, prism_construct = "tensor", airgap_mode = 'simple_airgap'):
-    eps_prism = params.get("eps_prism")
-    air_gap_thickness = params.get("air_gap_thickness")
-    material = params.get("material")
-    x_rotation = params.get("x_rotation")
-    y_rotation = params.get("y_rotation")
-    z_rotation = params.get("z_rotation")
-    incident_angle = params.get("incident_angle")
-    requested_frequency = params.get("requested_frequency", None)
+        # Adjust frequency if available
+        if self.requested_frequency:
+            eps_tensor = self.material.fetch_permittivity_tensor_for_freq(self.requested_frequency)
+            self.k_0 = self.requested_frequency * 2.0 * m.pi
+        else:
+            eps_tensor = self.material.fetch_permittivity_tensor()
+            self.k_0 = self.material.frequency * 2.0 * m.pi
 
-    # Adjust frequency if available
-    if requested_frequency:
-        eps_tensor = material.fetch_permittivity_tensor_for_freq(requested_frequency)
-        k_0 = requested_frequency * 2.0 * m.pi
-    else:
-        eps_tensor = material.fetch_permittivity_tensor()
-        k_0 = material.frequency * 2.0 * m.pi
-
-    eps_tensor = rotation_func(
-        eps_tensor, x_rotation, y_rotation, z_rotation
-    )
-
-    k_x = tf.cast(tf.sqrt(eps_prism) * tf.sin(incident_angle), dtype=tf.complex64)
-
-    # Construct the non-magnetic tensor.
-    non_magnetic_tensor = Air(
-        run_on_device_decorator=run_on_device
-    ).construct_tensor_singular()
-
-    incident_prism = Ambient_Incident_Prism(
-        eps_prism, incident_angle, run_on_device_decorator=run_on_device
-    )
-    if prism_construct == "tensor":
-        prism_layer = incident_prism.construct_tensor()
-    else:
-        prism_layer = incident_prism.construct_tensor_singular()
-
-    # Construct the air layer.
-    air_layer = (
-            transfer_matrix_wrapper(
-                k_x,
-                non_magnetic_tensor,
-                non_magnetic_tensor,
-                k_0,
-                thickness=air_gap_thickness,
-                mode = airgap_mode
-            )
+        self.eps_tensor = rotation_func(
+            eps_tensor, self.x_rotation, self.y_rotation, self.z_rotation
         )
 
-    return prism_layer, air_layer, k_x, eps_tensor, non_magnetic_tensor, k_0, incident_prism, requested_frequency
+        self.k_x = tf.cast(tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle), dtype=tf.complex64)
+
+        # Construct the non-magnetic tensor.
+        self.non_magnetic_tensor = Air(
+            run_on_device_decorator=run_on_device
+        ).construct_tensor_singular()
+
+        incident_prism = AmbientIncidentMedium(
+            self.eps_prism, self.incident_angle
+        )
+        if prism_construct == "tensor":
+            self.prism_layer = incident_prism.construct_tensor()
+        else:
+            self.prism_layer = incident_prism.construct_tensor_singular()
+
+        # Construct the air layer.
+        self.air_layer = (
+                transfer_matrix_wrapper(
+                    self.k_x,
+                    self.non_magnetic_tensor,
+                    self.non_magnetic_tensor,
+                    self.k_0,
+                    thickness=self.air_gap_thickness,
+                    mode = airgap_mode
+                )
+            )
 
 
-def incident_situation(params):
-    prism_layer, air_layer, k_x, eps_tensor, non_magnetic_tensor, k_0, incident_prism, _ = prepare_situation_common(params, airgap_mode = 'airgap')
+    def calculate_reflectivity(self, layers):
+        transfer_matrix = functools.reduce(operator.matmul, layers)
+        self.reflectivity = reflection_coefficients(transfer_matrix)
+    
+    def prepare_output(self):
+        self.data_output = {
+            "reflectivity": self.reflectivity,
+            "material": self.material,
+            "incident_angle": self.incident_angle,
+            "x_rotation": self.x_rotation,
+            "y_rotation": self.y_rotation,
+            "z_rotation": self.z_rotation,
+            "eps_prism": self.eps_prism,
+            "air_gap_thickness": self.air_gap_thickness,
+        }
+        # include frequency if exists in params
+        if hasattr(self, "requested_frequency"):
+            self.data_output["frequency"] = self.requested_frequency
+    
+    def execute(self):
+        self.calculate()
+        self.prepare_output()
+        self.plot()
 
-    ambient_exit_layer = Ambient_Exit_Medium(
-        incident_prism, 1.,
-    ).construct_tensor()
-
-    thin_layer = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
-        k_0,
-        thickness=0.5e-5,
-        mode = "single_rotation"
-    )
-
-    #semi_infinite end layer
-    semi_infinite_layer = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
+class IncidentSituation(Situation):
+    
+    def prepare(self):
+        super().prepare_common(anisotropy_rotation_one_value, "tensor", 'airgap')
+        
+    def calculate(self):
+        self.prepare()
+        
+        self.semi_infinite_layer = transfer_matrix_wrapper(
+        self.k_x,
+        self.eps_tensor,
+        self.non_magnetic_tensor,
         semi_infinite=True,
         mode = "single_rotation"
-    )
+        )
 
-    ### Reshaping
-    prism_layer = prism_layer[tf.newaxis, ...]
-    ambient_exit_layer = ambient_exit_layer[tf.newaxis, ...] 
+        layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
+        self.calculate_reflectivity(layers)
 
-    # Defining our layers in order that we want
-    layers = [prism_layer, air_layer, semi_infinite_layer]
-
-    # Apply matrix multiplication successively using functools.reduce and operator.matmul
-    transfer_matrix = functools.reduce(operator.matmul, layers)
-
-    ### Reflection Coefficient
-    reflectivity_values = reflection_coefficients(transfer_matrix)
-
-    return prepare_data(reflectivity_values, params)
+    def plot(self):
+        contour_plot_simple_incidence(self.data_output)
 
 
-def azimuthal_situation(params):
-    prism_layer, air_layer, k_x, eps_tensor, non_magnetic_tensor, k_0, incident_prism, _ = prepare_situation_common(params,prism_construct = "singular", rotation_func = anisotropy_rotation_one_axis)
-    
+class AzimuthalSituation(Situation):
 
-    thin_layer = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
-        k_0,
-        thickness=0.1e-4,
-        mode = "simple_azimuthal"
-    )
-
-    #semi_infinite end layer
-    semi_infinite_layer = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
+    def prepare(self):
+        super().prepare_common(anisotropy_rotation_one_axis, "singular", "simple_airgap")
+        
+    def calculate(self):
+        self.prepare()
+        
+        self.semi_infinite_layer = transfer_matrix_wrapper(
+        self.k_x,
+        self.eps_tensor,
+        self.non_magnetic_tensor,
         semi_infinite=True,
         mode = "simple_azimuthal"
-    )
+        )
+
+        self.prism_layer = self.prism_layer[tf.newaxis, tf.newaxis, ...]
+        self.air_layer = self.air_layer[:, tf.newaxis, ...]
+
+        layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
+
+        self.calculate_reflectivity(layers)
+
+    def plot(self):
+        contour_plot_simple_azimuthal(self.data_output)
 
 
-    ### Reshaping
-    prism_layer = prism_layer[tf.newaxis, tf.newaxis, ...]
-    air_layer = air_layer[:, tf.newaxis, ...]
+class DispersionSituation(Situation):
+    
+        def prepare(self):
+            super().prepare_common(anisotropy_rotation_one_value, "tensor", "simple_airgap")
+            
+        def calculate(self):
+            self.prepare()
+            
+            self.semi_infinite_layer = transfer_matrix_wrapper(
+            self.k_x,
+            self.eps_tensor,
+            self.non_magnetic_tensor,
+            semi_infinite=True,
+            mode = "simple_dispersion"
+            )
 
-    print(air_layer.shape)
+            self.prism_layer = self.prism_layer[:, tf.newaxis, ...]
+            self.air_layer = self.air_layer[:, tf.newaxis, ...]
+    
+            layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
+            self.calculate_reflectivity(layers)
 
-
-    layers = [prism_layer, air_layer, semi_infinite_layer]
-
-    # Apply matrix multiplication successively using functools.reduce and operator.matmul
-    transfer_matrix = functools.reduce(operator.matmul, layers)
-
-    ### Reflection Coefficient
-    reflectivity_values = reflection_coefficients(transfer_matrix)
+        def plot(self):
+            contour_plot_simple_dispersion(self.data_output)
     
 
-    return prepare_data(reflectivity_values, params)
 
-
-def dispersion_situation(params):
-
-    prism_layer, air_layer, k_x, eps_tensor, non_magnetic_tensor, k_0, incident_prism, requested_frequency = prepare_situation_common(params)
-    
-    thin_layer_1 = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
-        k_0,
-        thickness=1.e-4,
-        mode = "simple_dispersion"
-    )
-
-    ambient_exit_layer = Ambient_Exit_Medium(
-        incident_prism, 1.
-    ).construct_tensor()
-
-    #semi_infinite end layer
-    semi_infinite_layer = transfer_matrix_wrapper(
-        k_x,
-        eps_tensor,
-        non_magnetic_tensor,
-        semi_infinite=True,
-        mode = "simple_dispersion"
-    )
-
-    ### Reshaping
-    prism_layer = prism_layer[:, tf.newaxis, ...]
-    air_layer = air_layer[:, tf.newaxis, ...]
-    ambient_exit_layer = ambient_exit_layer[:, tf.newaxis, ...]
-
-    layers = [prism_layer, air_layer, semi_infinite_layer]
-
-    # Apply matrix multiplication successively using functools.reduce and operator.matmul
-    transfer_matrix = functools.reduce(operator.matmul, layers)
-
-    ### Reflection Coefficient
-    reflectivity_values = reflection_coefficients(transfer_matrix)
-
-    return prepare_data(reflectivity_values, params)
 
 
 
 def perform_calculation(payload):
-    scenario = parse_json_initial(payload)
+    scenario = parse_json_initial(json.loads(payload))
     returned_data = scenario.execute()
-    # reflectivity, material, angle = scenario.execute()
+    
     if isinstance(scenario, IncidentScenario):
-        contour_plot_simple_incidence(returned_data)
+        IncidentSituation(returned_data).execute()
     elif isinstance(scenario, AzimuthalScenario):
-        contour_plot_simple_azimuthal(returned_data)
+        AzimuthalSituation(returned_data).execute()
     elif isinstance(scenario, DispersionScenario):
-        contour_plot_simple_dispersion(returned_data)
+        DispersionSituation(returned_data).execute()
 
-
-def mock_incident_payload():
-    payload = json.dumps({
-        "scenario":"Incident",
-        "rotationX":45,
-        "rotationY":45,
-        "airGapThickness":"1.5",
-        "dielectricConstant":5.5,
-        "material":"Quartz",
-        "incidentAngle":{"min":-90,"max":90},
-        "azimuthalAngle":45
-        })
-    
-    return payload
-
-
-def mock_azimuthal_payload():
-    payload = json.dumps({
-        "scenario":"Azimuthal",
-        "rotationX":"0",
-        "rotationY": 45,
-        "airGapThickness":1.5,
-        "dielectricConstant": 5.5,
-        "material":"Quartz",
-        "azimuthalAngle":{"min":0,"max":360},
-        "incidentAngle":"45"
-        })
-    
-    return payload
-
-def mock_dispersion_payload():
-    payload = json.dumps({
-        "scenario":"Dispersion",
-        "rotationX": 0,
-        "rotationY": 90,
-        "airGapThickness": 0.,
-        "dielectricConstant": 5.5,
-        "material":"Quartz",
-        "azimuthalAngle": {"min":0, "max":360},
-        "incidentAngle": {"min":0,"max":90},
-        "frequency": 468
-        })
-    
-    return payload
 
 def main():
-    payload = json.loads(mock_incident_payload())
-    perform_calculation(payload)
+    perform_calculation(mock_dispersion_payload())
 
     
 main()

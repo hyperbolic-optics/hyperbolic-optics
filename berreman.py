@@ -236,6 +236,7 @@ def berreman_simple_air_gap(kx,
                                     perm = [1, 0])
         batch_size = 0
     
+    
     else:
         berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
                                     perm = [1, 2, 0])
@@ -544,6 +545,7 @@ def transfer_matrix_wrapper(
         return dispersion_values
     
     elif mode == "simple_airgap":
+
         airgapsimple = berreman_simple_air_gap(
             kx,
             eps_tensor,

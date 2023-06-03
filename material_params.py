@@ -304,8 +304,8 @@ class Antiferromagnet(object):
         return permeability_tensor, permittivity_tensor
 
 
-class Ambient_Incident_Prism(object):
-    def __init__(self, permittivity, theta, run_on_device_decorator):
+class AmbientIncidentMedium(object):
+    def __init__(self, permittivity, theta, run_on_device_decorator = run_on_device):
         self.permittivity = permittivity
         self.theta = theta
         self.run_on_device = run_on_device_decorator
@@ -376,11 +376,11 @@ class Ambient_Incident_Prism(object):
 
 
 class Ambient_Exit_Medium(object):
-    def __init__(self, incident_prism, permittivity_exit):
-        self.theta_incident = incident_prism.theta
+    def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator = run_on_device):
+        self.theta_incident = incident_angle
         self.N_exit = tf.sqrt(permittivity_exit)
-        self.N_incident = tf.sqrt(incident_prism.permittivity)
-        self.run_on_device = incident_prism.run_on_device
+        self.N_incident = tf.sqrt(permittivity_incident)
+        self.run_on_device = run_on_device_decorator
 
     @run_on_device
     def construct_tensor(self):
