@@ -127,27 +127,27 @@ class Situation:
         self.incident_angle = params.get("incident_angle")
         self.requested_frequency = params.get("frequency", None)
 
-
-    def prepare_common(self, rotation_func, prism_construct, airgap_mode):
+        self.k_x = tf.cast(tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle), dtype=tf.complex64)
 
         # Adjust frequency if available
         if self.requested_frequency:
-            eps_tensor = self.material.fetch_permittivity_tensor_for_freq(self.requested_frequency)
+            self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(self.requested_frequency)
             self.k_0 = self.requested_frequency * 2.0 * m.pi
         else:
-            eps_tensor = self.material.fetch_permittivity_tensor()
+            self.eps_tensor = self.material.fetch_permittivity_tensor()
             self.k_0 = self.material.frequency * 2.0 * m.pi
-
-        self.eps_tensor = rotation_func(
-            eps_tensor, self.x_rotation, self.y_rotation, self.z_rotation
-        )
-
-        self.k_x = tf.cast(tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle), dtype=tf.complex64)
 
         # Construct the non-magnetic tensor.
         self.non_magnetic_tensor = Air(
             run_on_device_decorator=run_on_device
         ).construct_tensor_singular()
+
+
+    def prepare_common(self, rotation_func, prism_construct, airgap_mode):
+
+        self.eps_tensor = rotation_func(
+            self.eps_tensor, self.x_rotation, self.y_rotation, self.z_rotation
+        )
 
         incident_prism = AmbientIncidentMedium(
             self.eps_prism, self.incident_angle
@@ -168,12 +168,34 @@ class Situation:
                     mode = airgap_mode
                 )
             )
+        
+
+    def produce_layers(self, mode):
+
+        self.semi_infinite_layer = transfer_matrix_wrapper(
+        self.k_x,
+        self.eps_tensor,
+        self.non_magnetic_tensor,
+        semi_infinite=True,
+        mode = mode
+        )
+
+        if mode == 'simple_azimuthal':
+            self.prism_layer = self.prism_layer[tf.newaxis, tf.newaxis, ...]
+            self.air_layer = self.air_layer[:, tf.newaxis, ...]
+
+        elif mode == 'simple_dispersion':
+            self.prism_layer = self.prism_layer[:, tf.newaxis, ...]
+            self.air_layer = self.air_layer[:, tf.newaxis, ...]
+
+        self.layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
 
 
-    def calculate_reflectivity(self, layers):
-        transfer_matrix = functools.reduce(operator.matmul, layers)
+    def calculate_reflectivity(self):
+        transfer_matrix = functools.reduce(operator.matmul, self.layers)
         self.reflectivity = reflection_coefficients(transfer_matrix)
     
+
     def prepare_output(self):
         self.data_output = {
             "reflectivity": self.reflectivity,
@@ -194,24 +216,16 @@ class Situation:
         self.prepare_output()
         self.plot()
 
+
 class IncidentSituation(Situation):
     
     def prepare(self):
-        super().prepare_common(anisotropy_rotation_one_value, "tensor", 'airgap')
+        self.prepare_common(anisotropy_rotation_one_value, "tensor", 'airgap')
         
     def calculate(self):
         self.prepare()
-        
-        self.semi_infinite_layer = transfer_matrix_wrapper(
-        self.k_x,
-        self.eps_tensor,
-        self.non_magnetic_tensor,
-        semi_infinite=True,
-        mode = "single_rotation"
-        )
-
-        layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
-        self.calculate_reflectivity(layers)
+        self.produce_layers('single_rotation')
+        self.calculate_reflectivity()
 
     def plot(self):
         contour_plot_simple_incidence(self.data_output)
@@ -224,21 +238,8 @@ class AzimuthalSituation(Situation):
         
     def calculate(self):
         self.prepare()
-        
-        self.semi_infinite_layer = transfer_matrix_wrapper(
-        self.k_x,
-        self.eps_tensor,
-        self.non_magnetic_tensor,
-        semi_infinite=True,
-        mode = "simple_azimuthal"
-        )
-
-        self.prism_layer = self.prism_layer[tf.newaxis, tf.newaxis, ...]
-        self.air_layer = self.air_layer[:, tf.newaxis, ...]
-
-        layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
-
-        self.calculate_reflectivity(layers)
+        self.produce_layers('simple_azimuthal')
+        self.calculate_reflectivity()
 
     def plot(self):
         contour_plot_simple_azimuthal(self.data_output)
@@ -247,31 +248,16 @@ class AzimuthalSituation(Situation):
 class DispersionSituation(Situation):
     
         def prepare(self):
-            super().prepare_common(anisotropy_rotation_one_value, "tensor", "simple_airgap")
+            self.prepare_common(anisotropy_rotation_one_value, "tensor", "simple_airgap")
             
         def calculate(self):
             self.prepare()
-            
-            self.semi_infinite_layer = transfer_matrix_wrapper(
-            self.k_x,
-            self.eps_tensor,
-            self.non_magnetic_tensor,
-            semi_infinite=True,
-            mode = "simple_dispersion"
-            )
-
-            self.prism_layer = self.prism_layer[:, tf.newaxis, ...]
-            self.air_layer = self.air_layer[:, tf.newaxis, ...]
-    
-            layers = [self.prism_layer, self.air_layer, self.semi_infinite_layer]
-            self.calculate_reflectivity(layers)
+            self.produce_layers('simple_dispersion')
+            self.calculate_reflectivity()
 
         def plot(self):
             contour_plot_simple_dispersion(self.data_output)
     
-
-
-
 
 
 def perform_calculation(payload):

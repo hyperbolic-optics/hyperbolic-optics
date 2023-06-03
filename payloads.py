@@ -31,20 +31,22 @@ def mock_azimuthal_payload():
     
     return payload
 
+
 def mock_dispersion_payload():
     payload = json.dumps({
         "scenario":"Dispersion",
         "rotationX": 0,
         "rotationY": 90,
-        "airGapThickness": 0.,
-        "dielectricConstant": 5.5,
+        "airGapThickness": 0.1,
+        "dielectricConstant": 40,
         "material":"Quartz",
         "azimuthalAngle": {"min":0, "max":360},
         "incidentAngle": {"min":0,"max":90},
-        "frequency": 468
+        "frequency": 470
         })
     
     return payload
+
 
 def mock_dispersion_payload_full():
     payload = json.dumps({
