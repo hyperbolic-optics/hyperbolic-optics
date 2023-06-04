@@ -15,7 +15,6 @@ from payloads import mock_incident_payload, mock_azimuthal_payload, mock_dispers
 from scenarios import IncidentScenarioSetup, AzimuthalScenarioSetup, DispersionScenarioSetup
 
 
-
 class Situation:
     def __init__(self, params):
 
@@ -111,53 +110,43 @@ class Situation:
         # include frequency if exists in params
         if hasattr(self, "requested_frequency"):
             self.data_output["frequency"] = self.requested_frequency
+
+
+    def prepare(self, rotation_func, prism_construct, airgap_mode):
+        self.prepare_common(rotation_func, prism_construct, airgap_mode)
+
+    def calculate(self, mode):
+        self.produce_layers(mode)
+        self.calculate_reflectivity()
+
     
-    def execute(self):
-        self.calculate()
+    def plot(self, plot_func):
+        plot_func(self.data_output)
+
+    
+    def execute(self, rotation_func, prism_construct, airgap_mode, mode, plot_func):
+        self.prepare(rotation_func, prism_construct, airgap_mode)
+        self.calculate(mode)
         self.prepare_output()
-        self.plot()
+        self.plot(plot_func)
 
 
 class IncidentSituation(Situation):
     
-    def prepare(self):
-        self.prepare_common(anisotropy_rotation_one_value, "tensor", 'airgap')
-        
-    def calculate(self):
-        self.prepare()
-        self.produce_layers('single_rotation')
-        self.calculate_reflectivity()
-
-    def plot(self):
-        contour_plot_simple_incidence(self.data_output)
+    def execute(self):
+        super().execute(anisotropy_rotation_one_value, "tensor", "airgap", "single_rotation", contour_plot_simple_incidence)
 
 
 class AzimuthalSituation(Situation):
 
-    def prepare(self):
-        super().prepare_common(anisotropy_rotation_one_axis, "singular", "simple_airgap")
-        
-    def calculate(self):
-        self.prepare()
-        self.produce_layers('simple_azimuthal')
-        self.calculate_reflectivity()
-
-    def plot(self):
-        contour_plot_simple_azimuthal(self.data_output)
+    def execute(self):
+        super().execute(anisotropy_rotation_one_axis, "singular", "simple_airgap", "simple_azimuthal", contour_plot_simple_azimuthal)
 
 
 class DispersionSituation(Situation):
     
-        def prepare(self):
-            self.prepare_common(anisotropy_rotation_one_value, "tensor", "simple_airgap")
-            
-        def calculate(self):
-            self.prepare()
-            self.produce_layers('simple_dispersion')
-            self.calculate_reflectivity()
-
-        def plot(self):
-            contour_plot_simple_dispersion(self.data_output)
+    def execute(self):
+        super().execute(anisotropy_rotation_one_value, "tensor", "simple_airgap", "simple_dispersion", contour_plot_simple_dispersion)
     
 
 
@@ -180,8 +169,7 @@ def parse_json_initial(data):
 
 
 def main():
-    perform_calculation(mock_azimuthal_payload())
-
+    perform_calculation(mock_incident_payload())
     
 main()
 
