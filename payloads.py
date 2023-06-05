@@ -6,12 +6,12 @@ def mock_incident_payload():
     payload = json.dumps({
         "scenario":"Incident",
         "rotationX":0,
-        "rotationY":45,
+        "rotationY":90,
         "airGapThickness":0,
-        "dielectricConstant":5.5,
+        "dielectricConstant":11.56,
         "material":"Quartz",
         "incidentAngle":{"min":-90,"max":90},
-        "azimuthalAngle":0
+        "azimuthalAngle":45
         })
     
     return payload
@@ -36,13 +36,13 @@ def mock_dispersion_payload():
     payload = json.dumps({
         "scenario":"Dispersion",
         "rotationX": 0,
-        "rotationY": 90,
-        "airGapThickness": 0.1,
-        "dielectricConstant": 40,
-        "material":"Quartz",
+        "rotationY": 45,
+        "airGapThickness": 0.,
+        "dielectricConstant": 5.5,
+        "material":"Sapphire",
         "azimuthalAngle": {"min":0, "max":360},
         "incidentAngle": {"min":0,"max":90},
-        "frequency": 470
+        "frequency": 525
         })
     
     return payload
@@ -50,33 +50,39 @@ def mock_dispersion_payload():
 
 def mock_dispersion_payload_full():
     payload = json.dumps({
-    "scenario": "Dispersion",
-    "layers": [
+    "ScenarioData": {
+        "type": "Dispersion",
+        "azimuthalAngle": {"min": 0, "max": 360},
+        "incidentAngle": {"min": 0, "max": 90},
+        "frequency": 496
+    },
+    "Layers": [
         {
             "type": "prism",
             "eps_prism": 5.5
         },
         {
             "type": "air_gap",
-            "thickness": 0.
+            "thickness": 1.5
         },
         {
             "type": "crystal_layer",
-            "thickness": 0.1,
-            "material": "Quartz",
+            "thickness": 1.,
+            "material": "Sapphire",
             "rotationX": 0,
-            "rotationY": 90,
-            "rotationZ": 0
+            "rotationY": 45,
+            "rotationZShift": 90,
+            "rotationZType": "static"
         },
         {
             "type": "semi_infinite_crystal",
             "material": "Quartz",
             "rotationX": 0,
-            "rotationY": 0,
-            "rotationZ": 0
+            "rotationY": 90,
+            "rotationZShift": 0,
+            "rotationZType": "relative"
         }
     ],
-    "azimuthalAngle": {"min": 0, "max": 360},
-    "incidentAngle": {"min": 0, "max": 90},
-    "frequency": 468
     })
+
+    return payload

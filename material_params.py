@@ -305,9 +305,9 @@ class Antiferromagnet(object):
 
 
 class AmbientIncidentMedium(object):
-    def __init__(self, permittivity, theta, run_on_device_decorator = run_on_device):
+    def __init__(self, permittivity, kx, run_on_device_decorator = run_on_device):
         self.permittivity = permittivity
-        self.theta = theta
+        self.theta = tf.cast(tf.math.asin(kx / (permittivity**0.5)), dtype= tf.float32)
         self.run_on_device = run_on_device_decorator
 
     @run_on_device
@@ -428,7 +428,7 @@ class Ambient_Exit_Medium(object):
 
 
 class Air(object):
-    def __init__(self, run_on_device_decorator):
+    def __init__(self, run_on_device_decorator = run_on_device):
         self.run_on_device = run_on_device_decorator
         pass
 
