@@ -4,51 +4,78 @@ import json
 
 def mock_incident_payload():
     payload = json.dumps({
-        "scenario":"Incident",
-        "rotationX":0,
-        "rotationY":90,
-        "airGapThickness":0,
-        "dielectricConstant":11.56,
-        "material":"Quartz",
-        "incidentAngle":{"min":-90,"max":90},
-        "azimuthalAngle":45
-        })
+        "ScenarioData": {
+        "type": "Incident",
+        "incidentAngle": {"min": -90, "max": 90},
+    },
+    "Layers": [
+        {
+            "type": "prism",
+            "eps_prism": 5.5
+        },
+        {
+            "type": "air_gap",
+            "thickness": 1.5
+        },
+        {
+            "type": "crystal_layer",
+            "thickness": 0.1,
+            "material": "Calcite",
+            "rotationX": 0,
+            "rotationY": 45,
+            "rotationZ": 0,
+        },
+        {
+            "type": "semi_infinite_crystal",
+            "material": "Quartz",
+            "rotationX": 0,
+            "rotationY": 0,
+            "rotationZ": 20,
+        }]
+    })
     
     return payload
 
 
 def mock_azimuthal_payload():
     payload = json.dumps({
-        "scenario":"Azimuthal",
-        "rotationX":"0",
-        "rotationY": 90,
-        "airGapThickness":1.5,
-        "dielectricConstant": 5.5,
-        "material":"Quartz",
-        "azimuthalAngle":{"min":0,"max":360},
-        "incidentAngle":"45"
-        })
+        "ScenarioData": {
+        "type": "Azimuthal",
+        "azimuthalAngle": {"min": 0, "max": 360},
+        "incidentAngle": 45,
+    },
+    "Layers": [
+        {
+            "type": "prism",
+            "eps_prism": 5.5
+        },
+        {
+            "type": "air_gap",
+            "thickness": 0.
+        },
+        {
+            "type": "crystal_layer",
+            "thickness": 1.,
+            "material": "Sapphire",
+            "rotationX": 0,
+            "rotationY": 45,
+            "rotationZ": 90,
+            "rotationZType": "relative"
+        },
+        {
+            "type": "semi_infinite_crystal",
+            "material": "Quartz",
+            "rotationX": 0,
+            "rotationY": 90,
+            "rotationZ": 45,
+            "rotationZType": "relative"
+        }]
+    })
     
     return payload
 
 
 def mock_dispersion_payload():
-    payload = json.dumps({
-        "scenario":"Dispersion",
-        "rotationX": 0,
-        "rotationY": 45,
-        "airGapThickness": 0.,
-        "dielectricConstant": 5.5,
-        "material":"Sapphire",
-        "azimuthalAngle": {"min":0, "max":360},
-        "incidentAngle": {"min":0,"max":90},
-        "frequency": 525
-        })
-    
-    return payload
-
-
-def mock_dispersion_payload_full():
     payload = json.dumps({
     "ScenarioData": {
         "type": "Dispersion",
@@ -71,7 +98,7 @@ def mock_dispersion_payload_full():
             "material": "Sapphire",
             "rotationX": 0,
             "rotationY": 45,
-            "rotationZShift": 90,
+            "rotationZ": 90,
             "rotationZType": "static"
         },
         {
@@ -79,7 +106,7 @@ def mock_dispersion_payload_full():
             "material": "Quartz",
             "rotationX": 0,
             "rotationY": 90,
-            "rotationZShift": 0,
+            "rotationZ": 0,
             "rotationZType": "relative"
         }
     ],

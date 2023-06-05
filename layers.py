@@ -5,11 +5,11 @@ import functools
 import operator
 
 from abc import abstractmethod, ABC
-from payloads import mock_dispersion_payload_full as mock_payload
-from material_params import (Air, AmbientIncidentMedium, CalciteUpper, Quartz, Sapphire, Ambient_Exit_Medium)
+from payloads import mock_azimuthal_payload, mock_incident_payload, mock_dispersion_payload
+from material_params import (Air, AmbientIncidentMedium, CalciteUpper, Quartz, Sapphire, CalciteLower, AmbientExitMedium)
 from berreman import transfer_matrix_wrapper, reflection_coefficients
 from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
-from plots import contour_plot_simple_dispersion
+from plots import contour_plot_simple_dispersion, contour_plot_simple_incidence, contour_plot_simple_azimuthal
 
 
 class ScenarioSetup(ABC):
@@ -17,7 +17,7 @@ class ScenarioSetup(ABC):
         self.type = data.get("type")
         self.incident_angle = data.get("incidentAngle")
         self.frequency = data.get("frequency", None)
-        self.azimuthal_angle = data.get("azimuthalAngle")
+        self.azimuthal_angle = data.get("azimuthalAngle", None)
         self.create_scenario()
         
 
@@ -32,7 +32,6 @@ class ScenarioSetup(ABC):
             raise NotImplementedError(f"Scenario type {self.type} not implemented")
     
     def create_incident_scenario(self):
-        self.azimuthal_angle = m.radians(float(self.azimuthal_angle))
         incident_min = m.radians(float(self.incident_angle.get("min")))
         incident_max = m.radians(float(self.incident_angle.get("max")))
         self.incident_angle = tf.linspace(
@@ -78,8 +77,8 @@ class Layer(ABC):
         self.material = data.get('material', None)
         self.rotationX = m.radians(float(data.get('rotationX', 0)))
         self.rotationY = m.radians(float(data.get('rotationY', 0)))
-        self.rotationZ = m.radians(float(data.get('rotationZShift', 0)))
-        self.rotationZ_type = data.get('rotationZType', None)
+        self.rotationZ = m.radians(float(data.get('rotationZ', 0)))
+        self.rotationZ_type = data.get('rotationZType', 'relative')
         self.kx = kx
         self.k0 = k0
         self.frequency = scenario.frequency
@@ -100,14 +99,19 @@ class Layer(ABC):
             self.material = Sapphire()
         elif self.material == 'Calcite':
             self.material = CalciteUpper()
+        elif self.material == "CalciteLower":
+            self.material == CalciteLower()
         else:
             raise NotImplementedError(f"Material {self.material} not implemented")
 
     def calculate_z_rotation(self):
-        if self.rotationZ_type == 'relative':
-            self.rotationZ = self.azimuthal_angle + self.rotationZ
-        elif self.rotationZ_type == 'static':
-            self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
+        if self.scenario == 'Dispersion' or self.scenario == "Azimuthal":
+            if self.rotationZ_type == 'relative':
+                self.rotationZ = self.azimuthal_angle + self.rotationZ
+            elif self.rotationZ_type == 'static':
+                self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
+        elif self.scenario == 'Incident':
+            pass
     
     def calculate_eps_tensor(self):
         self.material_factory()
@@ -168,9 +172,9 @@ class AirGapLayer(Layer):
             self.kx,
             self.non_magnetic_tensor,
             self.non_magnetic_tensor,
-            self.k0,
+            self.mode,
+            k0 = self.k0,
             thickness=self.thickness,
-            mode = self.mode
         )
     
     def reshape_for_multiplication(self):
@@ -190,21 +194,21 @@ class CrystalLayer(Layer):
 
     def calculate_mode(self):
         if self.scenario == 'Incident':
-            self.mode = 'single_rotation'
+            self.mode = 'incidence'
         elif self.scenario == 'Azimuthal':
-            self.mode = 'simple_azimuthal'
+            self.mode = 'azimuthal'
         elif self.scenario == 'Dispersion':
-            self.mode = 'simple_dispersion'
+            self.mode = 'dispersion'
 
     def create(self):
         self.matrix = transfer_matrix_wrapper(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
+        self.mode,
         k0=self.k0,
         thickness=self.thickness,
         semi_infinite=False,
-        mode = self.mode
         )
 
 
@@ -220,29 +224,42 @@ class SemiInfiniteCrystalLayer(Layer):
 
     def calculate_mode(self):
         if self.scenario == 'Incident':
-            self.mode = 'single_rotation'
+            self.mode = 'incidence'
         elif self.scenario == 'Azimuthal':
-            self.mode = 'simple_azimuthal'
+            self.mode = 'azimuthal'
         elif self.scenario == 'Dispersion':
-            self.mode = 'simple_dispersion'
+            self.mode = 'dispersion'
 
     def create(self):
         self.matrix = transfer_matrix_wrapper(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
+        self.mode,
         semi_infinite=True,
-        mode = self.mode
         )
 
 class IsotropicSemiInfiniteLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
+        self.eps_incident = (tf.cast(kx, dtype=tf.float32)/ tf.sin(self.incident_angle))**2.
+        self.eps_exit = data.get('eps_exit', None)
+
+        if not self.eps_exit:
+            raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
+        
+        self.create()
 
     def create(self):
-        # Your implementation
-        pass
+        exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
+
+        if self.scenario == 'Incident':
+            self.matrix = exit_medium.construct_tensor()
+        elif self.scenario == 'Azimuthal':
+            self.matrix = exit_medium.construct_tensor()[tf.newaxis, tf.newaxis, ...]
+        elif self.scenario == 'Dispersion':
+            self.matrix = exit_medium.construct_tensor()[:, tf.newaxis, ...]
 
 
 class LayerFactory:
@@ -283,6 +300,18 @@ class Structure:
         self.frequency = self.scenario.frequency
 
 
+    def get_frequency_range(self, last_layer):
+
+        if last_layer["material"] == 'Quartz':
+            self.frequency = Quartz().frequency
+        elif last_layer["material"] == 'Sapphire':
+            self.frequency = Sapphire().frequency
+        elif last_layer["material"] == 'Calcite':
+            self.frequency = CalciteUpper().frequency
+        else:
+            raise NotImplementedError(f"Frequency for {self.material} not implemented")
+
+
     def calculate_kx_k0(self):
         self.k_x = tf.cast(tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle), dtype=tf.complex64)
         self.k_0 = self.frequency * 2.0 * m.pi
@@ -291,6 +320,12 @@ class Structure:
     def get_layers(self, layer_data_list):
         ## First Layer is prism, so we parse it
         self.eps_prism = layer_data_list[0].get('eps_prism', None)
+        if not self.frequency:
+            last_layer = layer_data_list[-1]
+            if last_layer.get('type') != 'isotropic_semi_infinite':
+                self.get_frequency_range(last_layer)
+            else:
+                self.get_frequency_range(layer_data_list[-2])
         self.calculate_kx_k0()
         
         ## Create prism layer and add it to layers list
@@ -319,12 +354,23 @@ class Structure:
         self.r_ss = (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
     
     def plot_reflectivity(self):
-        contour_plot_simple_dispersion(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
+        if self.scenario.type == 'Dispersion':
+            contour_plot_simple_dispersion(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
                                        self.incident_angle, self.azimuthal_angle)
+        if self.scenario.type == 'Incident':
+            contour_plot_simple_incidence(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
+                                       self.incident_angle, self.frequency)
+        if self.scenario.type == 'Azimuthal':
+            contour_plot_simple_azimuthal(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
+                                       self.azimuthal_angle, self.frequency)
 
+def get_payload():
+    # return mock_azimuthal_payload()
+    return mock_dispersion_payload()
+    # return mock_incident_payload()
 
 def main():
-    payload = json.loads(mock_payload())
+    payload = json.loads(get_payload())
     scenario_data = payload.get("ScenarioData", None)
 
     structure = Structure()

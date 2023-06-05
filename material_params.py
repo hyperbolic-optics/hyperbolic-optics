@@ -375,7 +375,7 @@ class AmbientIncidentMedium(object):
         return 0.5 * tf.cast(matrix, dtype=tf.complex64)
 
 
-class Ambient_Exit_Medium(object):
+class AmbientExitMedium(object):
     def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator = run_on_device):
         self.theta_incident = incident_angle
         self.N_exit = tf.sqrt(permittivity_exit)
