@@ -10,29 +10,31 @@ def mock_incident_payload():
     },
     "Layers": [
         {
-            "type": "prism",
-            "eps_prism": 5.5
+            "type": "Ambient Incident Layer",
+            "permittivity": 5.5,
         },
         {
-            "type": "air_gap",
-            "thickness": 1.5
+            "type": "Isotropic Middle-Stack Layer",
+            "permittivity": 1,
+            "thickness": 1,
         },
         {
-            "type": "crystal_layer",
-            "thickness": 0.1,
-            "material": "Calcite",
-            "rotationX": 0,
-            "rotationY": 45,
-            "rotationZ": 0,
-        },
-        {
-            "type": "semi_infinite_crystal",
+            "type": "Crystal Layer",
+            "thickness": 1,
             "material": "Quartz",
             "rotationX": 0,
             "rotationY": 0,
-            "rotationZ": 20,
-        }]
-    })
+            "rotationZ": 0
+        },
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Quartz",
+            "rotationX": 162,
+            "rotationY": 165,
+            "rotationZ": 194
+        }
+    ]
+})
     
     return payload
 
@@ -46,24 +48,24 @@ def mock_azimuthal_payload():
     },
     "Layers": [
         {
-            "type": "prism",
-            "eps_prism": 5.5
+            "type": "Ambient Incident Layer",
+            "permittivity": 5.5
         },
         {
-            "type": "air_gap",
+            "type": "Isotropic Middle-Stack Layer",
             "thickness": 0.
         },
         {
-            "type": "crystal_layer",
+            "type": "Crystal Layer",
             "thickness": 1.,
             "material": "Sapphire",
             "rotationX": 0,
             "rotationY": 45,
             "rotationZ": 90,
-            "rotationZType": "relative"
+            "rotationZType": "static"
         },
         {
-            "type": "semi_infinite_crystal",
+            "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
             "rotationY": 90,
@@ -85,15 +87,15 @@ def mock_dispersion_payload():
     },
     "Layers": [
         {
-            "type": "prism",
-            "eps_prism": 5.5
+            "type": "Ambient Incident Layer",
+            "permittivity": 5.5
         },
         {
-            "type": "air_gap",
+            "type": "Isotropic Middle-Stack Layer",
             "thickness": 1.5
         },
         {
-            "type": "crystal_layer",
+            "type": "Crystal Layer",
             "thickness": 1.,
             "material": "Sapphire",
             "rotationX": 0,
@@ -102,7 +104,7 @@ def mock_dispersion_payload():
             "rotationZType": "static"
         },
         {
-            "type": "semi_infinite_crystal",
+            "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
             "rotationY": 90,

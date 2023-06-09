@@ -137,7 +137,7 @@ class PrismLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.eps_prism = data.get('eps_prism', None)
+        self.eps_prism = float(data.get('permittivity', None))
         self.create()
             
     def create(self):
@@ -155,6 +155,8 @@ class AirGapLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
+        self.permittivity = data.get('permittivity', 1.0)
+        self.non_magnetic_tensor = self.non_magnetic_tensor * self.permittivity
         self.calculate_mode()
         self.create()
         self.reshape_for_multiplication()
@@ -244,7 +246,7 @@ class IsotropicSemiInfiniteLayer(Layer):
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
         self.eps_incident = (tf.cast(kx, dtype=tf.float32)/ tf.sin(self.incident_angle))**2.
-        self.eps_exit = data.get('eps_exit', None)
+        self.eps_exit = data.get('permittivity', None)
 
         if not self.eps_exit:
             raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
@@ -265,11 +267,11 @@ class IsotropicSemiInfiniteLayer(Layer):
 class LayerFactory:
     def __init__(self):
         self.layer_classes = {
-            "prism": PrismLayer,
-            "air_gap": AirGapLayer,
-            "crystal_layer": CrystalLayer,
-            "semi_infinite_crystal": SemiInfiniteCrystalLayer,
-            "isotropic_semi_infinite" : IsotropicSemiInfiniteLayer,
+            "Ambient Incident Layer": PrismLayer,
+            "Isotropic Middle-Stack Layer": AirGapLayer,
+            "Crystal Layer": CrystalLayer,
+            "Semi Infinite Anisotropic Layer": SemiInfiniteCrystalLayer,
+            "Semi Infinite Isotropic Layer" : IsotropicSemiInfiniteLayer,
         }
 
     def create_layer(self, layer_data, scenario, kx, k0):
@@ -313,16 +315,16 @@ class Structure:
 
 
     def calculate_kx_k0(self):
-        self.k_x = tf.cast(tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle), dtype=tf.complex64)
+        self.k_x = tf.cast(tf.sqrt(float(self.eps_prism)) * tf.sin(self.incident_angle), dtype=tf.complex64)
         self.k_0 = self.frequency * 2.0 * m.pi
 
 
     def get_layers(self, layer_data_list):
         ## First Layer is prism, so we parse it
-        self.eps_prism = layer_data_list[0].get('eps_prism', None)
+        self.eps_prism = layer_data_list[0].get('permittivity', None)
         if not self.frequency:
             last_layer = layer_data_list[-1]
-            if last_layer.get('type') != 'isotropic_semi_infinite':
+            if last_layer.get('type') != 'Semi Infinite Isotropic Layer':
                 self.get_frequency_range(last_layer)
             else:
                 self.get_frequency_range(layer_data_list[-2])
@@ -352,33 +354,9 @@ class Structure:
         self.r_ps = (self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 1, 2] - (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 0, 2])) / bottom_line
         self.r_sp = (self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 3, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
         self.r_ss = (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
-    
-    def plot_reflectivity(self):
-        if self.scenario.type == 'Dispersion':
-            contour_plot_simple_dispersion(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
-                                       self.incident_angle, self.azimuthal_angle)
-        if self.scenario.type == 'Incident':
-            contour_plot_simple_incidence(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
-                                       self.incident_angle, self.frequency)
-        if self.scenario.type == 'Azimuthal':
-            contour_plot_simple_azimuthal(self.r_pp, self.r_ps, self.r_sp, self.r_ss, 
-                                       self.azimuthal_angle, self.frequency)
 
-def get_payload():
-    # return mock_azimuthal_payload()
-    return mock_dispersion_payload()
-    # return mock_incident_payload()
-
-def main():
-    payload = json.loads(get_payload())
-    scenario_data = payload.get("ScenarioData", None)
-
-    structure = Structure()
-    structure.get_scenario(scenario_data)
-    structure.get_layers(payload.get("Layers", None))
-    structure.calculate()
-    structure.calculate_reflectivity()
-    structure.plot_reflectivity()
-    
-
-main()
+    def execute(self, payload):
+        self.get_scenario(payload.get("ScenarioData"))
+        self.get_layers(payload.get("Layers", None))
+        self.calculate()
+        self.calculate_reflectivity()
