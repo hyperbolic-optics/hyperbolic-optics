@@ -246,7 +246,7 @@ class IsotropicSemiInfiniteLayer(Layer):
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
         self.eps_incident = (tf.cast(kx, dtype=tf.float32)/ tf.sin(self.incident_angle))**2.
-        self.eps_exit = data.get('permittivity', None)
+        self.eps_exit = float(data.get('permittivity', None))
 
         if not self.eps_exit:
             raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
