@@ -37,7 +37,7 @@ class ScenarioSetup(ABC):
         self.incident_angle = tf.linspace(
             tf.constant(incident_min, dtype=tf.float32),
             tf.constant(incident_max, dtype=tf.float32),
-            abs(int(m.degrees(incident_max - incident_min)//2))
+            abs(int(m.degrees(incident_max - incident_min)))
             )
     
     def create_azimuthal_scenario(self):
