@@ -2,20 +2,6 @@ import tensorflow as tf
 from device_config import run_on_device
 
 
-def reflection_coefficients(T):
-    """
-    T: tensor of shape (..., 4, 4) with berreman matrix
-    Computes reflection coefficients for p and s polarizations.
-    """
-    bottom_line = T[..., 0, 0] * T[..., 2, 2] - T[..., 0, 2] * T[..., 2, 0]
-    r_pp = (T[..., 0, 0] * T[..., 3, 2] - T[..., 3, 0] * T[..., 0, 2]) / bottom_line
-    r_ps = (T[..., 0, 0] * T[..., 1, 2] - (T[..., 1, 0] * T[..., 0, 2])) / bottom_line
-    r_sp = (T[..., 3, 0] * T[..., 2, 2] - T[..., 3, 2] * T[..., 2, 0]) / bottom_line
-    r_ss = (T[..., 1, 0] * T[..., 2, 2] - T[..., 1, 2] * T[..., 2, 0]) / bottom_line
-
-    return tf.stack([r_pp, r_ps, r_sp, r_ss])
-
-
 def _modify_eigenvalues_eigenvectors(eigenvalues, eigenvectors, semi_infinite=False):
 
     col1 = eigenvectors[..., 0]

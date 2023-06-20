@@ -1,3 +1,15 @@
+"""
+Material Parameters
+
+Used to define the given materials in our setup.
+This includes permittivity and permeability tensors, recommended frequencies,
+parameters, etc.
+
+Includes ambient incident and exit mediums.
+
+Future plan is to integrate this better with Layers.py, to separate the parameters.
+"""
+
 import tensorflow as tf
 from scipy import constants
 
@@ -5,29 +17,37 @@ from device_config import run_on_device
 
 
 class AnisotropicMaterial(object):
+    """
+    Abstract class for anisotropic materials, such as Quartz, Sapphire, Calcite.
+    Includes functions to calculate permittivity tensor components.
+    Assumes these materials are not magnetic.
+    """
     def __init__(self, frequency_length = 300, run_on_device_decorator = run_on_device):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
 
 
     @run_on_device
-    def permittivity_calc_for_freq(self, frequency, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
+    def permittivity_calc_for_freq(self, frequency, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
+        """
+        Calculates the permittivity for a given frequency, using the parameters.
+        """
         frequency = tf.expand_dims(tf.constant([frequency], dtype=tf.complex64), 0)
-        omega_Ln_expanded = tf.expand_dims(omega_Ln, 1)
-        gamma_Ln_expanded = tf.expand_dims(gamma_Ln, 1)
-        omega_Tn_expanded = tf.expand_dims(omega_Tn, 1)
-        gamma_Tn_expanded = tf.expand_dims(gamma_Tn, 1)
+        omega_ln_expanded = tf.expand_dims(omega_ln, 1)
+        gamma_ln_expanded = tf.expand_dims(gamma_ln, 1)
+        omega_tn_expanded = tf.expand_dims(omega_tn, 1)
+        gamma_tn_expanded = tf.expand_dims(gamma_tn, 1)
         complex_one_j = tf.constant(1j, dtype=tf.complex64)
 
         top_line = (
-            omega_Ln_expanded**2.0
+            omega_ln_expanded**2.0
             - frequency**2.0    
-            - complex_one_j * frequency * gamma_Ln_expanded
+            - complex_one_j * frequency * gamma_ln_expanded
         )
         bottom_line = (
-            omega_Tn_expanded**2.0
+            omega_tn_expanded**2.0
             - frequency**2.0
-            - complex_one_j * frequency * gamma_Tn_expanded
+            - complex_one_j * frequency * gamma_tn_expanded
         )
         result = top_line / bottom_line
 
@@ -48,23 +68,23 @@ class AnisotropicMaterial(object):
 
 
     @run_on_device
-    def permittivity_calc(self, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
+    def permittivity_calc(self, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
         frequency = tf.expand_dims(self.frequency, 0)
-        omega_Ln_expanded = tf.expand_dims(omega_Ln, 1)
-        gamma_Ln_expanded = tf.expand_dims(gamma_Ln, 1)
-        omega_Tn_expanded = tf.expand_dims(omega_Tn, 1)
-        gamma_Tn_expanded = tf.expand_dims(gamma_Tn, 1)
+        omega_ln_expanded = tf.expand_dims(omega_ln, 1)
+        gamma_ln_expanded = tf.expand_dims(gamma_ln, 1)
+        omega_tn_expanded = tf.expand_dims(omega_tn, 1)
+        gamma_tn_expanded = tf.expand_dims(gamma_tn, 1)
         complex_one_j = tf.constant(1j, dtype=tf.complex64)
 
         top_line = (
-            omega_Ln_expanded**2.0
+            omega_ln_expanded**2.0
             - frequency**2.0    
-            - complex_one_j * frequency * gamma_Ln_expanded
+            - complex_one_j * frequency * gamma_ln_expanded
         )
         bottom_line = (
-            omega_Tn_expanded**2.0
+            omega_tn_expanded**2.0
             - frequency**2.0
-            - complex_one_j * frequency * gamma_Tn_expanded
+            - complex_one_j * frequency * gamma_tn_expanded
         )
         result = top_line / bottom_line
 
@@ -102,29 +122,29 @@ class Quartz(AnisotropicMaterial):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.356, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant(
+                "gamma_tn": tf.constant(
                     [2.1, 4.5, 13.0, 6.9, 7.2, 9.3], dtype=tf.complex64
                 ),
-                "omega_Ln": tf.constant(
+                "omega_ln": tf.constant(
                     [403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant(
+                "gamma_ln": tf.constant(
                     [2.8, 3.5, 13.0, 6.9, 12.5, 9.3], dtype=tf.complex64
                 ),
             },
             "extraordinary": {
                 "high_freq": tf.constant(2.383, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [363.5, 487.5, 777.0, 1071.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant([4.8, 4.0, 6.7, 6.8], dtype=tf.complex64),
-                "omega_Ln": tf.constant(
+                "gamma_tn": tf.constant([4.8, 4.0, 6.7, 6.8], dtype=tf.complex64),
+                "omega_ln": tf.constant(
                     [386.7, 550.0, 790.0, 1229.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant([7.0, 3.2, 6.7, 12.0], dtype=tf.complex64),
+                "gamma_ln": tf.constant([7.0, 3.2, 6.7, 12.0], dtype=tf.complex64),
             },
         }
 
@@ -141,25 +161,25 @@ class Calcite(AnisotropicMaterial):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.7, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [712, 1407.0, 297.0, 223.0, 102.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant(
+                "gamma_tn": tf.constant(
                     [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
                 ),
-                "omega_Ln": tf.constant(
+                "omega_ln": tf.constant(
                     [715, 1549.0, 381.0, 239.0, 123.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant(
+                "gamma_ln": tf.constant(
                     [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
                 ),
             },
             "extraordinary": {
                 "high_freq": tf.constant(2.4, dtype=tf.complex64),
-                "omega_Tn": tf.constant([872.0, 303.0, 92.0], dtype=tf.complex64),
-                "gamma_Tn": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
-                "omega_Ln": tf.constant([890.0, 387.0, 136.0], dtype=tf.complex64),
-                "gamma_Ln": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
+                "omega_tn": tf.constant([872.0, 303.0, 92.0], dtype=tf.complex64),
+                "gamma_tn": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
+                "omega_ln": tf.constant([890.0, 387.0, 136.0], dtype=tf.complex64),
+                "gamma_ln": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
             },
         }
 
@@ -197,21 +217,21 @@ class Sapphire(AnisotropicMaterial):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(3.077, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [384.99, 439.1, 569.0, 633.63], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant([3.3, 3.1, 4.7, 5.0], dtype=tf.complex64),
-                "omega_Ln": tf.constant(
+                "gamma_tn": tf.constant([3.3, 3.1, 4.7, 5.0], dtype=tf.complex64),
+                "omega_ln": tf.constant(
                     [387.60, 481.68, 629.50, 906.6], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant([3.1, 1.9, 5.9, 14.7], dtype=tf.complex64),
+                "gamma_ln": tf.constant([3.1, 1.9, 5.9, 14.7], dtype=tf.complex64),
             },
             "extraordinary": {
                 "high_freq": tf.constant(3.072, dtype=tf.complex64),
-                "omega_Tn": tf.constant([397.52, 582.41], dtype=tf.complex64),
-                "gamma_Tn": tf.constant([5.3, 3.0], dtype=tf.complex64),
-                "omega_Ln": tf.constant([510.87, 881.1], dtype=tf.complex64),
-                "gamma_Ln": tf.constant([1.1, 15.4], dtype=tf.complex64),
+                "omega_tn": tf.constant([397.52, 582.41], dtype=tf.complex64),
+                "gamma_tn": tf.constant([5.3, 3.0], dtype=tf.complex64),
+                "omega_ln": tf.constant([510.87, 881.1], dtype=tf.complex64),
+                "gamma_ln": tf.constant([1.1, 15.4], dtype=tf.complex64),
             },
         }
         return parameters

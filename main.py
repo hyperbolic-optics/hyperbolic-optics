@@ -4,12 +4,13 @@ from flask_cors import CORS
 import os
 import numpy as np
 from flask_compress import Compress
+from structure import Structure
 
 app = Flask(__name__)
 CORS(app)
 Compress(app)
 
-from layers import Structure
+
 
 class NumpyEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types """
