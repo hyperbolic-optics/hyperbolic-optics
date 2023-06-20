@@ -23,6 +23,7 @@ class ScenarioSetup(ABC):
         self.azimuthal_angle = data.get("azimuthalAngle", None)
         self.create_scenario()
 
+
     def create_scenario(self):
         """
         Creates the scenario based on the type
@@ -36,6 +37,7 @@ class ScenarioSetup(ABC):
         else:
             raise NotImplementedError(f"Scenario type {self.type} not implemented")
 
+
     def create_incident_scenario(self):
         """
         Creates the incident scenario
@@ -47,6 +49,7 @@ class ScenarioSetup(ABC):
             tf.constant(incident_max, dtype=tf.float32),
             abs(int(m.degrees(incident_max - incident_min)))
             )
+
 
     def create_azimuthal_scenario(self):
         """
@@ -60,6 +63,7 @@ class ScenarioSetup(ABC):
             tf.constant(z_max, dtype=tf.float32),
             abs(int(m.degrees(z_max - z_min)//2))
             )
+
 
     def create_dispersion_scenario(self):
         """
