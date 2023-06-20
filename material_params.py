@@ -1,3 +1,15 @@
+"""
+Material Parameters
+
+Used to define the given materials in our setup.
+This includes permittivity and permeability tensors, recommended frequencies,
+parameters, etc.
+
+Includes ambient incident and exit mediums.
+
+Future plan is to integrate this better with Layers.py, to separate the parameters.
+"""
+
 import tensorflow as tf
 from scipy import constants
 
@@ -5,28 +17,74 @@ from device_config import run_on_device
 
 
 class AnisotropicMaterial(object):
-    def __init__(self, frequency_length, run_on_device_decorator):
+    """
+    Abstract class for anisotropic materials, such as Quartz, Sapphire, Calcite.
+    Includes functions to calculate permittivity tensor components.
+    Assumes these materials are not magnetic.
+    """
+    def __init__(self, frequency_length = 300, run_on_device_decorator = run_on_device):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
 
+
     @run_on_device
-    def permittivity_calc(self, high_freq, omega_Tn, gamma_Tn, omega_Ln, gamma_Ln):
-        frequency = tf.expand_dims(self.frequency, 0)
-        omega_Ln_expanded = tf.expand_dims(omega_Ln, 1)
-        gamma_Ln_expanded = tf.expand_dims(gamma_Ln, 1)
-        omega_Tn_expanded = tf.expand_dims(omega_Tn, 1)
-        gamma_Tn_expanded = tf.expand_dims(gamma_Tn, 1)
+    def permittivity_calc_for_freq(self, frequency, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
+        """
+        Calculates the permittivity for a given frequency, using the parameters.
+        """
+        frequency = tf.expand_dims(tf.constant([frequency], dtype=tf.complex64), 0)
+        omega_ln_expanded = tf.expand_dims(omega_ln, 1)
+        gamma_ln_expanded = tf.expand_dims(gamma_ln, 1)
+        omega_tn_expanded = tf.expand_dims(omega_tn, 1)
+        gamma_tn_expanded = tf.expand_dims(gamma_tn, 1)
         complex_one_j = tf.constant(1j, dtype=tf.complex64)
 
         top_line = (
-            omega_Ln_expanded**2.0
-            - frequency**2.0
-            - complex_one_j * frequency * gamma_Ln_expanded
+            omega_ln_expanded**2.0
+            - frequency**2.0    
+            - complex_one_j * frequency * gamma_ln_expanded
         )
         bottom_line = (
-            omega_Tn_expanded**2.0
+            omega_tn_expanded**2.0
             - frequency**2.0
-            - complex_one_j * frequency * gamma_Tn_expanded
+            - complex_one_j * frequency * gamma_tn_expanded
+        )
+        result = top_line / bottom_line
+
+        return (high_freq * tf.reduce_prod(result, axis=0))[0]
+
+
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        params = self.permittivity_parameters()
+
+        eps_ext = self.permittivity_calc_for_freq(requested_frequency, **params["extraordinary"])
+        eps_ord = self.permittivity_calc_for_freq(requested_frequency, **params["ordinary"])
+
+        diag_tensors = tf.stack([eps_ord, eps_ord, eps_ext], axis=0)
+        eps_tensor = tf.linalg.diag(diag_tensors)
+
+        return eps_tensor    
+
+
+    @run_on_device
+    def permittivity_calc(self, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
+        frequency = tf.expand_dims(self.frequency, 0)
+        omega_ln_expanded = tf.expand_dims(omega_ln, 1)
+        gamma_ln_expanded = tf.expand_dims(gamma_ln, 1)
+        omega_tn_expanded = tf.expand_dims(omega_tn, 1)
+        gamma_tn_expanded = tf.expand_dims(gamma_tn, 1)
+        complex_one_j = tf.constant(1j, dtype=tf.complex64)
+
+        top_line = (
+            omega_ln_expanded**2.0
+            - frequency**2.0    
+            - complex_one_j * frequency * gamma_ln_expanded
+        )
+        bottom_line = (
+            omega_tn_expanded**2.0
+            - frequency**2.0
+            - complex_one_j * frequency * gamma_tn_expanded
         )
         result = top_line / bottom_line
 
@@ -52,11 +110,11 @@ class AnisotropicMaterial(object):
 
 
 class Quartz(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+        super().__init__()
         self.name = "Quartz"
         self.frequency = tf.cast(
-            tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
     @run_on_device
@@ -64,29 +122,29 @@ class Quartz(AnisotropicMaterial):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.356, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant(
+                "gamma_tn": tf.constant(
                     [2.1, 4.5, 13.0, 6.9, 7.2, 9.3], dtype=tf.complex64
                 ),
-                "omega_Ln": tf.constant(
+                "omega_ln": tf.constant(
                     [403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant(
+                "gamma_ln": tf.constant(
                     [2.8, 3.5, 13.0, 6.9, 12.5, 9.3], dtype=tf.complex64
                 ),
             },
             "extraordinary": {
                 "high_freq": tf.constant(2.383, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [363.5, 487.5, 777.0, 1071.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant([4.8, 4.0, 6.7, 6.8], dtype=tf.complex64),
-                "omega_Ln": tf.constant(
+                "gamma_tn": tf.constant([4.8, 4.0, 6.7, 6.8], dtype=tf.complex64),
+                "omega_ln": tf.constant(
                     [386.7, 550.0, 790.0, 1229.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant([7.0, 3.2, 6.7, 12.0], dtype=tf.complex64),
+                "gamma_ln": tf.constant([7.0, 3.2, 6.7, 12.0], dtype=tf.complex64),
             },
         }
 
@@ -94,33 +152,34 @@ class Quartz(AnisotropicMaterial):
 
 
 class Calcite(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+
+    def __init__(self):
+        super().__init__()
 
     @run_on_device
     def permittivity_parameters(self):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.7, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [712, 1407.0, 297.0, 223.0, 102.0], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant(
+                "gamma_tn": tf.constant(
                     [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
                 ),
-                "omega_Ln": tf.constant(
+                "omega_ln": tf.constant(
                     [715, 1549.0, 381.0, 239.0, 123.0], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant(
+                "gamma_ln": tf.constant(
                     [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
                 ),
             },
             "extraordinary": {
                 "high_freq": tf.constant(2.4, dtype=tf.complex64),
-                "omega_Tn": tf.constant([872.0, 303.0, 92.0], dtype=tf.complex64),
-                "gamma_Tn": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
-                "omega_Ln": tf.constant([890.0, 387.0, 136.0], dtype=tf.complex64),
-                "gamma_Ln": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
+                "omega_tn": tf.constant([872.0, 303.0, 92.0], dtype=tf.complex64),
+                "gamma_tn": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
+                "omega_ln": tf.constant([890.0, 387.0, 136.0], dtype=tf.complex64),
+                "gamma_ln": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
             },
         }
 
@@ -128,29 +187,29 @@ class Calcite(AnisotropicMaterial):
 
 
 class CalciteLower(Calcite):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 820.0, freq_max = 970.0):
+        super().__init__()
         self.name = "Calcite-Lower"
         self.frequency = tf.cast(
-            tf.linspace(820.0, 970.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 1300.0, freq_max = 1800.0):
+        super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
-            tf.linspace(1300.0, 1800.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
 
 class Sapphire(AnisotropicMaterial):
-    def __init__(self, frequency_length, run_on_device_decorator):
-        super().__init__(frequency_length, run_on_device_decorator)
+    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+        super().__init__()
         self.name = "Sapphire"
         self.frequency = tf.cast(
-            tf.linspace(410.0, 600.0, self.frequency_length), dtype=tf.complex64
+            tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex64
         )
 
     @run_on_device
@@ -158,21 +217,21 @@ class Sapphire(AnisotropicMaterial):
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(3.077, dtype=tf.complex64),
-                "omega_Tn": tf.constant(
+                "omega_tn": tf.constant(
                     [384.99, 439.1, 569.0, 633.63], dtype=tf.complex64
                 ),
-                "gamma_Tn": tf.constant([3.3, 3.1, 4.7, 5.0], dtype=tf.complex64),
-                "omega_Ln": tf.constant(
+                "gamma_tn": tf.constant([3.3, 3.1, 4.7, 5.0], dtype=tf.complex64),
+                "omega_ln": tf.constant(
                     [387.60, 481.68, 629.50, 906.6], dtype=tf.complex64
                 ),
-                "gamma_Ln": tf.constant([3.1, 1.9, 5.9, 14.7], dtype=tf.complex64),
+                "gamma_ln": tf.constant([3.1, 1.9, 5.9, 14.7], dtype=tf.complex64),
             },
             "extraordinary": {
                 "high_freq": tf.constant(3.072, dtype=tf.complex64),
-                "omega_Tn": tf.constant([397.52, 582.41], dtype=tf.complex64),
-                "gamma_Tn": tf.constant([5.3, 3.0], dtype=tf.complex64),
-                "omega_Ln": tf.constant([510.87, 881.1], dtype=tf.complex64),
-                "gamma_Ln": tf.constant([1.1, 15.4], dtype=tf.complex64),
+                "omega_tn": tf.constant([397.52, 582.41], dtype=tf.complex64),
+                "gamma_tn": tf.constant([5.3, 3.0], dtype=tf.complex64),
+                "omega_ln": tf.constant([510.87, 881.1], dtype=tf.complex64),
+                "gamma_ln": tf.constant([1.1, 15.4], dtype=tf.complex64),
             },
         }
         return parameters
@@ -265,10 +324,10 @@ class Antiferromagnet(object):
         return permeability_tensor, permittivity_tensor
 
 
-class Ambient_Incident_Prism(object):
-    def __init__(self, permittivity, theta, run_on_device_decorator):
+class AmbientIncidentMedium(object):
+    def __init__(self, permittivity, kx, run_on_device_decorator = run_on_device):
         self.permittivity = permittivity
-        self.theta = theta
+        self.theta = tf.cast(tf.math.asin(kx / (permittivity**0.5)), dtype= tf.float32)
         self.run_on_device = run_on_device_decorator
 
     @run_on_device
@@ -336,12 +395,12 @@ class Ambient_Incident_Prism(object):
         return 0.5 * tf.cast(matrix, dtype=tf.complex64)
 
 
-class Ambient_Exit_Medium(object):
-    def __init__(self, incident_prism, permittivity_exit):
-        self.theta_incident = incident_prism.theta
+class AmbientExitMedium(object):
+    def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator = run_on_device):
+        self.theta_incident = incident_angle
         self.N_exit = tf.sqrt(permittivity_exit)
-        self.N_incident = tf.sqrt(incident_prism.permittivity)
-        self.run_on_device = incident_prism.run_on_device
+        self.N_incident = tf.sqrt(permittivity_incident)
+        self.run_on_device = run_on_device_decorator
 
     @run_on_device
     def construct_tensor(self):
@@ -389,7 +448,7 @@ class Ambient_Exit_Medium(object):
 
 
 class Air(object):
-    def __init__(self, run_on_device_decorator):
+    def __init__(self, run_on_device_decorator = run_on_device):
         self.run_on_device = run_on_device_decorator
         pass
 

@@ -2,20 +2,6 @@ import tensorflow as tf
 from device_config import run_on_device
 
 
-def reflection_coefficients(T):
-    """
-    T: tensor of shape (..., 4, 4) with berreman matrix
-    Computes reflection coefficients for p and s polarizations.
-    """
-    bottom_line = T[..., 0, 0] * T[..., 2, 2] - T[..., 0, 2] * T[..., 2, 0]
-    r_pp = (T[..., 0, 0] * T[..., 3, 2] - T[..., 3, 0] * T[..., 0, 2]) / bottom_line
-    r_ps = (T[..., 0, 0] * T[..., 1, 2] - (T[..., 1, 0] * T[..., 0, 2])) / bottom_line
-    r_sp = (T[..., 3, 0] * T[..., 2, 2] - T[..., 3, 2] * T[..., 2, 0]) / bottom_line
-    r_ss = (T[..., 1, 0] * T[..., 2, 2] - T[..., 1, 2] * T[..., 2, 0]) / bottom_line
-
-    return tf.stack([r_pp, r_ps, r_sp, r_ss])
-
-
 def _modify_eigenvalues_eigenvectors(eigenvalues, eigenvectors, semi_infinite=False):
 
     col1 = eigenvectors[..., 0]
@@ -221,7 +207,142 @@ def berreman_air_gap(
 
 
 @run_on_device
-def berreman_single_rotation(
+def berreman_simple_air_gap(kx,
+    eps_tensor,
+    mu_tensor,
+    k0=None,
+    thickness=tf.constant(0.5e-4, dtype=tf.complex64),
+    semi_infinite=False,
+    magnet=False):
+    """
+    Function used to calculate transfer matrix for air gap at only one incident angle.
+    """
+    if tf.is_tensor(k0):
+        berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                    perm = [1, 0])
+        batch_size = 0
+    
+    
+    else:
+        berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                    perm = [1, 2, 0])
+        batch_size = 1
+
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
+
+    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
+        eigenvalues,
+        eigenvectors,
+        batch_dims=batch_size,
+        magnet=magnet,
+        semi_infinite=semi_infinite,
+    )
+
+    if semi_infinite:
+        return eigenvectors
+
+    else:
+        eigenvalues_diag = tf.linalg.diag(eigenvalues)
+
+        if tf.is_tensor(k0):
+            eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+            k0 = k0[:, tf.newaxis, tf.newaxis]
+            eigenvectors = eigenvectors[tf.newaxis, ...]
+
+        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
+        
+        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+
+        return transfer_matrix
+
+
+
+def berreman_azimuthal(kx,
+    eps_tensor,
+    mu_tensor,
+    k0,
+    thickness,
+    semi_infinite=True,
+    magnet=False):
+    """
+    Function used to calculate transfer matrix for azimuthal rotation at only one incident angle.
+    Includes a range of frequencies with permittivity and permeability tensors.
+    Should be semi-infinite.
+    """
+
+    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
+
+    berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                   perm=[1,2,3,0])
+
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
+
+    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
+        eigenvalues,
+        eigenvectors,
+        batch_dims=2,
+        magnet=False,
+        semi_infinite=semi_infinite,
+    )
+
+    if semi_infinite:
+        return eigenvectors
+
+    else:
+        eigenvalues_diag = tf.linalg.diag(eigenvalues)
+
+        if tf.is_tensor(k0):
+            k0 = k0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+
+        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
+        
+        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+
+        return transfer_matrix
+
+
+def berreman_dispersion(
+        kx,
+        eps_tensor,
+        mu_tensor,
+        k0,
+        thickness,
+        semi_infinite=True,
+        magnet=False
+        ):
+    
+    kx = kx[:, tf.newaxis]
+    eps_tensor = eps_tensor[tf.newaxis, ...]
+    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
+
+    berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
+                                   perm=[1,2,3,0])
+    
+    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
+
+    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
+        eigenvalues,
+        eigenvectors,
+        batch_dims=2,
+        magnet=False,
+        semi_infinite=semi_infinite,
+    )
+
+    if semi_infinite:
+        return eigenvectors
+
+    else:
+        eigenvalues_diag = tf.linalg.diag(eigenvalues)
+
+        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
+        
+        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+
+        return transfer_matrix
+    
+
+@run_on_device
+def berreman_incidence(
         kx,
         eps_tensor,
         mu_tensor,
@@ -265,102 +386,15 @@ def berreman_single_rotation(
 
 
 
-@run_on_device
-def berreman_all_anisotropy(
-    kx,
-    eps_tensor,
-    mu_tensor,
-    k0=None,
-    thickness=tf.constant(0.5e-4, dtype=tf.complex64),
-    semi_infinite=False,
-    magnet=False,
-):
-    """
-    Constructs the Berreman matrix for a range of kx values, for a range of frequencies and anisotropy rotations.
-    Axes of berreman_matrix after permutation:
-    0: kx
-    1: frequency
-    2: anisotropy rotation X
-    3: anisotropy rotation Y
-    4: anisotropy rotation Z
-    5 + 6: 4x4 berreman matrix
-    """
-
-    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis]
-    eps_tensor = eps_tensor[tf.newaxis, ...]
-    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
-
-    berreman_matrix = tf.transpose(
-        berreman_method_general(kx, eps_tensor, mu_tensor),
-        perm=[2, 1, 3, 4, 5, 6, 0],
-    )
-
-    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
-    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
-        eigenvalues, eigenvectors, magnet=magnet, semi_infinite=semi_infinite
-    )
-
-    del berreman_matrix
-
-    if semi_infinite:
-        return eigenvectors
-
-    else:
-        k0 = k0[
-            :, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis, tf.newaxis
-        ]
-        eigenvalues_diag = tf.linalg.diag(eigenvalues)
-
-        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k0 * thickness)
-        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
-
-        return transfer_matrix
-
-
-
-@run_on_device
-def berreman_dispersion(
-    kx,
-    eps_tensor,
-    mu_tensor,
-    k0=None,
-    thickness=tf.constant(0.5e-4, dtype=tf.complex64),
-    semi_infinite=False,
-    magnet=False,
-):
-    
-    kx = kx[:, tf.newaxis, tf.newaxis, tf.newaxis]
-    eps_tensor = eps_tensor[tf.newaxis, ...]
-    mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
-    
-    berreman_matrix = tf.transpose(berreman_method_general(kx, eps_tensor, mu_tensor),
-                                   perm = [4,1,5,0,2,3])
-    berreman_matrix = tf.squeeze(berreman_matrix, axis = [-1,-2])
-
-    eigenvalues, eigenvectors = tf.linalg.eig(berreman_matrix)
-
-    eigenvalues, eigenvectors = eigenvalue_vector_sorting(
-        eigenvalues,
-        eigenvectors,
-        batch_dims=2,
-        magnet=magnet,
-        semi_infinite=semi_infinite,
-    )
-
-    return eigenvalues
-
-
-
-
 def transfer_matrix_wrapper(
     kx,
     eps_tensor,
     mu_tensor,
+    mode,
     k0=None,
     thickness=None,
     semi_infinite=False,
     magnet=False,
-    mode="simple",
 ):
     if mode == "airgap":
         berreman_matrix_incidence = berreman_air_gap(
@@ -372,21 +406,9 @@ def transfer_matrix_wrapper(
             semi_infinite=semi_infinite,
         )
         return berreman_matrix_incidence
-
-    elif mode == "all_anisotropy":
-        berreman_matrix_all_anisotropy = berreman_all_anisotropy(
-            kx,
-            eps_tensor,
-            mu_tensor,
-            k0=k0,
-            thickness=thickness,
-            semi_infinite=semi_infinite,
-            magnet=magnet,
-        )
-        return berreman_matrix_all_anisotropy
     
-    elif mode == "single_rotation":
-        berreman_matrix_single_rotation = berreman_single_rotation(
+    elif mode == "incidence":
+        berreman_matrix_single_rotation = berreman_incidence(
             kx,
             eps_tensor,
             mu_tensor,
@@ -397,8 +419,9 @@ def transfer_matrix_wrapper(
         )
         return berreman_matrix_single_rotation
     
-    elif mode == "dispersion":
-        dispersion_values = berreman_dispersion(
+    elif mode == "simple_airgap":
+
+        airgapsimple = berreman_simple_air_gap(
             kx,
             eps_tensor,
             mu_tensor,
@@ -407,9 +430,33 @@ def transfer_matrix_wrapper(
             semi_infinite=semi_infinite,
             magnet=magnet,
         )
-        return dispersion_values
+        return airgapsimple
+    
+    elif mode == "azimuthal":
+        azimuthalsimple = berreman_azimuthal(
+            kx,
+            eps_tensor,
+            mu_tensor,
+            k0=k0,
+            thickness=thickness,
+            semi_infinite=semi_infinite,
+            magnet=magnet,
+        )
+        return azimuthalsimple
+    
+    elif mode == "dispersion":
+        dispersionsimple = berreman_dispersion(
+            kx,
+            eps_tensor,
+            mu_tensor,
+            k0=k0,
+            thickness=thickness,
+            semi_infinite=semi_infinite,
+            magnet=magnet,
+        )
+        return dispersionsimple
 
     else:
         raise ValueError(
-            "Invalid mode specified. Choose from 'airgap', 'all_anisotropy', or 'single_rotation'."
+            "Invalid mode specified for 4x4 Matrix."
         )
