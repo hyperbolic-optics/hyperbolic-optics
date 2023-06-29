@@ -69,8 +69,8 @@ def contour_plot_simple_incidence(structure):
                       structure.r_sp,
                       structure.r_ss]
 
-    # reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-    reflectivities = np.round(np.asarray(reflectivities).imag, 6)
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
     R_pp = reflectivities[0]
     R_ps = reflectivities[1]
     R_sp = reflectivities[2]
@@ -159,9 +159,9 @@ def contour_plot_simple_dispersion(structure):
     incident_angle = structure.incident_angle.numpy().real
     z_rotation = structure.azimuthal_angle.numpy().real
 
-    # reflectivities = np.round((reflectivities * np.conj(reflectivities)), 6).real
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)), 6).real
 
-    reflectivities = np.round(reflectivities.imag, 6)
+    # reflectivities = np.round(reflectivities.imag, 6)
 
     R_pp = reflectivities[0]
     R_ps = reflectivities[1]
@@ -177,7 +177,7 @@ def contour_plot_simple_dispersion(structure):
     )
 
     ax_to_plot = [
-        (R_pp, "$Im(R_{pp})$", 0, 0),
+        (R_pp, "$|R_{pp}|^2$", 0, 0),
         (R_ps, "$|R_{ps}|^2$", 0, 1),
         (R_pp_total, "$|R_{pp}|^2 + |R_{ps}|^2$", 0, 2),
         (R_sp, "$|R_{sp}|^2$", 1, 0),
@@ -188,8 +188,7 @@ def contour_plot_simple_dispersion(structure):
     colorbar_list = []
     for data, title, row, col in ax_to_plot:
         im = ax[row, col].pcolormesh(
-            z_rotation, incident_angle,  data, cmap="magma",
-            norm = color.PowerNorm(vmin=data.min(), vmax=data.max(), gamma = 1.5))
+            z_rotation, incident_angle,  data, cmap="magma")
         cbar = plt.colorbar(im, ax=ax[row, col])
         colorbar_list.append(cbar)
         # cbar.mappable.set_clim(
