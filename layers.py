@@ -144,7 +144,7 @@ class AirGapLayer(Layer):
             self.non_magnetic_tensor,
             self.non_magnetic_tensor,
             self.mode,
-            k0 = self.k0,
+            k_0 = self.k0,
             thickness=self.thickness,
         )
     
@@ -187,7 +187,7 @@ class CrystalLayer(Layer):
         self.eps_tensor,
         self.non_magnetic_tensor,
         self.mode,
-        k0=self.k0,
+        k_0=self.k0,
         thickness=self.thickness,
         semi_infinite=False,
         )
