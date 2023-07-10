@@ -93,3 +93,31 @@ def mock_dispersion_payload():
     })
 
     return payload
+
+
+
+def updating_payload(scenario, eps_prism, air_gap_thickness, rotationY, rotationZ):
+    payload = json.dumps({
+        "ScenarioData": {
+        "type": scenario,
+    },
+    "Layers": [
+        {
+            "type": "Ambient Incident Layer",
+            "permittivity": eps_prism
+        },
+        {
+            "type": "Isotropic Middle-Stack Layer",
+            "thickness": air_gap_thickness,
+            "permittivity": 1.
+        },
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Quartz",
+            "rotationX": 0,
+            "rotationY": rotationY,
+            "rotationZ": rotationZ,
+        }
+    ],
+    })
+    return payload
