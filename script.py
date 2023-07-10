@@ -14,7 +14,7 @@ def main():
     """
     Main function
     """
-    mode = 'incident'
+    mode = 'azimuthal'
     if mode == 'incident':
         payload = json.loads(mock_incident_payload())
     elif mode == 'azimuthal':

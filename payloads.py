@@ -96,10 +96,10 @@ def mock_dispersion_payload():
 
 
 
-def updating_payload(scenario, eps_prism, air_gap_thickness, rotationY, rotationZ):
+def updating_payload(scenario, eps_prism, air_gap_thickness, rotationY, rotationZ, incident_angle, frequency):
     payload = json.dumps({
         "ScenarioData": {
-        "type": scenario,
+        "type": scenario
     },
     "Layers": [
         {
