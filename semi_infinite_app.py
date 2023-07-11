@@ -10,45 +10,80 @@ import numpy as np
 
 tf.get_logger().setLevel("ERROR")
 
-def initial_data(axes):
-
-    payload = json.loads(updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475))
-    structure = Structure()
-    structure.execute(payload)
-
-    x_axis = np.round(np.degrees(structure.incident_angle), 1)
-    frequency = structure.frequency.numpy().real
-
-    reflectivities = [structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss]
-
-    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_p_total = R_pp + R_ps
-    R_s_total = R_ss + R_sp
-
-    ax_to_plot = [
-        (R_pp, "$|R_{pp}|^2$", axes[0]),
-        (R_ps, "$|R_{ps}|^2$", axes[1]),
-        (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
-        (R_sp, "$|R_{sp}|^2$", axes[3]),
-        (R_ss, "$|R_{ss}|^2$", axes[4]),
-        (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
-    ]
-
-    return x_axis, frequency, ax_to_plot
-
-
 
 def mock_interface():
+    def initial_data(axes):
+        payload = json.loads(
+            updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475)
+        )
+        structure = Structure()
+        structure.execute(payload)
+
+        x_axis = np.round(np.degrees(structure.incident_angle), 1)
+        frequency = structure.frequency.numpy().real
+
+        reflectivities = [
+            structure.r_pp,
+            structure.r_ps,
+            structure.r_sp,
+            structure.r_ss,
+        ]
+
+        reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+        R_pp = reflectivities[0]
+        R_ps = reflectivities[1]
+        R_sp = reflectivities[2]
+        R_ss = reflectivities[3]
+        R_p_total = R_pp + R_ps
+        R_s_total = R_ss + R_sp
+
+        ax_to_plot = [
+            (R_pp, "$|R_{pp}|^2$", axes[0]),
+            (R_ps, "$|R_{ps}|^2$", axes[1]),
+            (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+            (R_sp, "$|R_{sp}|^2$", axes[3]),
+            (R_ss, "$|R_{ss}|^2$", axes[4]),
+            (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+        ]
+
+        return x_axis, frequency, ax_to_plot
+
+    def scenario_handling(_):
+        scenario_type = scenario_radio_buttons.value_selected
+
+        if scenario_type == "Incident":
+            x_label = "Incident Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+
+            # Show rotation Z slider and hide incident angle slider
+            slider_incident_angle_ax.set_visible(False)
+            slider_z_ax.set_visible(True)
+
+        elif scenario_type == "Azimuthal":
+            x_label = "Azimuthal Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+
+            # Show incident angle slider and hide rotation Z slider
+            slider_incident_angle_ax.set_visible(True)
+            slider_z_ax.set_visible(False)
+            rotation_z_slider.set_val(0)
+
+        else:
+            x_label = "Azimuthal Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+
+        for axis in axes:
+            axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
+            axis.set_xlabel(x_label)
+            axis.set_ylabel(y_label)
+
     def update(_):
-        scenario_type = "Incident"
+        scenario_type = scenario_radio_buttons.value_selected
         eps_prism = eps_prism_slider.val
         air_gap_thickness = air_gap_thickness_slider.val
         rotation_y = rotation_y_slider.val
         rotation_z = rotation_z_slider.val
+        incident_angle = incident_angle_slider.val
 
         payload = json.loads(
             updating_payload(
@@ -57,15 +92,12 @@ def mock_interface():
                 air_gap_thickness,
                 rotation_y,
                 rotation_z,
-                np.pi / 4.0,
+                incident_angle,
                 475,
             )
         )
         structure = Structure()
         structure.execute(payload)
-
-        x_axis = np.round(np.degrees(structure.incident_angle), 1)
-        frequency = structure.frequency.numpy().real
 
         reflectivities = [
             structure.r_pp,
@@ -152,13 +184,19 @@ def mock_interface():
     slider_thickness_ax = plt.axes([0.28, 0.13, 0.5, 0.025])
     slider_eps_prism_ax = plt.axes([0.28, 0.09, 0.5, 0.025])
     slider_y_ax = plt.axes([0.28, 0.05, 0.5, 0.025])
-    slider_z_ax = plt.axes([0.28, 0.01, 0.5, 0.025])
 
     air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
     eps_prism_slider = Slider(
         slider_eps_prism_ax, f"$\epsilon_p$", 4.5, 6.5, valinit=5.5
     )
     rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
+
+    slider_incident_angle_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
+    incident_angle_slider = Slider(
+        slider_incident_angle_ax, "Incident Angle", 0, 90, valinit=0
+    )
+
+    slider_z_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=True)
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     ## Checkboxes and Save Button
@@ -189,6 +227,9 @@ def mock_interface():
     eps_prism_slider.on_changed(update)
     rotation_y_slider.on_changed(update)
     rotation_z_slider.on_changed(update)
+    incident_angle_slider.on_changed(update)
+
+    scenario_radio_buttons.on_clicked(scenario_handling)
 
     scenario_radio_buttons.on_clicked(update)
     plot_style_radio_buttons.on_clicked(update)
