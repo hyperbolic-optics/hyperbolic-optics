@@ -8,12 +8,10 @@ from matplotlib.gridspec import GridSpec
 import tensorflow as tf
 import numpy as np
 
-tf.get_logger().setLevel('ERROR')
-
+tf.get_logger().setLevel("ERROR")
 
 
 def mock_interface():
-
     def update(_):
         scenario_type = "Incident"
         eps_prism = eps_prism_slider.val
@@ -21,20 +19,30 @@ def mock_interface():
         rotation_y = rotation_y_slider.val
         rotation_z = rotation_z_slider.val
 
-        payload = json.loads(updating_payload(scenario_type, eps_prism, air_gap_thickness, rotation_y, rotation_z, np.pi/4., 475))
+        payload = json.loads(
+            updating_payload(
+                scenario_type,
+                eps_prism,
+                air_gap_thickness,
+                rotation_y,
+                rotation_z,
+                np.pi / 4.0,
+                475,
+            )
+        )
         structure = Structure()
         structure.execute(payload)
 
         x_axis = np.round(np.degrees(structure.incident_angle), 1)
         frequency = structure.frequency.numpy().real
-        
-        
-        reflectivities = [structure.r_pp,
-                        structure.r_ps,
-                        structure.r_sp,
-                        structure.r_ss]
-        
-        
+
+        reflectivities = [
+            structure.r_pp,
+            structure.r_ps,
+            structure.r_sp,
+            structure.r_ss,
+        ]
+
         reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
         # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
         R_pp = reflectivities[0]
@@ -45,15 +53,15 @@ def mock_interface():
         R_s_total = R_ss + R_sp
 
         ax_to_plot = [
-        (R_pp, "$|R_{pp}|^2$", axes[0]),
-        (R_ps, "$|R_{ps}|^2$", axes[1]),
-        (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
-        (R_sp, "$|R_{sp}|^2$", axes[3]),
-        (R_ss, "$|R_{ss}|^2$", axes[4]),
-        (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+            (R_pp, "$|R_{pp}|^2$", axes[0]),
+            (R_ps, "$|R_{ps}|^2$", axes[1]),
+            (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+            (R_sp, "$|R_{sp}|^2$", axes[3]),
+            (R_ss, "$|R_{ss}|^2$", axes[4]),
+            (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
         ]
 
-        for i, (reflectivity,title, axis) in enumerate(ax_to_plot):
+        for i, (reflectivity, title, axis) in enumerate(ax_to_plot):
             im = axis.collections[0]
             im.set_array(reflectivity.ravel())
             im.set_clim(vmin=0, vmax=reflectivity.max())
@@ -61,31 +69,28 @@ def mock_interface():
                 0,
             )  # Update the colorbar limits correctly
             colorbar_list[i].draw_all()
-        
+
         plt.draw()
-    
-    width, height = figaspect(6./4.)
+
+    width, height = figaspect(6.0 / 4.0)
 
     fig = plt.figure(figsize=(width, height))
-    grid = GridSpec(2,3, width_ratios=[1,1,1], height_ratios=[1,1])
+    grid = GridSpec(2, 3, width_ratios=[1, 1, 1], height_ratios=[1, 1])
 
     axes = []
     for i in range(2):
         for j in range(3):
             axes.append(fig.add_subplot(grid[i, j]))
 
-    payload = json.loads(updating_payload("Incident", 5.5, 0., 0, 0, np.pi/4., 475))
+    payload = json.loads(updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475))
     structure = Structure()
     structure.execute(payload)
 
     x_axis = np.round(np.degrees(structure.incident_angle), 1)
     frequency = structure.frequency.numpy().real
 
-    reflectivities = [structure.r_pp,
-                        structure.r_ps,
-                        structure.r_sp,
-                        structure.r_ss]
-        
+    reflectivities = [structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss]
+
     reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
     # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
     R_pp = reflectivities[0]
@@ -96,19 +101,17 @@ def mock_interface():
     R_s_total = R_ss + R_sp
 
     ax_to_plot = [
-    (R_pp, "$|R_{pp}|^2$", axes[0]),
-    (R_ps, "$|R_{ps}|^2$", axes[1]),
-    (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
-    (R_sp, "$|R_{sp}|^2$", axes[3]),
-    (R_ss, "$|R_{ss}|^2$", axes[4]),
-    (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+        (R_pp, "$|R_{pp}|^2$", axes[0]),
+        (R_ps, "$|R_{ps}|^2$", axes[1]),
+        (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+        (R_sp, "$|R_{sp}|^2$", axes[3]),
+        (R_ss, "$|R_{ss}|^2$", axes[4]),
+        (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
     ]
 
     colorbar_list = []
     for data, title, axis in ax_to_plot:
-        im = axis.pcolormesh(
-            x_axis, frequency, data, cmap="magma"
-        )
+        im = axis.pcolormesh(x_axis, frequency, data, cmap="magma")
         cbar = plt.colorbar(im, ax=axis)
         colorbar_list.append(cbar)
         cbar.mappable.set_clim(
@@ -116,9 +119,7 @@ def mock_interface():
         )
         cbar.set_label(title)
         axis.set_title(title)
-        axis.set_xticks(
-            np.linspace(x_axis.min(), x_axis.max(), 5)
-        )
+        axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
         axis.set_xlabel("Incident Angle / $^\circ$")
         axis.set_ylabel("$\omega/2\pi c (cm^{-1})$")
 
@@ -130,11 +131,15 @@ def mock_interface():
 
     ## Scenario Radio Buttons
     scenario_radio_ax = plt.axes([0.01, 0.01, 0.1, 0.15])
-    scenario_radio_buttons = RadioButtons(scenario_radio_ax, ("Incident", "Azimuthal", "Dispersion"), active=0)
+    scenario_radio_buttons = RadioButtons(
+        scenario_radio_ax, ("Incident", "Azimuthal", "Dispersion"), active=0
+    )
 
     ## Plot-Style Radio Buttons
     plot_style_radio_ax = plt.axes([0.12, 0.01, 0.1, 0.15])
-    plot_style_radio_buttons = RadioButtons(plot_style_radio_ax, ("Real", "Imaginary", "Absolute"), active=0)
+    plot_style_radio_buttons = RadioButtons(
+        plot_style_radio_ax, ("Real", "Imaginary", "Absolute"), active=0
+    )
 
     ## Slider Bars
 
@@ -144,7 +149,9 @@ def mock_interface():
     slider_z_ax = plt.axes([0.28, 0.01, 0.5, 0.025])
 
     air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
-    eps_prism_slider = Slider(slider_eps_prism_ax, f"$\epsilon_p$", 4.5, 6.5, valinit=5.5)
+    eps_prism_slider = Slider(
+        slider_eps_prism_ax, f"$\epsilon_p$", 4.5, 6.5, valinit=5.5
+    )
     rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
@@ -162,8 +169,12 @@ def mock_interface():
     subplot_checkboxes = []
     for i in range(2):
         for j in range(3):
-            checkboxes_ax.append(fig.add_axes([0.82+i*0.07, 0.06+j*0.03, 0.07, 0.03])) # Adjust these numbers to properly place checkboxes
-            subplot_checkboxes.append(CheckButtons(checkboxes_ax[-1], [subplot_labels[i*3 + j]], [False]))
+            checkboxes_ax.append(
+                fig.add_axes([0.82 + i * 0.07, 0.06 + j * 0.03, 0.07, 0.03])
+            )  # Adjust these numbers to properly place checkboxes
+            subplot_checkboxes.append(
+                CheckButtons(checkboxes_ax[-1], [subplot_labels[i * 3 + j]], [False])
+            )
 
     save_button_ax = plt.axes([0.82, 0.02, 0.14, 0.04])
     save_button = Button(save_button_ax, "SAVE")
@@ -177,8 +188,9 @@ def mock_interface():
     plot_style_radio_buttons.on_clicked(update)
 
     update(None)
-    
+
     plt.show()
     plt.close()
+
 
 mock_interface()
