@@ -10,6 +10,37 @@ import numpy as np
 
 tf.get_logger().setLevel("ERROR")
 
+def initial_data(axes):
+
+    payload = json.loads(updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475))
+    structure = Structure()
+    structure.execute(payload)
+
+    x_axis = np.round(np.degrees(structure.incident_angle), 1)
+    frequency = structure.frequency.numpy().real
+
+    reflectivities = [structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss]
+
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    R_pp = reflectivities[0]
+    R_ps = reflectivities[1]
+    R_sp = reflectivities[2]
+    R_ss = reflectivities[3]
+    R_p_total = R_pp + R_ps
+    R_s_total = R_ss + R_sp
+
+    ax_to_plot = [
+        (R_pp, "$|R_{pp}|^2$", axes[0]),
+        (R_ps, "$|R_{ps}|^2$", axes[1]),
+        (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+        (R_sp, "$|R_{sp}|^2$", axes[3]),
+        (R_ss, "$|R_{ss}|^2$", axes[4]),
+        (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+    ]
+
+    return x_axis, frequency, ax_to_plot
+
+
 
 def mock_interface():
     def update(_):
@@ -82,32 +113,7 @@ def mock_interface():
         for j in range(3):
             axes.append(fig.add_subplot(grid[i, j]))
 
-    payload = json.loads(updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475))
-    structure = Structure()
-    structure.execute(payload)
-
-    x_axis = np.round(np.degrees(structure.incident_angle), 1)
-    frequency = structure.frequency.numpy().real
-
-    reflectivities = [structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss]
-
-    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-    # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_p_total = R_pp + R_ps
-    R_s_total = R_ss + R_sp
-
-    ax_to_plot = [
-        (R_pp, "$|R_{pp}|^2$", axes[0]),
-        (R_ps, "$|R_{ps}|^2$", axes[1]),
-        (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
-        (R_sp, "$|R_{sp}|^2$", axes[3]),
-        (R_ss, "$|R_{ss}|^2$", axes[4]),
-        (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
-    ]
+    x_axis, frequency, ax_to_plot = initial_data(axes)
 
     colorbar_list = []
     for data, title, axis in ax_to_plot:
