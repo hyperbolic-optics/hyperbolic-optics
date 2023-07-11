@@ -12,9 +12,10 @@ tf.get_logger().setLevel("ERROR")
 
 
 def mock_interface():
+
     def initial_data(axes):
         payload = json.loads(
-            updating_payload("Incident", 5.5, 0.0, 0, 0, np.pi / 4.0, 475)
+            updating_payload("Incident", "Quartz", 5.5, 0.0, 0, 0, np.pi / 4.0, 475)
         )
         structure = Structure()
         structure.execute(payload)
@@ -77,8 +78,10 @@ def mock_interface():
             axis.set_xlabel(x_label)
             axis.set_ylabel(y_label)
 
+
     def update(_):
         scenario_type = scenario_radio_buttons.value_selected
+        material = material_radio_buttons.value_selected
         eps_prism = eps_prism_slider.val
         air_gap_thickness = air_gap_thickness_slider.val
         rotation_y = rotation_y_slider.val
@@ -88,6 +91,7 @@ def mock_interface():
         payload = json.loads(
             updating_payload(
                 scenario_type,
+                material,
                 eps_prism,
                 air_gap_thickness,
                 rotation_y,
@@ -105,7 +109,7 @@ def mock_interface():
             structure.r_sp,
             structure.r_ss,
         ]
-
+        
         reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
         # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
         R_pp = reflectivities[0]
@@ -173,10 +177,10 @@ def mock_interface():
         scenario_radio_ax, ("Incident", "Azimuthal", "Dispersion"), active=0
     )
 
-    ## Plot-Style Radio Buttons
-    plot_style_radio_ax = plt.axes([0.12, 0.01, 0.1, 0.15])
-    plot_style_radio_buttons = RadioButtons(
-        plot_style_radio_ax, ("Real", "Imaginary", "Absolute"), active=0
+    ## Material Radio Buttons
+    material_radio_ax = plt.axes([0.12, 0.01, 0.1, 0.15])
+    material_radio_buttons = RadioButtons(
+        material_radio_ax, ("Quartz", "Calcite", "Sapphire"), active=0
     )
 
     ## Slider Bars
@@ -232,7 +236,7 @@ def mock_interface():
     scenario_radio_buttons.on_clicked(scenario_handling)
 
     scenario_radio_buttons.on_clicked(update)
-    plot_style_radio_buttons.on_clicked(update)
+    material_radio_buttons.on_clicked(update)
 
     update(None)
 
