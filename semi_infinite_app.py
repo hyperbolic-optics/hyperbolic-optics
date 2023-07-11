@@ -10,15 +10,7 @@ import numpy as np
 
 tf.get_logger().setLevel('ERROR')
 
-def main():
-    payload = json.loads(updating_payload("Incident", 5.5, 0, 0, 0))
-    structure = Structure()
-    structure.execute(payload)
 
-    response = {
-        "payload": payload,
-        "structure": structure
-    }
 
 def mock_interface():
 
@@ -35,6 +27,8 @@ def mock_interface():
 
         x_axis = np.round(np.degrees(structure.incident_angle), 1)
         frequency = structure.frequency.numpy().real
+        
+        
         reflectivities = [structure.r_pp,
                         structure.r_ps,
                         structure.r_sp,
@@ -59,14 +53,17 @@ def mock_interface():
         (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
         ]
 
-
         for i, (reflectivity,title, axis) in enumerate(ax_to_plot):
-            im = axis.pcolormesh(
-                x_axis, frequency, reflectivity, cmap="magma"
-            )
-                
+            im = axis.collections[0]
+            im.set_array(reflectivity.ravel())
             im.set_clim(vmin=0, vmax=reflectivity.max())
-
+            colorbar_list[i].mappable.set_clim(
+                0,
+            )  # Update the colorbar limits correctly
+            colorbar_list[i].draw_all()
+        
+        plt.draw()
+    
     width, height = figaspect(6./4.)
 
     fig = plt.figure(figsize=(width, height))
@@ -76,6 +73,54 @@ def mock_interface():
     for i in range(2):
         for j in range(3):
             axes.append(fig.add_subplot(grid[i, j]))
+
+    payload = json.loads(updating_payload("Incident", 5.5, 0., 0, 0, np.pi/4., 475))
+    structure = Structure()
+    structure.execute(payload)
+
+    x_axis = np.round(np.degrees(structure.incident_angle), 1)
+    frequency = structure.frequency.numpy().real
+
+    reflectivities = [structure.r_pp,
+                        structure.r_ps,
+                        structure.r_sp,
+                        structure.r_ss]
+        
+    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+    # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
+    R_pp = reflectivities[0]
+    R_ps = reflectivities[1]
+    R_sp = reflectivities[2]
+    R_ss = reflectivities[3]
+    R_p_total = R_pp + R_ps
+    R_s_total = R_ss + R_sp
+
+    ax_to_plot = [
+    (R_pp, "$|R_{pp}|^2$", axes[0]),
+    (R_ps, "$|R_{ps}|^2$", axes[1]),
+    (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+    (R_sp, "$|R_{sp}|^2$", axes[3]),
+    (R_ss, "$|R_{ss}|^2$", axes[4]),
+    (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+    ]
+
+    colorbar_list = []
+    for data, title, axis in ax_to_plot:
+        im = axis.pcolormesh(
+            x_axis, frequency, data, cmap="magma"
+        )
+        cbar = plt.colorbar(im, ax=axis)
+        colorbar_list.append(cbar)
+        cbar.mappable.set_clim(
+            0,
+        )
+        cbar.set_label(title)
+        axis.set_title(title)
+        axis.set_xticks(
+            np.linspace(x_axis.min(), x_axis.max(), 5)
+        )
+        axis.set_xlabel("Incident Angle / $^\circ$")
+        axis.set_ylabel("$\omega/2\pi c (cm^{-1})$")
 
     plt.subplots_adjust(
         left=0.05, right=0.95, bottom=0.25, top=0.95, hspace=0.5, wspace=0.4
@@ -98,10 +143,10 @@ def mock_interface():
     slider_y_ax = plt.axes([0.28, 0.05, 0.5, 0.025])
     slider_z_ax = plt.axes([0.28, 0.01, 0.5, 0.025])
 
-    air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 10, valinit=0)
-    eps_prism_slider = Slider(slider_eps_prism_ax, f"$\epsilon_p$", 0, 360, valinit=0)
-    rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 360, valinit=0)
-    rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 360, valinit=0)
+    air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
+    eps_prism_slider = Slider(slider_eps_prism_ax, f"$\epsilon_p$", 4.5, 6.5, valinit=5.5)
+    rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
+    rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     ## Checkboxes and Save Button
     subplot_labels = [
