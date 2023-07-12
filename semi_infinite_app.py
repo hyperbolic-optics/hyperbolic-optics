@@ -51,6 +51,52 @@ def mock_interface():
 
     def scenario_handling(_):
         scenario_type = scenario_radio_buttons.value_selected
+        material = material_radio_buttons.value_selected
+        eps_prism = eps_prism_slider.val
+        air_gap_thickness = air_gap_thickness_slider.val
+        rotation_y = rotation_y_slider.val
+        rotation_z = rotation_z_slider.val
+        incident_angle = incident_angle_slider.val
+
+        payload = json.loads(
+            updating_payload(
+                scenario_type,
+                material,
+                eps_prism,
+                air_gap_thickness,
+                rotation_y,
+                rotation_z,
+                incident_angle,
+                475,
+            )
+        )
+        structure = Structure()
+        structure.execute(payload)
+
+        reflectivities = [
+            structure.r_pp,
+            structure.r_ps,
+            structure.r_sp,
+            structure.r_ss,
+        ]
+        
+        reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+        # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
+        R_pp = reflectivities[0]
+        R_ps = reflectivities[1]
+        R_sp = reflectivities[2]
+        R_ss = reflectivities[3]
+        R_p_total = R_pp + R_ps
+        R_s_total = R_ss + R_sp
+
+        ax_to_plot = [
+            (R_pp, "$|R_{pp}|^2$", axes[0]),
+            (R_ps, "$|R_{ps}|^2$", axes[1]),
+            (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
+            (R_sp, "$|R_{sp}|^2$", axes[3]),
+            (R_ss, "$|R_{ss}|^2$", axes[4]),
+            (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
+        ]
 
         if scenario_type == "Incident":
             x_label = "Incident Angle / $^\circ$"
@@ -59,6 +105,8 @@ def mock_interface():
             # Show rotation Z slider and hide incident angle slider
             slider_incident_angle_ax.set_visible(False)
             slider_z_ax.set_visible(True)
+
+            x_axis = np.round(np.degrees(structure.incident_angle), 1)
 
         elif scenario_type == "Azimuthal":
             x_label = "Azimuthal Angle / $^\circ$"
@@ -69,14 +117,22 @@ def mock_interface():
             slider_z_ax.set_visible(False)
             rotation_z_slider.set_val(0)
 
+            x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+
         else:
             x_label = "Azimuthal Angle / $^\circ$"
             y_label = "$\omega/2\pi c (cm^{-1})$"
 
-        for axis in axes:
+        for data, title, axis in ax_to_plot:
+            axis.clear()
+            im = axis.pcolormesh(x_axis, frequency, data, cmap="magma")
+            axis.set_title(title)
             axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
             axis.set_xlabel(x_label)
             axis.set_ylabel(y_label)
+        
+        plt.draw()
+
 
 
     def update(_):
@@ -234,8 +290,7 @@ def mock_interface():
     incident_angle_slider.on_changed(update)
 
     scenario_radio_buttons.on_clicked(scenario_handling)
-
-    scenario_radio_buttons.on_clicked(update)
+    # scenario_radio_buttons.on_clicked(update)
     material_radio_buttons.on_clicked(update)
 
     update(None)
