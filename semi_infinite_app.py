@@ -12,7 +12,6 @@ tf.get_logger().setLevel("ERROR")
 
 
 def mock_interface():
-
     def initial_data(axes):
         payload = json.loads(
             updating_payload("Incident", "Quartz", 5.5, 0.0, 0, 0, np.pi / 4.0, 475)
@@ -79,7 +78,7 @@ def mock_interface():
             structure.r_sp,
             structure.r_ss,
         ]
-        
+
         reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
         # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
         R_pp = reflectivities[0]
@@ -107,6 +106,7 @@ def mock_interface():
             slider_z_ax.set_visible(True)
 
             x_axis = np.round(np.degrees(structure.incident_angle), 1)
+            frequency = structure.frequency.numpy().real
 
         elif scenario_type == "Azimuthal":
             x_label = "Azimuthal Angle / $^\circ$"
@@ -118,6 +118,7 @@ def mock_interface():
             rotation_z_slider.set_val(0)
 
             x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+            frequency = structure.frequency.numpy().real
 
         else:
             x_label = "Azimuthal Angle / $^\circ$"
@@ -130,10 +131,8 @@ def mock_interface():
             axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
             axis.set_xlabel(x_label)
             axis.set_ylabel(y_label)
-        
+
         plt.draw()
-
-
 
     def update(_):
         scenario_type = scenario_radio_buttons.value_selected
@@ -165,7 +164,7 @@ def mock_interface():
             structure.r_sp,
             structure.r_ss,
         ]
-        
+
         reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
         # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
         R_pp = reflectivities[0]
@@ -291,7 +290,7 @@ def mock_interface():
 
     scenario_radio_buttons.on_clicked(scenario_handling)
     # scenario_radio_buttons.on_clicked(update)
-    material_radio_buttons.on_clicked(update)
+    material_radio_buttons.on_clicked(scenario_handling)
 
     update(None)
 
