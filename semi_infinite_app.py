@@ -10,43 +10,16 @@ import numpy as np
 
 tf.get_logger().setLevel("ERROR")
 
+dispersion_ranges = {
+    "Quartz": [410, 600],
+    "Calcite": [1350, 1600],
+    "Sapphire": [410, 600],
+}
+
 
 def mock_interface():
-    def initial_data(axes):
-        payload = json.loads(
-            updating_payload("Incident", "Quartz", 5.5, 0.0, 0, 0, np.pi / 4.0, 475)
-        )
-        structure = Structure()
-        structure.execute(payload)
 
-        x_axis = np.round(np.degrees(structure.incident_angle), 1)
-        frequency = structure.frequency.numpy().real
-
-        reflectivities = [
-            structure.r_pp,
-            structure.r_ps,
-            structure.r_sp,
-            structure.r_ss,
-        ]
-
-        reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-        R_pp = reflectivities[0]
-        R_ps = reflectivities[1]
-        R_sp = reflectivities[2]
-        R_ss = reflectivities[3]
-        R_p_total = R_pp + R_ps
-        R_s_total = R_ss + R_sp
-
-        ax_to_plot = [
-            (R_pp, "$|R_{pp}|^2$", axes[0]),
-            (R_ps, "$|R_{ps}|^2$", axes[1]),
-            (R_p_total, "$|R_{pp}|^2 + |R_{ps}|^2$", axes[2]),
-            (R_sp, "$|R_{sp}|^2$", axes[3]),
-            (R_ss, "$|R_{ss}|^2$", axes[4]),
-            (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
-        ]
-
-        return x_axis, frequency, ax_to_plot
+    colorbars = []
 
     def scenario_handling(_):
         scenario_type = scenario_radio_buttons.value_selected
@@ -79,6 +52,63 @@ def mock_interface():
             structure.r_ss,
         ]
 
+        # Store the indices for the GridSpec
+        grid_indices = [(i, j) for i in range(2) for j in range(3)]
+
+        if scenario_type == "Incident":
+
+            for i in range(len(axes)):
+                fig.delaxes(axes[i])  # remove the previous axes
+                axes[i] = fig.add_subplot(grid[grid_indices[i]])  # add new axes
+    
+            # Clear and update plots without deleting and recreating axes
+            x_label = "Incident Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+            
+            # Show rotation Z slider and hide incident angle slider
+            slider_incident_angle_ax.set_visible(False)
+            slider_z_ax.set_visible(True)
+            slider_frequency_ax.set_visible(False)
+            
+            x_axis = np.round(np.degrees(structure.incident_angle), 1)
+            frequency = structure.frequency.numpy().real
+            
+        elif scenario_type == "Azimuthal":
+
+            for i in range(len(axes)):
+                fig.delaxes(axes[i])  # remove the previous axes
+                axes[i] = fig.add_subplot(grid[grid_indices[i]])  # add new axes
+            
+            # Clear and update plots without deleting and recreating axes
+            x_label = "Azimuthal Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+            
+            # Show incident angle slider and hide rotation Z slider
+            slider_incident_angle_ax.set_visible(True)
+            slider_z_ax.set_visible(False)
+            rotation_z_slider.set_val(0)
+            slider_frequency_ax.set_visible(False)
+            
+            x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+            frequency = structure.frequency.numpy().real
+            
+        elif scenario_type == "Dispersion":
+            for i in range(len(axes)):
+                fig.delaxes(axes[i])  # remove the previous axes
+                axes[i] = fig.add_subplot(grid[grid_indices[i]], projection='polar')  # add new axes
+            
+            frequency = structure.incident_angle.numpy().real
+            x_axis = structure.azimuthal_angle.numpy().real
+
+            # Show incident angle slider and hide rotation Z slider
+            slider_incident_angle_ax.set_visible(False)
+            slider_z_ax.set_visible(False)
+            rotation_z_slider.set_val(0)
+            slider_frequency_ax.set_visible(True)
+            
+            x_label = ""
+            y_label = ""
+
         reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
         # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
         R_pp = reflectivities[0]
@@ -97,40 +127,26 @@ def mock_interface():
             (R_s_total, "$|R_{ss}|^2 + |R_{sp}|^2$", axes[5]),
         ]
 
-        if scenario_type == "Incident":
-            x_label = "Incident Angle / $^\circ$"
-            y_label = "$\omega/2\pi c (cm^{-1})$"
-
-            # Show rotation Z slider and hide incident angle slider
-            slider_incident_angle_ax.set_visible(False)
-            slider_z_ax.set_visible(True)
-
-            x_axis = np.round(np.degrees(structure.incident_angle), 1)
-            frequency = structure.frequency.numpy().real
-
-        elif scenario_type == "Azimuthal":
-            x_label = "Azimuthal Angle / $^\circ$"
-            y_label = "$\omega/2\pi c (cm^{-1})$"
-
-            # Show incident angle slider and hide rotation Z slider
-            slider_incident_angle_ax.set_visible(True)
-            slider_z_ax.set_visible(False)
-            rotation_z_slider.set_val(0)
-
-            x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
-            frequency = structure.frequency.numpy().real
-
-        else:
-            x_label = "Azimuthal Angle / $^\circ$"
-            y_label = "$\omega/2\pi c (cm^{-1})$"
+        for cbar in colorbars:
+            cbar.remove()
+        colorbars.clear()  # Clear the list itself
 
         for data, title, axis in ax_to_plot:
-            axis.clear()
             im = axis.pcolormesh(x_axis, frequency, data, cmap="magma")
             axis.set_title(title)
-            axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
+            if scenario_type == 'Dispersion':
+                axis.set_xticks(np.linspace(0, 2*np.pi, 5))
+                axis.grid(linewidth=0.1)
+            else:
+                axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
             axis.set_xlabel(x_label)
             axis.set_ylabel(y_label)
+            cbar = plt.colorbar(im, ax=axis)
+            colorbars.append(cbar)
+            cbar.mappable.set_clim(
+                0,
+            )
+            cbar.set_label(title)
 
         plt.draw()
 
@@ -142,6 +158,7 @@ def mock_interface():
         rotation_y = rotation_y_slider.val
         rotation_z = rotation_z_slider.val
         incident_angle = incident_angle_slider.val
+        frequency = frequency_slider.val
 
         payload = json.loads(
             updating_payload(
@@ -152,7 +169,7 @@ def mock_interface():
                 rotation_y,
                 rotation_z,
                 incident_angle,
-                475,
+                frequency,
             )
         )
         structure = Structure()
@@ -187,10 +204,6 @@ def mock_interface():
             im = axis.collections[0]
             im.set_array(reflectivity.ravel())
             im.set_clim(vmin=0, vmax=reflectivity.max())
-            colorbar_list[i].mappable.set_clim(
-                0,
-            )  # Update the colorbar limits correctly
-            colorbar_list[i].draw_all()
 
         plt.draw()
 
@@ -203,22 +216,6 @@ def mock_interface():
     for i in range(2):
         for j in range(3):
             axes.append(fig.add_subplot(grid[i, j]))
-
-    x_axis, frequency, ax_to_plot = initial_data(axes)
-
-    colorbar_list = []
-    for data, title, axis in ax_to_plot:
-        im = axis.pcolormesh(x_axis, frequency, data, cmap="magma")
-        cbar = plt.colorbar(im, ax=axis)
-        colorbar_list.append(cbar)
-        cbar.mappable.set_clim(
-            0,
-        )
-        cbar.set_label(title)
-        axis.set_title(title)
-        axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
-        axis.set_xlabel("Incident Angle / $^\circ$")
-        axis.set_ylabel("$\omega/2\pi c (cm^{-1})$")
 
     plt.subplots_adjust(
         left=0.05, right=0.95, bottom=0.25, top=0.95, hspace=0.5, wspace=0.4
@@ -246,7 +243,7 @@ def mock_interface():
 
     air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
     eps_prism_slider = Slider(
-        slider_eps_prism_ax, f"$\epsilon_p$", 4.5, 6.5, valinit=5.5
+        slider_eps_prism_ax, f"$\epsilon_p$", 11., 12., valinit=11.5
     )
     rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
 
@@ -257,6 +254,9 @@ def mock_interface():
 
     slider_z_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=True)
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
+
+    slider_frequency_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
+    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1300, 1600, valinit=475)
 
     ## Checkboxes and Save Button
     subplot_labels = [
@@ -287,12 +287,13 @@ def mock_interface():
     rotation_y_slider.on_changed(update)
     rotation_z_slider.on_changed(update)
     incident_angle_slider.on_changed(update)
+    frequency_slider.on_changed(update)
 
     scenario_radio_buttons.on_clicked(scenario_handling)
     # scenario_radio_buttons.on_clicked(update)
     material_radio_buttons.on_clicked(scenario_handling)
 
-    update(None)
+    scenario_handling(None)
 
     plt.show()
     plt.close()
