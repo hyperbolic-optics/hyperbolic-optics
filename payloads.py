@@ -96,12 +96,26 @@ def mock_dispersion_payload():
 
 
 
-def updating_payload(scenario, eps_prism, air_gap_thickness, rotationY, rotationZ, incident_angle, frequency):
-    payload = json.dumps({
-        "ScenarioData": {
-        "type": scenario
-    },
-    "Layers": [
+def updating_payload(scenario, material, eps_prism, air_gap_thickness, rotationY, rotationZ, incident_angle, frequency):
+
+    payload = {}
+
+    if scenario == "Incident":
+        payload["ScenarioData"] = {
+            "type": scenario
+        }
+    elif scenario == "Azimuthal":
+        payload["ScenarioData"] = {
+            "type": scenario,
+            "incidentAngle": incident_angle
+        }
+    elif scenario == "Dispersion":
+        payload["ScenarioData"] = {
+            "type": scenario,
+            "frequency": frequency
+        }
+    
+    payload["Layers"] = [
         {
             "type": "Ambient Incident Layer",
             "permittivity": eps_prism
@@ -111,13 +125,16 @@ def updating_payload(scenario, eps_prism, air_gap_thickness, rotationY, rotation
             "thickness": air_gap_thickness,
             "permittivity": 1.
         },
-        {
-            "type": "Semi Infinite Anisotropic Layer",
-            "material": "Quartz",
-            "rotationX": 0,
-            "rotationY": rotationY,
-            "rotationZ": rotationZ,
-        }
-    ],
-    })
-    return payload
+    ]
+
+    bulk_layer = {
+        "type": "Semi Infinite Anisotropic Layer",
+        "material": material,
+        "rotationX": 0,
+        "rotationY": rotationY,
+        "rotationZ": rotationZ,
+    }
+
+    payload["Layers"].append(bulk_layer)
+
+    return json.dumps(payload)

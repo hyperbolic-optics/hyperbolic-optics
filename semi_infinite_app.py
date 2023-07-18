@@ -21,6 +21,60 @@ def mock_interface():
 
     colorbars = []
 
+    def save_plots(event):
+        scenario_type = scenario_radio_buttons.value_selected
+        material = material_radio_buttons.value_selected
+        eps_prism = eps_prism_slider.val
+        air_gap_thickness = air_gap_thickness_slider.val
+        rotation_y = rotation_y_slider.val
+        rotation_z = rotation_z_slider.val
+        incident_angle = incident_angle_slider.val
+        frequency = frequency_slider.val
+
+        payload = json.loads(
+            updating_payload(
+                scenario_type,
+                material,
+                eps_prism,
+                air_gap_thickness,
+                rotation_y,
+                rotation_z,
+                incident_angle,
+                frequency,
+            )
+        )
+        structure = Structure()
+        structure.execute(payload)
+
+        reflectivities = [
+            structure.r_pp,
+            structure.r_ps,
+            structure.r_sp,
+            structure.r_ss,
+        ]
+
+        if scenario_type == "Incident":
+            filename_prefix = (
+            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
+            f"_Z_{int(round(np.degrees(rotation_z)))}"
+            f"_D_{int(round(air_gap_thickness))}"
+            f"_eps_{int(round(eps_prism))}"
+            )
+        elif scenario_type == "Azimuthal":
+            filename_prefix = (
+            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
+            f"_I_{int(round(np.degrees(incident_angle)))}"
+            f"_D_{int(round(air_gap_thickness))}"
+            f"_eps_{int(round(eps_prism))}"
+            )
+        elif scenario_type == "Dispersion":
+            filename_prefix = (
+            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
+            f"_frequency_{int(round(frequency))}"
+            f"_D_{int(round(air_gap_thickness))}"
+            f"_eps_{int(round(eps_prism))}"
+            )
+
     def scenario_handling(_):
         scenario_type = scenario_radio_buttons.value_selected
         material = material_radio_buttons.value_selected
