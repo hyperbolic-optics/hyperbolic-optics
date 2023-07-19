@@ -22,7 +22,7 @@ class AnisotropicMaterial(object):
     Includes functions to calculate permittivity tensor components.
     Assumes these materials are not magnetic.
     """
-    def __init__(self, frequency_length = 300, run_on_device_decorator = run_on_device):
+    def __init__(self, frequency_length = 250, run_on_device_decorator = run_on_device):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
 
@@ -162,24 +162,24 @@ class Calcite(AnisotropicMaterial):
             "ordinary": {
                 "high_freq": tf.constant(2.7, dtype=tf.complex64),
                 "omega_tn": tf.constant(
-                    [712, 1407.0, 297.0, 223.0, 102.0], dtype=tf.complex64
+                    [712, 1410.0], dtype=tf.complex64
                 ),
                 "gamma_tn": tf.constant(
-                    [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
+                    [5.0, 10.0], dtype=tf.complex64
                 ),
                 "omega_ln": tf.constant(
-                    [715, 1549.0, 381.0, 239.0, 123.0], dtype=tf.complex64
+                    [715, 1550.0], dtype=tf.complex64
                 ),
                 "gamma_ln": tf.constant(
-                    [4.0, 10.0, 14.4, 11.4, 5.7], dtype=tf.complex64
+                    [5.0, 10.0], dtype=tf.complex64
                 ),
             },
             "extraordinary": {
                 "high_freq": tf.constant(2.4, dtype=tf.complex64),
-                "omega_tn": tf.constant([872.0, 303.0, 92.0], dtype=tf.complex64),
-                "gamma_tn": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
-                "omega_ln": tf.constant([890.0, 387.0, 136.0], dtype=tf.complex64),
-                "gamma_ln": tf.constant([1.3, 9.1, 5.6], dtype=tf.complex64),
+                "omega_tn": tf.constant([871.0], dtype=tf.complex64),
+                "gamma_tn": tf.constant([3.0], dtype=tf.complex64),
+                "omega_ln": tf.constant([890.0], dtype=tf.complex64),
+                "gamma_ln": tf.constant([3.0], dtype=tf.complex64),
             },
         }
 
@@ -196,7 +196,7 @@ class CalciteLower(Calcite):
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, freq_min = 1300.0, freq_max = 1800.0):
+    def __init__(self, freq_min = 1350.0, freq_max = 1700.0):
         super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
