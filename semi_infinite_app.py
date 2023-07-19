@@ -297,7 +297,7 @@ def mock_interface():
 
     air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
     eps_prism_slider = Slider(
-        slider_eps_prism_ax, f"$\epsilon_p$", 11., 12., valinit=11.5
+        slider_eps_prism_ax, f"$\epsilon_p$", 1., 12., valinit=11.5
     )
     rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
 
@@ -310,7 +310,7 @@ def mock_interface():
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     slider_frequency_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
-    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1300, 1600, valinit=475)
+    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1400, 1500, valinit=475)
 
     ## Checkboxes and Save Button
     subplot_labels = [
