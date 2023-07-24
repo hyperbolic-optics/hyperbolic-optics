@@ -68,10 +68,12 @@ def mock_interface():
         date_str = current_date.strftime("%d%m%y")
         if scenario_type == "Incident":
             filename_prefix = (
-            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}"
-            f"_Z_{int(round(rotation_z))}"
-            f"_D_{air_gap_thickness}"
-            f"_eps_{eps_prism}_"
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"Z_{int(round(rotation_z))}/"
+            f"Y_{int(round(rotation_y))}/"
+            f"_Z_{int(round(rotation_z))}/"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
             )
 
             # Clear and update plots without deleting and recreating axes
@@ -83,10 +85,12 @@ def mock_interface():
 
         elif scenario_type == "Azimuthal":
             filename_prefix = (
-            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}"
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"I_{int(round(incident_angle))}/"
+            f"Y_{int(round(rotation_y))}"
             f"_I_{int(round(incident_angle))}"
-            f"_D_{air_gap_thickness}"
-            f"_eps_{eps_prism}_"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
             )
 
             x_label = "Azimuthal Angle / $^\circ$"
@@ -97,10 +101,12 @@ def mock_interface():
 
         elif scenario_type == "Dispersion":
             filename_prefix = (
-            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}"
-            f"_frequency_{int(round(frequency))}"
-            f"_D_{air_gap_thickness}"
-            f"_eps_{eps_prism}_"
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"{int(round(frequency))}/"
+            f"Y_{int(round(rotation_y))}"
+            f"_frequency_{int(round(frequency))}/"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
             )
 
             frequency = structure.incident_angle.numpy().real
@@ -411,7 +417,7 @@ def mock_interface():
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     slider_frequency_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
-    frequency_slider = Slider(slider_frequency_ax, "Frequency", 500, 570, valinit=500)
+    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1350, 1450, valinit=500)
 
     ## Checkboxes and Save Button
     subplot_labels =  [
