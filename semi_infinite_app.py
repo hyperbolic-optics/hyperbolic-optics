@@ -7,6 +7,8 @@ from matplotlib.figure import figaspect
 from matplotlib.gridspec import GridSpec
 import tensorflow as tf
 import numpy as np
+import os
+from datetime import datetime
 
 tf.get_logger().setLevel("ERROR")
 
@@ -17,11 +19,24 @@ dispersion_ranges = {
 }
 
 
+plt.rcParams.update(
+    {
+        "font.size": 14,
+        "axes.labelsize": 18,
+        "axes.titlesize": 14,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16,
+        "font.family": "Arial"
+    }
+)
+
 def mock_interface():
 
     colorbars = []
 
     def save_plots(event):
+
         scenario_type = scenario_radio_buttons.value_selected
         material = material_radio_buttons.value_selected
         eps_prism = eps_prism_slider.val
@@ -46,6 +61,60 @@ def mock_interface():
         structure = Structure()
         structure.execute(payload)
 
+        # Get current date
+        current_date = datetime.now()
+
+        # Format date as string in the format DDMMYY
+        date_str = current_date.strftime("%d%m%y")
+        if scenario_type == "Incident":
+            filename_prefix = (
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"Z_{int(round(rotation_z))}/"
+            f"Y_{int(round(rotation_y))}/"
+            f"_Z_{int(round(rotation_z))}/"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
+            )
+
+            # Clear and update plots without deleting and recreating axes
+            x_label = "Incident Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+            
+            x_axis = np.round(np.degrees(structure.incident_angle), 1)
+            frequency = structure.frequency.numpy().real
+
+        elif scenario_type == "Azimuthal":
+            filename_prefix = (
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"I_{int(round(incident_angle))}/"
+            f"Y_{int(round(rotation_y))}"
+            f"_I_{int(round(incident_angle))}"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
+            )
+
+            x_label = "Azimuthal Angle / $^\circ$"
+            y_label = "$\omega/2\pi c (cm^{-1})$"
+            
+            x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+            frequency = structure.frequency.numpy().real
+
+        elif scenario_type == "Dispersion":
+            filename_prefix = (
+            f"Data/{date_str}/{material}/{scenario_type}/Y_{int(round(rotation_y))}/"
+            f"{int(round(frequency))}/"
+            f"Y_{int(round(rotation_y))}"
+            f"_frequency_{int(round(frequency))}/"
+            f"_D_{round(air_gap_thickness,4)}"
+            f"_eps_{round(eps_prism,3)}_"
+            )
+
+            frequency = structure.incident_angle.numpy().real
+            x_axis = structure.azimuthal_angle.numpy().real
+            
+            x_label = ""
+            y_label = ""
+
         reflectivities = [
             structure.r_pp,
             structure.r_ps,
@@ -53,27 +122,64 @@ def mock_interface():
             structure.r_ss,
         ]
 
-        if scenario_type == "Incident":
-            filename_prefix = (
-            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
-            f"_Z_{int(round(np.degrees(rotation_z)))}"
-            f"_D_{int(round(air_gap_thickness))}"
-            f"_eps_{int(round(eps_prism))}"
-            )
-        elif scenario_type == "Azimuthal":
-            filename_prefix = (
-            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
-            f"_I_{int(round(np.degrees(incident_angle)))}"
-            f"_D_{int(round(air_gap_thickness))}"
-            f"_eps_{int(round(eps_prism))}"
-            )
-        elif scenario_type == "Dispersion":
-            filename_prefix = (
-            f"Data/{material}/{scenario_type}/Y_{int(round(np.degrees(rotation_y)))}"
-            f"_frequency_{int(round(frequency))}"
-            f"_D_{int(round(air_gap_thickness))}"
-            f"_eps_{int(round(eps_prism))}"
-            )
+        reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
+        R_pp = reflectivities[0]
+        R_ps = reflectivities[1]
+        R_sp = reflectivities[2]
+        R_ss = reflectivities[3]
+        R_p_total = R_pp + R_ps
+        R_s_total = R_ss + R_sp
+
+        ax_to_plot = [
+            (R_pp, "$R_{pp}$"),
+            (R_ps, "$R_{ps}$"),
+            (R_p_total, "$R_{p}$"),
+            (R_sp, "$R_{sp}$"),
+            (R_ss, "$R_{ss}$"),
+            (R_s_total, "$R_{s}$"),
+        ]
+
+        # Save individual subplots
+        for i, (data, title) in enumerate(ax_to_plot):
+            if subplot_checkboxes[i].get_status()[0] == True:
+                filetitle = "C:/Users/2719913C/OneDrive - University of Glasgow/Figures/" + filename_prefix + title
+                if scenario_type == "Dispersion":
+                    single_fig, single_ax = plt.subplots(subplot_kw=dict(projection='polar'))
+                    single_ax.grid(linewidth=0.1)
+                    single_ax.set_yticklabels([])
+                else:
+                    single_fig, single_ax = plt.subplots()
+                    single_ax.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
+
+                im = single_ax.pcolormesh(x_axis, frequency, data, cmap="magma")
+                single_ax.set_xlabel(x_label)
+                single_ax.set_ylabel(y_label)
+                cbar = plt.colorbar(im, ax=single_ax, pad=0.1)
+
+                if title == "$R_{ps}$" or title == "$R_{sp}$":
+                    cbar.mappable.set_clim(
+                        0,
+                    )
+                else:
+                    cbar.mappable.set_clim(
+                        0, 1
+                    )
+                cbar.set_label(title)
+
+                # Create the necessary directories
+                directory = os.path.dirname(filetitle)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+
+                single_fig.savefig(
+                    f"{filetitle}.png", dpi=300, bbox_inches="tight"
+                )
+                plt.close(single_fig)
+
+            # Restore the original button color after a short pause
+            plt.pause(0.1)
+            save_button.color = "lightblue"
+            plt.draw()
 
     def scenario_handling(_):
         scenario_type = scenario_radio_buttons.value_selected
@@ -189,7 +295,7 @@ def mock_interface():
             im = axis.pcolormesh(x_axis, frequency, data, cmap="magma")
             axis.set_title(title)
             if scenario_type == 'Dispersion':
-                axis.set_xticks(np.linspace(0, 2*np.pi, 5))
+                axis.set_xticks(np.linspace(0, 2*np.pi, 25))
                 axis.grid(linewidth=0.1)
             else:
                 axis.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
@@ -255,9 +361,10 @@ def mock_interface():
         ]
 
         for i, (reflectivity, title, axis) in enumerate(ax_to_plot):
-            im = axis.collections[0]
-            im.set_array(reflectivity.ravel())
-            im.set_clim(vmin=0, vmax=reflectivity.max())
+            if axis.collections:
+                im = axis.collections[0]
+                im.set_array(reflectivity.ravel())
+                im.set_clim(vmin=0, vmax=reflectivity.max())
 
         plt.draw()
 
@@ -297,7 +404,7 @@ def mock_interface():
 
     air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
     eps_prism_slider = Slider(
-        slider_eps_prism_ax, f"$\epsilon_p$", 1., 12., valinit=11.5
+        slider_eps_prism_ax, f"$\epsilon_p$", 1., 10., valinit=5.5
     )
     rotation_y_slider = Slider(slider_y_ax, "Rotation Y", 0, 90, valinit=0)
 
@@ -310,30 +417,39 @@ def mock_interface():
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     slider_frequency_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
-    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1400, 1500, valinit=475)
+    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1350, 1450, valinit=500)
 
     ## Checkboxes and Save Button
-    subplot_labels = [
-        "$|r_{pp}|^2$",
-        "$|r_{ps}|^2$",
-        "$|r_{pp}|^2 + |r_{ps}|^2$",
-        "$|r_{sp}|^2$",
-        "$|r_{ss}|^2$",
-        "$|r_{ss}|^2 + |r_{sp}|^2$",
+    subplot_labels =  [
+        "$R_{pp}$",
+        "$R_{ps}$",
+        "$R_{p}$",
+        "$R_{sp}$",
+        "$R_{ss}$",
+        "$R_{s}$"
     ]
 
     checkboxes_ax = []
     subplot_checkboxes = []
-    for i in range(2):
-        for j in range(3):
-            checkboxes_ax.append(
-                fig.add_axes([0.82 + i * 0.07, 0.06 + j * 0.03, 0.07, 0.03])
-            )  # Adjust these numbers to properly place checkboxes
-            subplot_checkboxes.append(
-                CheckButtons(checkboxes_ax[-1], [subplot_labels[i * 3 + j]], [False])
-            )
 
-    save_button_ax = plt.axes([0.82, 0.02, 0.14, 0.04])
+    checkbox_positions = [
+    [0.82, 0.1],
+    [0.875, 0.1],
+    [0.93, 0.1],
+    [0.82, 0.06],
+    [0.875, 0.06],
+    [0.93, 0.06]
+    ]
+
+    for i in range(6):
+        checkboxes_ax.append(
+        fig.add_axes([checkbox_positions[i][0], checkbox_positions[i][1], 0.055, 0.05])
+        )
+        subplot_checkboxes.append(
+            CheckButtons(checkboxes_ax[-1], [subplot_labels[i]], [False])
+        )
+
+    save_button_ax = plt.axes([0.82, 0.02, 0.165, 0.04])
     save_button = Button(save_button_ax, "SAVE")
 
     air_gap_thickness_slider.on_changed(update)
@@ -344,8 +460,8 @@ def mock_interface():
     frequency_slider.on_changed(update)
 
     scenario_radio_buttons.on_clicked(scenario_handling)
-    # scenario_radio_buttons.on_clicked(update)
     material_radio_buttons.on_clicked(scenario_handling)
+    save_button.on_clicked(save_plots)
 
     scenario_handling(None)
 
