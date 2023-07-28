@@ -65,6 +65,9 @@ class Wave:
             case 'simple_airgap':
                 pass
 
+            case 'azimuthal_airgap':
+                pass
+
             case _:
                 raise NotImplementedError(f"Mode {self.mode} not implemented")
         
@@ -191,12 +194,12 @@ class Wave:
                 self.batch_dims = 1
 
             case 'simple_airgap':
-                if tf.is_tensor(self.k_0):
-                    permutation = [1, 0]
-                    self.batch_dims = 1
-                else:
-                    permutation = [1, 2, 0]
-                    self.batch_dims = 1
+                permutation = [1, 2, 0]
+                self.batch_dims = 1
+
+            case 'azimuthal_airgap':
+                permutation = [1, 0]
+                self.batch_dims = 1
 
             case _:
                 raise NotImplementedError(f"Mode {self.mode} not implemented")
@@ -211,28 +214,24 @@ class Wave:
         Dispersion: Nothing needed
         """
         eigenvalues, eigenvectors = tf.linalg.eig(self.berreman_matrix)
+        eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
         if not self.semi_infinite:
 
             match self.mode:
 
                 case 'airgap':
-                    eigenvalues_diag = tf.linalg.diag(eigenvalues)
-
                     eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
                     k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
                     eigenvectors = eigenvectors[tf.newaxis, ...]
-            
-                case'simple_airgap':
-                    eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
-                    if tf.is_tensor(self.k_0):
-                        eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
-                        k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
-                        eigenvectors = eigenvectors[tf.newaxis, ...]
-                    
-                    else:
-                        k_0 = self.k_0
+                case 'azimuthal_airgap':
+                    eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+                    k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
+                    eigenvectors = eigenvectors[tf.newaxis, ...]
+        
+                case'simple_airgap':
+                    k_0 = self.k_0
 
                 case 'azimuthal':
                     k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
@@ -300,7 +299,6 @@ class Wave:
 
         if self.semi_infinite:
             eigenvectors = self.passler_sorting()
-            print("hello")
             return eigenvectors
         else:
             return self.get_wave()
