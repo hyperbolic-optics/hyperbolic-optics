@@ -193,7 +193,7 @@ class Wave:
             case 'simple_airgap':
                 if tf.is_tensor(self.k_0):
                     permutation = [1, 0]
-                    self.batch_dims = 0
+                    self.batch_dims = 1
                 else:
                     permutation = [1, 2, 0]
                     self.batch_dims = 1
@@ -250,25 +250,42 @@ class Wave:
 
         else:
             return
+    
+    
+    def passler_sorting(self):
+        wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
+        
+        def sort_vector(waves):
+            # Check if the vector contains complex numbers
+            is_complex = tf.math.abs(tf.math.imag(waves)) > 0
+            # Indices for sorting real and imaginary parts
+            idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction='DESCENDING')
+            idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction='DESCENDING')
+            # Create new indices based on the condition
+            indices = tf.where(is_complex, idx_imag, idx_real)
+            return indices
+        
+        def stack_indices(tensor, indices):
+            return tf.stack([tensor[..., idx] for idx in indices], axis=-1)
+        
+        # Apply sort_vector on the last axis of wavevectors
+        indices = tf.map_fn(sort_vector, wavevectors, dtype=tf.int32)
 
-    def partial_wave_sorting(self):
-        eigenvalues, eigenvectors = tf.linalg.eig(self.berreman_matrix)
-        del self.berreman_matrix
+        sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
+        sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
 
-        sorted_indices = tf.argsort(
-            tf.math.imag(eigenvalues), axis=-1, direction="DESCENDING"
-        )
+        transmitted_wavevectors = stack_indices(sorted_waves, [0, 1])
+        reflected_wavevectors = stack_indices(sorted_waves, [2, 3])
+        transmitted_fields = stack_indices(sorted_fields, [0, 1])
+        reflected_fields = stack_indices(sorted_fields, [2, 3])
 
-        eigenvectors = tf.gather(
-        eigenvectors, sorted_indices, axis=-1, batch_dims=self.batch_dims
-        )
 
         eigenvectors = tf.stack(
             [
-                eigenvectors[..., 0],
-                tf.zeros_like(eigenvectors[..., 0]),
-                eigenvectors[..., 1],
-                tf.zeros_like(eigenvectors[..., 0]),
+                transmitted_fields[..., 0],
+                tf.zeros_like(transmitted_fields[..., 1]),
+                transmitted_fields[..., 1],
+                tf.zeros_like(transmitted_fields[..., 1]),
             ],
             axis=-1,
         )
@@ -282,7 +299,8 @@ class Wave:
         self.delta_permutations()
 
         if self.semi_infinite:
-            eigenvectors = self.partial_wave_sorting()
+            eigenvectors = self.passler_sorting()
+            print("hello")
             return eigenvectors
         else:
             return self.get_wave()
