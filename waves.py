@@ -214,32 +214,42 @@ class Wave:
 
         if not self.semi_infinite:
 
-            if self.mode == 'airgap':
-                eigenvalues_diag = tf.linalg.diag(eigenvalues)
+            match self.mode:
 
-                eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
-                k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
-                eigenvectors = eigenvectors[tf.newaxis, ...]
-                partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
+                case 'airgap':
+                    eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
-                transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
-            
-            elif self.mode == 'simple_airgap':
-                eigenvalues_diag = tf.linalg.diag(eigenvalues)
-
-                if tf.is_tensor(self.k_0):
                     eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
-                    self.k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
+                    k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
                     eigenvectors = eigenvectors[tf.newaxis, ...]
+            
+                case'simple_airgap':
+                    eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
-                partial = tf.linalg.expm(-1.0j * eigenvalues_diag * self.k_0 * self.thickness)
+                    if tf.is_tensor(self.k_0):
+                        eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+                        k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
+                        eigenvectors = eigenvectors[tf.newaxis, ...]
+                    
+                    else:
+                        k_0 = self.k_0
 
-                transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+                case 'azimuthal':
+                    k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
 
-            else:
-                transfer_matrix = None
+                case 'dispersion':
+                    k_0 = self.k_0
 
-        return transfer_matrix
+                case _:
+                    raise NotImplementedError(f"Mode {self.mode} not implemented")
+
+            partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
+            transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+
+            return transfer_matrix
+
+        else:
+            return
 
     def partial_wave_sorting(self):
         eigenvalues, eigenvectors = tf.linalg.eig(self.berreman_matrix)
@@ -270,9 +280,9 @@ class Wave:
     def execute(self):
         self.delta_matrix_calc()
         self.delta_permutations()
+
         if self.semi_infinite:
             eigenvectors = self.partial_wave_sorting()
             return eigenvectors
-        
         else:
             return self.get_wave()

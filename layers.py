@@ -9,7 +9,7 @@ import math as m
 import tensorflow as tf
 from material_params import (Air, AmbientIncidentMedium, CalciteUpper,
                             Quartz, Sapphire, CalciteLower, AmbientExitMedium)
-from berreman import transfer_matrix_wrapper
+from waves import Wave
 from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
 
 
@@ -139,14 +139,14 @@ class AirGapLayer(Layer):
             self.mode = 'simple_airgap'
     
     def create(self):
-        self.matrix = transfer_matrix_wrapper(
+        self.matrix = Wave(
             self.kx,
             self.non_magnetic_tensor,
             self.non_magnetic_tensor,
             self.mode,
             k_0 = self.k0,
             thickness=self.thickness,
-        )
+        ).execute()
     
     def reshape_for_multiplication(self):
         """
@@ -182,7 +182,7 @@ class CrystalLayer(Layer):
             self.mode = 'dispersion'
 
     def create(self):
-        self.matrix = transfer_matrix_wrapper(
+        self.matrix = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
@@ -190,7 +190,7 @@ class CrystalLayer(Layer):
         k_0=self.k0,
         thickness=self.thickness,
         semi_infinite=False,
-        )
+        ).execute()
 
 
 class SemiInfiniteCrystalLayer(Layer):
@@ -215,13 +215,13 @@ class SemiInfiniteCrystalLayer(Layer):
             self.mode = 'dispersion'
 
     def create(self):
-        self.matrix = transfer_matrix_wrapper(
+        self.matrix = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
         self.mode,
         semi_infinite=True,
-        )
+        ).execute()
 
 
 class IsotropicSemiInfiniteLayer(Layer):
