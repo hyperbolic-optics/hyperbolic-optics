@@ -4,28 +4,20 @@ import json
 def mock_incident_payload():
     payload = json.dumps({
         "ScenarioData": {
-        "type": "Incident",
+        "type": "Dispersion",
+        "frequency": 1470,
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 100.
+            "permittivity": 5.5
         },
         {
-            "type": "Isotropic Middle-Stack Layer",
-            "thickness": 0.1
-        },
-        {
-            "type": "Crystal Layer",
-            "thickness": 2.,
-            "material": "Quartz",
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
             "rotationX": 0,
-            "rotationY": 90,
+            "rotationY": 67,
             "rotationZ": 0,
-        },
-        {
-            "type": "Semi Infinite Isotropic Layer",
-            "permittivity": 1.
         }
     ],
     })
@@ -130,7 +122,7 @@ def updating_payload(scenario, material, eps_prism, air_gap_thickness, rotationY
     bulk_layer = {
         "type": "Semi Infinite Anisotropic Layer",
         "material": material,
-        "rotationX": 0,
+        "rotationX": 0.,
         "rotationY": rotationY,
         "rotationZ": rotationZ,
     }

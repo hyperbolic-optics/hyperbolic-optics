@@ -20,9 +20,9 @@ class Layer(ABC):
     def __init__(self, data, scenario, kx, k0):
         self.type = data.get('type')
         self.material = data.get('material', None)
-        self.rotationX = m.radians(float(data.get('rotationX', 0)))
-        self.rotationY = m.radians(float(data.get('rotationY', 0)))
-        self.rotationZ = m.radians(float(data.get('rotationZ', 0)))
+        self.rotationX = tf.cast(m.radians(data.get('rotationX', 0)), dtype=tf.float64)
+        self.rotationY = tf.cast(m.radians(data.get('rotationY', 0)), dtype=tf.float64)
+        self.rotationZ = tf.cast(m.radians(data.get('rotationZ', 0)), dtype=tf.float64)
         self.rotationZ_type = data.get('rotationZType', 'relative')
         self.kx = kx
         self.k0 = k0
@@ -100,7 +100,7 @@ class PrismLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.eps_prism = float(data.get('permittivity', None))
+        self.eps_prism = tf.cast(data.get('permittivity', 5.5), dtype=tf.float64)
         self.create()
             
     def create(self):
@@ -134,7 +134,7 @@ class AirGapLayer(Layer):
         if self.scenario == 'Incident':
             self.mode = 'airgap'
         elif self.scenario == 'Azimuthal':
-            self.mode = 'simple_airgap'
+            self.mode = 'azimuthal_airgap'
         elif self.scenario == 'Dispersion':
             self.mode = 'simple_airgap'
     
@@ -215,7 +215,7 @@ class SemiInfiniteCrystalLayer(Layer):
             self.mode = 'dispersion'
 
     def create(self):
-        self.matrix = Wave(
+        self.matrix, self.profile = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
@@ -231,7 +231,7 @@ class IsotropicSemiInfiniteLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.eps_incident = (tf.cast(kx, dtype=tf.float32)/ tf.sin(self.incident_angle))**2.
+        self.eps_incident = (tf.cast(kx, dtype=tf.float64)/ tf.sin(self.incident_angle))**2.
         self.eps_exit = float(data.get('permittivity', None))
 
         if not self.eps_exit:

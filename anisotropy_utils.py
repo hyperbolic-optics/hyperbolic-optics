@@ -46,7 +46,7 @@ def anisotropy_rotation_one_value(matrix, theta, phi, beta):
         axis=-2,
     )
 
-    total_rotation = tf.cast(rotation_z @ rotation_y @ rotation_x, dtype=tf.complex64)
+    total_rotation = tf.cast(rotation_z @ rotation_y @ rotation_x, dtype=tf.complex128)
     result = total_rotation @ matrix @ tf.linalg.matrix_transpose(total_rotation)
 
     return result
@@ -94,7 +94,7 @@ def anisotropy_rotation_one_axis(matrix, theta, phi, beta):
         axis=-2,
     )
 
-    total_rotation = tf.cast(rotation_z @ rotation_y @ rotation_x, dtype=tf.complex64)
+    total_rotation = tf.cast(rotation_z @ rotation_y @ rotation_x, dtype=tf.complex128)
 
     matrix = matrix[:, tf.newaxis, :, :]
     total_rotation = total_rotation[tf.newaxis, :, :, :]

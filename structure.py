@@ -7,7 +7,7 @@ import functools
 import operator
 import tensorflow as tf
 
-from material_params import (CalciteUpper, Quartz, Sapphire)
+from material_params import (CalciteUpper, Quartz, Sapphire, CalciteLower)
 from plots import (contour_plot_simple_incidence, contour_plot_simple_azimuthal,
                    contour_plot_simple_dispersion)
 
@@ -65,6 +65,8 @@ class Structure:
             self.frequency = Sapphire().frequency
         elif material == 'Calcite':
             self.frequency = CalciteUpper().frequency
+        elif material =='CalciteLower':
+            self.frequency = CalciteLower().frequency
         else:
             raise NotImplementedError("Material not implemented")
 
@@ -73,7 +75,7 @@ class Structure:
         """
         Calculates the k_x and k_0 values for the structure
         """
-        self.k_x = tf.cast(tf.sqrt(float(self.eps_prism)) * tf.sin(self.incident_angle), dtype=tf.complex64)
+        self.k_x = tf.sqrt(self.eps_prism) * tf.sin(self.incident_angle)
         self.k_0 = self.frequency * 2.0 * m.pi
 
 
@@ -82,7 +84,7 @@ class Structure:
         Creates the layers from the layer_data_list
         """
         ## First Layer is prism, so we parse it
-        self.eps_prism = layer_data_list[0].get('permittivity', None)
+        self.eps_prism = tf.cast(layer_data_list[0].get('permittivity', None), dtype=tf.float64)
         if not self.frequency:
             last_layer = layer_data_list[-1]
             if last_layer.get('type') != 'Semi Infinite Isotropic Layer':

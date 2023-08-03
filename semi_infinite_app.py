@@ -364,7 +364,7 @@ def mock_interface():
             if axis.collections:
                 im = axis.collections[0]
                 im.set_array(reflectivity.ravel())
-                im.set_clim(vmin=0, vmax=reflectivity.max())
+                im.set_clim(vmin=0., vmax=reflectivity.max())
 
         plt.draw()
 
@@ -393,7 +393,7 @@ def mock_interface():
     ## Material Radio Buttons
     material_radio_ax = plt.axes([0.12, 0.01, 0.1, 0.15])
     material_radio_buttons = RadioButtons(
-        material_radio_ax, ("Quartz", "Calcite", "Sapphire"), active=0
+        material_radio_ax, ("Quartz", "CalciteLower", "Sapphire"), active=0
     )
 
     ## Slider Bars
@@ -402,7 +402,7 @@ def mock_interface():
     slider_eps_prism_ax = plt.axes([0.28, 0.09, 0.5, 0.025])
     slider_y_ax = plt.axes([0.28, 0.05, 0.5, 0.025])
 
-    air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 1.5, valinit=0)
+    air_gap_thickness_slider = Slider(slider_thickness_ax, "Air Gap", 0, 20.0, valinit=0)
     eps_prism_slider = Slider(
         slider_eps_prism_ax, f"$\epsilon_p$", 1., 10., valinit=5.5
     )
@@ -417,7 +417,7 @@ def mock_interface():
     rotation_z_slider = Slider(slider_z_ax, "Rotation Z", 0, 90, valinit=0)
 
     slider_frequency_ax = plt.axes([0.28, 0.01, 0.5, 0.025], visible=False)
-    frequency_slider = Slider(slider_frequency_ax, "Frequency", 1350, 1450, valinit=500)
+    frequency_slider = Slider(slider_frequency_ax, "Frequency", 850, 920, valinit=410)
 
     ## Checkboxes and Save Button
     subplot_labels =  [

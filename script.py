@@ -8,13 +8,15 @@ creates the structure object then produces the reflectivity spectra.
 import json
 from structure import Structure
 from payloads import mock_incident_payload, mock_azimuthal_payload, mock_dispersion_payload
+import tensorflow as tf
+tf.get_logger().setLevel("ERROR")
 
 
 def main():
     """
     Main function
     """
-    mode = 'azimuthal'
+    mode = 'incident'
     if mode == 'incident':
         payload = json.loads(mock_incident_payload())
     elif mode == 'azimuthal':
@@ -25,7 +27,7 @@ def main():
         raise NotImplementedError(f"Mode {mode} not implemented")
     structure = Structure()
     structure.execute(payload)
-    structure.plot()
+    # structure.plot()
 
 
 if __name__ == '__main__':
