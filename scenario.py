@@ -71,6 +71,6 @@ class ScenarioSetup(ABC):
         self.azimuthal_angle = tf.linspace(
             tf.constant(0., dtype=tf.float64),
             tf.constant(2. * m.pi, dtype=tf.float64),
-            180)
+            240)
 
         self.frequency = float(self.frequency)
