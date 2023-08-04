@@ -73,9 +73,9 @@ class Layer(ABC):
         """
         self.material_factory()
         if self.scenario == 'Incident' or self.scenario == 'Azimuthal':
-            self.eps_tensor = self.material.fetch_permittivity_tensor()
+            self.eps_tensor = tf.cast(self.material.fetch_permittivity_tensor(),dtype = tf.complex128)
         if self.scenario == 'Dispersion':
-            self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(self.frequency)
+            self.eps_tensor = tf.cast(self.material.fetch_permittivity_tensor_for_freq(self.frequency), dtype= tf.complex128)
 
     def rotate_tensor(self):
         """

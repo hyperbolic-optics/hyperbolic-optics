@@ -232,7 +232,8 @@ class Wave:
 
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
         sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
-        # sorted_fields /= tf.norm(sorted_fields, axis=-1, keepdims=True)
+
+        # sorted_fields /= tf.norm(sorted_fields, axis=-2, keepdims=True)
 
         transmitted_wavevectors = stack_indices(sorted_waves, [0, 1])
         reflected_wavevectors = stack_indices(sorted_waves, [2, 3])
@@ -269,6 +270,9 @@ class Wave:
             case 'dispersion':
                 k_0 = self.k_0
 
+            case 'simple_airgap':
+                k_0 = self.k_0
+
             case _:
                 raise NotImplementedError(f"Mode {self.mode} not implemented")
 
@@ -277,13 +281,51 @@ class Wave:
 
         return transfer_matrix
     
+    def poynting_reshaping(self):
+
+        match self.mode:
+            case 'dispersion':
+                k_x = self.k_x[:, tf.newaxis,  tf.newaxis]
+                eps_tensor = self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]
+                mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
+
+            case 'incidence':
+                k_x = self.k_x[tf.newaxis, :, tf.newaxis]
+                eps_tensor = self.eps_tensor[:,tf.newaxis, tf.newaxis, ...]
+                mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
+
+            case 'azimuthal':
+                k_x = self.k_x
+                eps_tensor = self.eps_tensor[:, :, tf.newaxis, ...]
+                mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
+
+            case 'airgap':
+                k_x = self.k_x[:, tf.newaxis]
+                eps_tensor = self.eps_tensor[tf.newaxis, ...]
+                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+
+            case 'simple_airgap':
+                k_x = self.k_x[:,tf.newaxis]
+                eps_tensor = self.eps_tensor[tf.newaxis, ...]
+                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+
+            case 'azimuthal_airgap':
+                k_x = self.k_x[tf.newaxis]
+                eps_tensor = self.eps_tensor[tf.newaxis, ...]
+                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+
+            case _:
+                raise NotImplementedError(f"Mode {self.mode} not implemented for poynting vector")
+
+        
+        return k_x, eps_tensor, mu_tensor
+
+            
 
     def get_poynting(self, *args):
         transmitted_waves, reflected_waves, transmitted_fields, reflected_fields = args
 
-        k_x = self.k_x[:, tf.newaxis, tf.newaxis]
-        eps_tensor = self.eps_tensor[tf.newaxis,:,tf.newaxis, ...]
-        mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
+        k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
 
         transmitted_Ex = transmitted_fields[..., 0, :]
         transmitted_Ey = transmitted_fields[..., 1, :]
@@ -297,6 +339,7 @@ class Wave:
 
         transmitted_Ez = (-1./eps_tensor[...,2,2]) * (k_x * transmitted_Hy + eps_tensor[...,2,0] * transmitted_Ex + eps_tensor[...,2,1] * transmitted_Ey)
         reflected_Ez = (-1./eps_tensor[...,2,2]) * (k_x * reflected_Hy + eps_tensor[...,2,0] * reflected_Ex + eps_tensor[...,2,1] * reflected_Ey)
+
 
         transmitted_Hz = (1./mu_tensor[...,2,2]) * (k_x * transmitted_Ey - mu_tensor[...,2,0] * transmitted_Hx - mu_tensor[...,2,1] * transmitted_Hy)
         reflected_Hz = (1./mu_tensor[...,2,2]) * (k_x * reflected_Ey - mu_tensor[...,2,0] * reflected_Hx - mu_tensor[...,2,1] * reflected_Hy)
@@ -340,7 +383,7 @@ class Wave:
 
     def sort_poynting_indices(self, profile):
         """Sorts the poynting vector by z component"""
-        
+
         # calculate cross-polarisation components for electric field
         denominator_E_field = tf.math.abs(profile['Ex'])**2. + tf.math.abs(profile['Ey'])**2.
         Cp_E = (tf.math.abs(profile['Ex']))**2. / denominator_E_field
@@ -357,65 +400,74 @@ class Wave:
 
         condition_P = tf.abs(Cp_P[...,1] - Cp_P[...,0])       
         
-        thresh = 1.e-10
+        thresh = 1.e-6
         overall_condition = (condition_P > thresh)[..., tf.newaxis]
         sorting_indices = tf.where(overall_condition, indices_P, indices_P)
 
         for element in profile:
             profile[element] = tf.gather(profile[element], sorting_indices, axis=-1, batch_dims=self.batch_dims)
+
         return profile
         
+    # def prepare_full_returned_profile(self, transmitted_wave_profile, reflected_wave_profile):
+        
+    #     transmitted_wave_profile = tf.stack(
+    #         [transmitted_wave_profile['Ex'], 
+    #             transmitted_wave_profile['Ey'], 
+    #             transmitted_wave_profile['Hx'], 
+    #             transmitted_wave_profile['Hy']],
+    #             axis=-2
+    #     )
 
-    def simple_airgap_matrix(self):
-
-        eigenvalues, eigenvectors = tf.linalg.eig(self.berreman_matrix)
-        eigenvalues_diag = tf.linalg.diag(eigenvalues)
-        partial = tf.linalg.expm(-1.0j * eigenvalues_diag * self.k_0 * self.thickness)
-        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
-
-        return transfer_matrix
-
+    #     if not self.semi_infinite:
+            
+    #         reflected_profile = 
 
     def execute(self):
         self.delta_matrix_calc()
         self.delta_permutations()
-
-        if self.mode == 'simple_airgap':
-            return self.simple_airgap_matrix()
         
+        transmitted_waves, reflected_waves, transmitted_fields, reflected_fields = self.wave_sorting()
+        transmitted_wave_profile, reflected_wave_profile = self.get_poynting(transmitted_waves, reflected_waves, transmitted_fields, reflected_fields)
+        transmitted_wave_profile = self.sort_poynting_indices(transmitted_wave_profile)
+        reflected_wave_profile = self.sort_poynting_indices(reflected_wave_profile)
+        
+        transmitted_new_profile = tf.stack(
+            [transmitted_wave_profile['Ex'], 
+                transmitted_wave_profile['Ey'], 
+                transmitted_wave_profile['Hx'], 
+                transmitted_wave_profile['Hy']],
+                axis=-2
+        )
+
+        if self.semi_infinite:
+            transfer_matrix = tf.stack(
+                [
+                    transmitted_new_profile[..., 0],
+                    tf.zeros_like(transmitted_fields[..., 1]),
+                    transmitted_new_profile[..., 1],
+                    tf.zeros_like(transmitted_fields[..., 1]),
+                ],
+                axis=-1,
+            )
+
+            return transfer_matrix, transmitted_wave_profile
+
         else:
-            transmitted_waves, reflected_waves, transmitted_fields, reflected_fields = self.wave_sorting()
-            transmitted_wave_profile, reflected_wave_profile = self.get_poynting(transmitted_waves, reflected_waves, transmitted_fields, reflected_fields)
-            transmitted_wave_profile = self.sort_poynting_indices(transmitted_wave_profile)
-            reflected_wave_profile = self.sort_poynting_indices(reflected_wave_profile)
-            
+            eigenvalues = tf.stack([
+                transmitted_waves[..., 0],
+                reflected_waves[..., 0],
+                transmitted_waves[..., 1],
+                reflected_waves[..., 1],
+            ], axis=-1)
 
-            if self.semi_infinite:
-                transfer_matrix = tf.stack(
-                    [
-                        transmitted_fields[..., 0],
-                        tf.zeros_like(transmitted_fields[..., 1]),
-                        transmitted_fields[..., 1],
-                        tf.zeros_like(transmitted_fields[..., 1]),
-                    ],
-                    axis=-1,
-                )
+            eigenvectors = tf.stack([
+                transmitted_fields[..., 0],
+                reflected_fields[..., 0],
+                transmitted_fields[..., 1],
+                reflected_fields[..., 1],
+            ], axis=-1)
 
-                return transfer_matrix, transmitted_wave_profile
+            transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
 
-            else:
-                eigenvalues = tf.stack([
-                    transmitted_waves[..., 0],
-                    reflected_waves[..., 0],
-                    transmitted_waves[..., 1],
-                    reflected_waves[..., 1],
-                ], axis=-1)
-
-                eigenvectors = tf.stack([
-                    transmitted_fields[..., 0],
-                    reflected_fields[..., 0],
-                    transmitted_fields[..., 1],
-                    reflected_fields[..., 1],
-                ], axis=-1)
-
-                return self.get_matrix(eigenvalues, eigenvectors)
+            return transfer_matrix

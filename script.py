@@ -27,7 +27,7 @@ def main():
         raise NotImplementedError(f"Mode {mode} not implemented")
     structure = Structure()
     structure.execute(payload)
-    # structure.plot()
+    structure.plot()
 
 
 if __name__ == '__main__':

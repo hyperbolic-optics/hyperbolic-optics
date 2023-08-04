@@ -64,7 +64,7 @@ class AnisotropicMaterial(object):
         diag_tensors = tf.stack([eps_ord, eps_ord, eps_ext], axis=0)
         eps_tensor = tf.linalg.diag(diag_tensors)
 
-        return eps_tensor    
+        return eps_tensor
 
 
     @run_on_device
@@ -196,7 +196,7 @@ class CalciteLower(Calcite):
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, freq_min = 1350.0, freq_max = 1700.0):
+    def __init__(self, freq_min = 1350.0, freq_max = 1600.0):
         super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
