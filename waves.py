@@ -233,8 +233,6 @@ class Wave:
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
         sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
 
-        # sorted_fields /= tf.norm(sorted_fields, axis=-2, keepdims=True)
-
         transmitted_wavevectors = stack_indices(sorted_waves, [0, 1])
         reflected_wavevectors = stack_indices(sorted_waves, [2, 3])
         transmitted_fields = stack_indices(sorted_fields, [0, 1])
@@ -344,7 +342,7 @@ class Wave:
         transmitted_Hz = (1./mu_tensor[...,2,2]) * (k_x * transmitted_Ey - mu_tensor[...,2,0] * transmitted_Hx - mu_tensor[...,2,1] * transmitted_Hy)
         reflected_Hz = (1./mu_tensor[...,2,2]) * (k_x * reflected_Ey - mu_tensor[...,2,0] * reflected_Hx - mu_tensor[...,2,1] * reflected_Hy)
 
-        transmitted_Px = transmitted_Ey * transmitted_Hz - transmitted_Ez * transmitted_Hz
+        transmitted_Px = transmitted_Ey * transmitted_Hz - transmitted_Ez * transmitted_Hy
         transmitted_Py = transmitted_Ez * transmitted_Hx - transmitted_Ex * transmitted_Hz
         transmitted_Pz = transmitted_Ex * transmitted_Hy - transmitted_Ey * transmitted_Hx
 
@@ -384,25 +382,28 @@ class Wave:
     def sort_poynting_indices(self, profile):
         """Sorts the poynting vector by z component"""
 
+        poynting_x = tf.math.abs(profile['Px'])**2.
+        poynting_y = tf.math.abs(profile['Py'])**2.
+
+        electric_x = tf.math.abs(profile['Ex'])**2.
+        electric_y = tf.math.abs(profile['Ey'])**2.
+
         # calculate cross-polarisation components for electric field
-        denominator_E_field = tf.math.abs(profile['Ex'])**2. + tf.math.abs(profile['Ey'])**2.
-        Cp_E = (tf.math.abs(profile['Ex']))**2. / denominator_E_field
+        denominator_E_field = electric_x + electric_y
+        Cp_E = electric_x / denominator_E_field
 
         # calculate cross-polarisation components for Poynting Vector
-        denominator_poynting = tf.math.abs(profile['Px'])**2. + tf.math.abs(profile['Py'])**2.
-        Cp_P = (tf.math.abs(profile['Px'])**2.) / denominator_poynting
-
-        Cp_P = tf.where(tf.math.is_nan(Cp_P), tf.zeros_like(Cp_P), Cp_P)
-        Cp_E = tf.where(tf.math.is_nan(Cp_E), tf.zeros_like(Cp_E), Cp_E)
-
-        indices_P = tf.argsort(Cp_P, axis=-1, direction='DESCENDING')
-        indices_E = tf.argsort(Cp_E, axis=-1, direction='DESCENDING')
-
-        condition_P = tf.abs(Cp_P[...,1] - Cp_P[...,0])       
+        denominator_poynting = poynting_x + poynting_y
+        Cp_P = poynting_x / denominator_poynting
         
-        thresh = 1.e-6
-        overall_condition = (condition_P > thresh)[..., tf.newaxis]
-        sorting_indices = tf.where(overall_condition, indices_P, indices_P)
+        indices_P = tf.argsort(Cp_P, axis=-1, direction='DESCENDING')
+        indices_E = tf.argsort(Cp_E, axis=-1, direction='ASCENDING')
+
+        condition_P = tf.abs(Cp_P[...,1] - Cp_P[...,0])[..., tf.newaxis]
+        thresh = 1.e-14
+        overall_condition = (condition_P > thresh)
+
+        sorting_indices = tf.where(overall_condition, indices_P, indices_E)
 
         for element in profile:
             profile[element] = tf.gather(profile[element], sorting_indices, axis=-1, batch_dims=self.batch_dims)
