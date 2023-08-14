@@ -64,12 +64,12 @@ class ScenarioSetup(ABC):
         Creates the dispersion scenario
         """
         self.incident_angle = tf.linspace(
-            tf.constant(0. + 1.e-8, dtype=tf.float64),
+            tf.constant(0. + 1.e-7, dtype=tf.float64),
             tf.constant(m.pi/2., dtype=tf.float64),
             180)
 
         self.azimuthal_angle = tf.linspace(
-            tf.constant(0. + 1.e-8, dtype=tf.float64),
+            tf.constant(0. + 1.e-7, dtype=tf.float64),
             tf.constant(2. * m.pi, dtype=tf.float64),
             240)
 

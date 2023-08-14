@@ -27,7 +27,32 @@ def main():
         raise NotImplementedError(f"Mode {mode} not implemented")
     structure = Structure()
     structure.execute(payload)
-    structure.plot()
+    print(structure.layers)
+    
+    crystal_layer = structure.layers[-1]
+
+
+    thickness = 1.e-2
+
+    forward_waves = crystal_layer.profile['transmitted']['propagation']
+    backward_waves = crystal_layer.profile['reflected']['propagation']
+
+    eigenvalues = tf.linalg.diag(tf.stack([
+        forward_waves[..., 0],
+        backward_waves[..., 0],
+        forward_waves[..., 1],
+        backward_waves[..., 1]],
+        axis=-1))
+    k_0 = structure.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+
+    propagation_matrix = tf.linalg.expm(-1.j * eigenvalues * k_0 * thickness)
+
+    print(propagation_matrix.shape)
+    
+    
+    
+    
+    
 
 
 if __name__ == '__main__':

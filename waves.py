@@ -1,5 +1,35 @@
 import tensorflow as tf
 
+class WaveProfile:
+
+    def __init__(self, profile):
+        
+        self.transmitted_Ex = profile['transmitted']['Ex']
+        self.transmitted_Ey = profile['transmitted']['Ey']
+        self.transmitted_Ez = profile['transmitted']['Ez']
+        self.transmitted_Hx = profile['transmitted']['Hx']
+        self.transmitted_Hy = profile['transmitted']['Hy']
+        self.transmitted_Hz = profile['transmitted']['Hz']
+        self.transmitted_Px = profile['transmitted']['Px']
+        self.transmitted_Py = profile['transmitted']['Py']
+        self.transmitted_Pz = profile['transmitted']['Pz']
+        self.transmitted_k_z = profile['transmitted']['propagation']
+
+        self.reflected_Ex = profile['reflected']['Ex']
+        self.reflected_Ey = profile['reflected']['Ey']
+        self.reflected_Ez = profile['reflected']['Ez']
+        self.reflected_Hx = profile['reflected']['Hx']
+        self.reflected_Hy = profile['reflected']['Hy']
+        self.reflected_Hz = profile['reflected']['Hz']
+        self.reflected_Px = profile['reflected']['Px']
+        self.reflected_Py = profile['reflected']['Py']
+        self.reflected_Pz = profile['reflected']['Pz']
+        self.reflected_k_z = profile['reflected']['propagation']
+
+
+        pass
+
+
 class Wave:
     """
     This class will be used to represent the four partial waves in a layer of the structure
@@ -9,10 +39,6 @@ class Wave:
     - Magnetic Field
     - Poynting Vector
     - Tangential Component of its wavevector
-
-    Params:
-    - Eigenvalues of the layer
-    - Eigenmodes of the layer
     """
 
     def __init__(self, kx, eps_tensor, mu_tensor, mode, k_0 = None, thickness = None, semi_infinite = False, magnet = False):
@@ -31,11 +57,6 @@ class Wave:
         
         self.eigenvalues = None
         self.eigenvectors = None
-        self.electric_field = None
-        self.magnetic_field = None
-        self.poynting_vector = None
-        self.tangential_wavevector = None
-
         self.berreman_matrix = None
 
     
@@ -46,15 +67,15 @@ class Wave:
         mu_tensor = self.mu_tensor
 
         match self.mode:
-            case 'incidence':
+            case 'Incident':
                 k_x = self.k_x[:, tf.newaxis]
                 eps_tensor = eps_tensor[tf.newaxis, ...]
                 mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
 
-            case 'azimuthal':
+            case 'Azimuthal':
                 mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
 
-            case 'dispersion':
+            case 'Dispersion':
                 k_x = k_x[:, tf.newaxis]
                 eps_tensor = eps_tensor[tf.newaxis, ...]
                 mu_tensor = mu_tensor * tf.ones_like(eps_tensor)
@@ -177,15 +198,15 @@ class Wave:
 
     def delta_permutations(self):
         match self.mode:
-            case 'incidence':
+            case 'Incident':
                 permutation = [2, 1, 3, 0]
                 self.batch_dims = 2
 
-            case 'azimuthal':
+            case 'Azimuthal':
                 permutation = [1, 2, 3, 0]
                 self.batch_dims = 2
 
-            case 'dispersion':
+            case 'Dispersion':
                 permutation = [1, 2, 3, 0]
                 self.batch_dims = 2
 
@@ -209,7 +230,6 @@ class Wave:
 
     def wave_sorting(self):
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
-
         
         def sort_vector(waves):
             # Check if the vector contains complex numbers
@@ -252,6 +272,9 @@ class Wave:
 
         match self.mode:
 
+            case 'Incident':
+                k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+
             case 'airgap':
                 eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
@@ -262,10 +285,10 @@ class Wave:
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
                 eigenvectors = eigenvectors[tf.newaxis, ...]
 
-            case 'azimuthal':
+            case 'Azimuthal':
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
 
-            case 'dispersion':
+            case 'Dispersion':
                 k_0 = self.k_0
 
             case 'simple_airgap':
@@ -282,17 +305,17 @@ class Wave:
     def poynting_reshaping(self):
 
         match self.mode:
-            case 'dispersion':
+            case 'Dispersion':
                 k_x = self.k_x[:, tf.newaxis,  tf.newaxis]
                 eps_tensor = self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]
                 mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
 
-            case 'incidence':
+            case 'Incident':
                 k_x = self.k_x[tf.newaxis, :, tf.newaxis]
                 eps_tensor = self.eps_tensor[:,tf.newaxis, tf.newaxis, ...]
                 mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
 
-            case 'azimuthal':
+            case 'Azimuthal':
                 k_x = self.k_x
                 eps_tensor = self.eps_tensor[:, :, tf.newaxis, ...]
                 mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
@@ -410,19 +433,6 @@ class Wave:
 
         return profile
         
-    # def prepare_full_returned_profile(self, transmitted_wave_profile, reflected_wave_profile):
-        
-    #     transmitted_wave_profile = tf.stack(
-    #         [transmitted_wave_profile['Ex'], 
-    #             transmitted_wave_profile['Ey'], 
-    #             transmitted_wave_profile['Hx'], 
-    #             transmitted_wave_profile['Hy']],
-    #             axis=-2
-    #     )
-
-    #     if not self.semi_infinite:
-            
-    #         reflected_profile = 
 
     def execute(self):
         self.delta_matrix_calc()
@@ -432,43 +442,12 @@ class Wave:
         transmitted_wave_profile, reflected_wave_profile = self.get_poynting(transmitted_waves, reflected_waves, transmitted_fields, reflected_fields)
         transmitted_wave_profile = self.sort_poynting_indices(transmitted_wave_profile)
         reflected_wave_profile = self.sort_poynting_indices(reflected_wave_profile)
-        
-        transmitted_new_profile = tf.stack(
-            [transmitted_wave_profile['Ex'], 
-                transmitted_wave_profile['Ey'], 
-                transmitted_wave_profile['Hx'], 
-                transmitted_wave_profile['Hy']],
-                axis=-2
-        )
 
-        if self.semi_infinite:
-            transfer_matrix = tf.stack(
-                [
-                    transmitted_new_profile[..., 0],
-                    tf.zeros_like(transmitted_fields[..., 1]),
-                    transmitted_new_profile[..., 1],
-                    tf.zeros_like(transmitted_fields[..., 1]),
-                ],
-                axis=-1,
-            )
+        profile = {
+            'transmitted': transmitted_wave_profile,
+            'reflected': reflected_wave_profile
+        }
 
-            return transfer_matrix, transmitted_wave_profile
+        profile_to_return = WaveProfile(profile)
 
-        else:
-            eigenvalues = tf.stack([
-                transmitted_waves[..., 0],
-                reflected_waves[..., 0],
-                transmitted_waves[..., 1],
-                reflected_waves[..., 1],
-            ], axis=-1)
-
-            eigenvectors = tf.stack([
-                transmitted_fields[..., 0],
-                reflected_fields[..., 0],
-                transmitted_fields[..., 1],
-                reflected_fields[..., 1],
-            ], axis=-1)
-
-            transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
-
-            return transfer_matrix
+        return profile

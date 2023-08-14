@@ -21,7 +21,7 @@ class Layer(ABC):
         self.type = data.get('type')
         self.material = data.get('material', None)
         self.rotationX = tf.cast(m.radians(data.get('rotationX', 0)), dtype=tf.float64)
-        self.rotationY = tf.cast(m.radians(data.get('rotationY', 0)), dtype=tf.float64)
+        self.rotationY = tf.cast(m.radians(data.get('rotationY', 0)), dtype=tf.float64) + 1.e-8
         self.rotationZ = tf.cast(m.radians(data.get('rotationZ', 0)), dtype=tf.float64)
         self.rotationZ_type = data.get('rotationZType', 'relative')
         self.kx = kx
@@ -125,7 +125,6 @@ class AirGapLayer(Layer):
         self.non_magnetic_tensor = self.non_magnetic_tensor * self.permittivity
         self.calculate_mode()
         self.create()
-        self.reshape_for_multiplication()
     
     def calculate_mode(self):
         """
@@ -139,7 +138,7 @@ class AirGapLayer(Layer):
             self.mode = 'simple_airgap'
     
     def create(self):
-        self.matrix = Wave(
+        self.profile = Wave(
             self.kx,
             self.non_magnetic_tensor,
             self.non_magnetic_tensor,
@@ -147,14 +146,6 @@ class AirGapLayer(Layer):
             k_0 = self.k0,
             thickness=self.thickness,
         ).execute()
-    
-    def reshape_for_multiplication(self):
-        """
-        Reshapes the matrix for multiplication with the next layer, 
-        depending on the scenario.
-        """
-        if self.scenario == 'Azimuthal' or self.scenario == 'Dispersion':
-            self.matrix = self.matrix[:, tf.newaxis, ...]
 
 
 class CrystalLayer(Layer):
@@ -167,29 +158,16 @@ class CrystalLayer(Layer):
         self.calculate_eps_tensor()
         self.calculate_z_rotation()
         self.rotate_tensor()
-        self.calculate_mode()
         self.create()
 
-    def calculate_mode(self):
-        """
-        Determines the mode of the transfer matrix wrapper
-        """
-        if self.scenario == 'Incident':
-            self.mode = 'incidence'
-        elif self.scenario == 'Azimuthal':
-            self.mode = 'azimuthal'
-        elif self.scenario == 'Dispersion':
-            self.mode = 'dispersion'
-
     def create(self):
-        self.matrix = Wave(
+        self.profile = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
-        self.mode,
+        self.scenario,
         k_0=self.k0,
-        thickness=self.thickness,
-        semi_infinite=False,
+        thickness=self.thickness
         ).execute()
 
 
@@ -203,23 +181,14 @@ class SemiInfiniteCrystalLayer(Layer):
         self.calculate_z_rotation()
         self.calculate_eps_tensor()
         self.rotate_tensor()
-        self.calculate_mode()
         self.create()
 
-    def calculate_mode(self):
-        if self.scenario == 'Incident':
-            self.mode = 'incidence'
-        elif self.scenario == 'Azimuthal':
-            self.mode = 'azimuthal'
-        elif self.scenario == 'Dispersion':
-            self.mode = 'dispersion'
-
     def create(self):
-        self.matrix, self.profile = Wave(
+        self.profile = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
-        self.mode,
+        self.scenario,
         semi_infinite=True,
         ).execute()
 

@@ -105,6 +105,15 @@ class Structure:
                                                          self.scenario,
                                                          self.k_x,
                                                          self.k_0))
+    
+    
+    def analyse_profiles(self):
+        """
+        Creates the propagation matrix for the given layers.
+        """
+        profiles = [layer for layer in self.layers[1:]]
+        print(profiles)
+        exit()
 
     def calculate(self):
         """
@@ -123,6 +132,15 @@ class Structure:
         self.r_sp = (self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 3, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
         self.r_ss = (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
 
+    def calculate_transmission(self):
+        bottom_line = self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
+
+        self.t_pp = self.transfer_matrix[..., 0,0] / bottom_line
+        self.t_ps = - self.transfer_matrix[..., 0,2] / bottom_line
+        self.t_sp = - self.transfer_matrix[..., 2,0] / bottom_line
+        self.t_ss = self.transfer_matrix[..., 2,2] / bottom_line
+
+
     def execute(self, payload):
         """
         Executes the calculation of the reflectivity for the given scenario data and layers.
@@ -138,12 +156,17 @@ class Structure:
 
         # Get the layers
         self.get_layers(payload.get("Layers", None))
+        self.analyse_profiles()
 
-        # Calculate the transfer matrix
-        self.calculate()
+        ### TODO: Now handle multiplication of transfer matrices from wave profiles
+        ### Rather than handled during the creation of the layers
 
-        # Calculate the reflectivity
-        self.calculate_reflectivity()
+        # # Calculate the transfer matrix
+        # self.calculate()
+
+        # # Calculate the reflectivity
+        # self.calculate_reflectivity()
+        # self.calculate_transmission()
 
     def plot(self):
         """
