@@ -252,6 +252,8 @@ class Wave:
 
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
         sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
+        # sorted_fields, _ = tf.linalg.normalize(sorted_fields, axis=-2)
+        
 
         transmitted_wavevectors = stack_indices(sorted_waves, [0, 1])
         reflected_wavevectors = stack_indices(sorted_waves, [2, 3])
@@ -369,9 +371,17 @@ class Wave:
         transmitted_Py = transmitted_Ez * transmitted_Hx - transmitted_Ex * transmitted_Hz
         transmitted_Pz = transmitted_Ex * transmitted_Hy - transmitted_Ey * transmitted_Hx
 
-        reflected_Px = reflected_Ey * reflected_Hz - reflected_Ez * reflected_Hy
-        reflected_Py = reflected_Ez * reflected_Hx - reflected_Ex * reflected_Hz
-        reflected_Pz = reflected_Ex * reflected_Hy - reflected_Ey * reflected_Hx
+        physical_Px_transmitted = 0.5 * tf.math.real(transmitted_Ey * tf.math.conj(transmitted_Hz) - transmitted_Ez * tf.math.conj(transmitted_Hy))
+        physical_Py_transmitted = 0.5 * tf.math.real(transmitted_Ez * tf.math.conj(transmitted_Hx) - transmitted_Ex * tf.math.conj(transmitted_Hz))
+        physical_Pz_transmitted = 0.5 * tf.math.real(transmitted_Ex * tf.math.conj(transmitted_Hy) - transmitted_Ey * tf.math.conj(transmitted_Hx))
+
+        reflected_Px = 0.5 * tf.math.real(reflected_Ey * tf.math.conj(reflected_Hz) - reflected_Ez * tf.math.conj(reflected_Hy))
+        reflected_Py = 0.5 * tf.math.real(reflected_Ez * tf.math.conj(reflected_Hx) - reflected_Ex * tf.math.conj(reflected_Hz))
+        reflected_Pz = 0.5 * tf.math.real(reflected_Ex * tf.math.conj(reflected_Hy) - reflected_Ey * tf.math.conj(reflected_Hx))
+
+        physical_Px_reflected = 0.5 * tf.math.real(reflected_Ey * tf.math.conj(reflected_Hz) - reflected_Ez * tf.math.conj(reflected_Hy))
+        physical_Py_reflected = 0.5 * tf.math.real(reflected_Ez * tf.math.conj(reflected_Hx) - reflected_Ex * tf.math.conj(reflected_Hz))
+        physical_Pz_reflected = 0.5 * tf.math.real(reflected_Ex * tf.math.conj(reflected_Hy) - reflected_Ey * tf.math.conj(reflected_Hx))
     
         transmitted_wave_profile = {
             'Ex': transmitted_Ex,
@@ -383,6 +393,10 @@ class Wave:
             'Px': transmitted_Px,
             'Py': transmitted_Py,
             'Pz': transmitted_Pz,
+            'physical_Px': physical_Px_transmitted,
+            'physical_Py': physical_Py_transmitted,
+            'physical_Pz': physical_Pz_transmitted,
+            'refraction_angle': tf.math.atan((physical_Px_transmitted / physical_Pz_transmitted)),
             'propagation': transmitted_waves
         }
 
@@ -396,6 +410,10 @@ class Wave:
             'Px': reflected_Px,
             'Py': reflected_Py,
             'Pz': reflected_Pz,
+            'physical_Px': physical_Px_reflected,
+            'physical_Py': physical_Py_reflected,
+            'physical_Pz': physical_Pz_reflected,
+            'refraction_angle': tf.math.atan((physical_Px_reflected / physical_Pz_reflected)),
             'propagation': reflected_waves
         }
 
@@ -423,10 +441,10 @@ class Wave:
         indices_E = tf.argsort(Cp_E, axis=-1, direction='ASCENDING')
 
         condition_P = tf.abs(Cp_P[...,1] - Cp_P[...,0])[..., tf.newaxis]
-        thresh = 1.e-14
+        thresh = 1.e-10
         overall_condition = (condition_P > thresh)
 
-        sorting_indices = tf.where(overall_condition, indices_P, indices_E)
+        sorting_indices = tf.where(overall_condition, indices_P, indices_E)            
 
         for element in profile:
             profile[element] = tf.gather(profile[element], sorting_indices, axis=-1, batch_dims=self.batch_dims)
