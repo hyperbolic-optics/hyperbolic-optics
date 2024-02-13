@@ -10,9 +10,9 @@ class WaveProfile:
         self.transmitted_Hx = profile['transmitted']['Hx']
         self.transmitted_Hy = profile['transmitted']['Hy']
         self.transmitted_Hz = profile['transmitted']['Hz']
-        self.transmitted_Px = profile['transmitted']['Px']
-        self.transmitted_Py = profile['transmitted']['Py']
-        self.transmitted_Pz = profile['transmitted']['Pz']
+        self.transmitted_Px = profile['transmitted']['Px_physical']
+        self.transmitted_Py = profile['transmitted']['Py_physical']
+        self.transmitted_Pz = profile['transmitted']['Pz_physical']
         self.transmitted_k_z = profile['transmitted']['propagation']
 
         self.reflected_Ex = profile['reflected']['Ex']
@@ -21,13 +21,10 @@ class WaveProfile:
         self.reflected_Hx = profile['reflected']['Hx']
         self.reflected_Hy = profile['reflected']['Hy']
         self.reflected_Hz = profile['reflected']['Hz']
-        self.reflected_Px = profile['reflected']['Px']
-        self.reflected_Py = profile['reflected']['Py']
-        self.reflected_Pz = profile['reflected']['Pz']
+        self.reflected_Px = profile['reflected']['Px_physical']
+        self.reflected_Py = profile['reflected']['Py_physical']
+        self.reflected_Pz = profile['reflected']['Pz_physical']
         self.reflected_k_z = profile['reflected']['propagation']
-
-
-        pass
 
 
 class Wave:
@@ -393,10 +390,9 @@ class Wave:
             'Px': transmitted_Px,
             'Py': transmitted_Py,
             'Pz': transmitted_Pz,
-            'physical_Px': physical_Px_transmitted,
-            'physical_Py': physical_Py_transmitted,
-            'physical_Pz': physical_Pz_transmitted,
-            'refraction_angle': tf.math.atan((physical_Px_transmitted / physical_Pz_transmitted)),
+            'Px_physical': physical_Px_transmitted,
+            'Py_physical': physical_Py_transmitted,
+            'Pz_physical': physical_Pz_transmitted,
             'propagation': transmitted_waves
         }
 
@@ -410,10 +406,9 @@ class Wave:
             'Px': reflected_Px,
             'Py': reflected_Py,
             'Pz': reflected_Pz,
-            'physical_Px': physical_Px_reflected,
-            'physical_Py': physical_Py_reflected,
-            'physical_Pz': physical_Pz_reflected,
-            'refraction_angle': tf.math.atan((physical_Px_reflected / physical_Pz_reflected)),
+            'Px_physical': physical_Px_reflected,
+            'Py_physical': physical_Py_reflected,
+            'Pz_physical': physical_Pz_reflected,
             'propagation': reflected_waves
         }
 
@@ -441,7 +436,7 @@ class Wave:
         indices_E = tf.argsort(Cp_E, axis=-1, direction='ASCENDING')
 
         condition_P = tf.abs(Cp_P[...,1] - Cp_P[...,0])[..., tf.newaxis]
-        thresh = 1.e-10
+        thresh = 1.e-6
         overall_condition = (condition_P > thresh)
 
         sorting_indices = tf.where(overall_condition, indices_P, indices_E)            

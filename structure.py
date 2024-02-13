@@ -156,7 +156,6 @@ class Structure:
 
         # Get the layers
         self.get_layers(payload.get("Layers", None))
-        self.analyse_profiles()
 
         ### TODO: Now handle multiplication of transfer matrices from wave profiles
         ### Rather than handled during the creation of the layers
