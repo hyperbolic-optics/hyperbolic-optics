@@ -9,12 +9,12 @@ def mock_incident_payload():
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 11.5
+            "permittivity": 5.5
         },
-        # {
-        #     "type": "Isotropic Middle-Stack Layer",
-        #     "thickness": 1.5
-        # },
+        {
+            "type": "Isotropic Middle-Stack Layer",
+            "thickness": 1.5
+        },
         {
             "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",

@@ -17,7 +17,7 @@ def plot_permittivity(material, eps_ext, eps_ord):
     )
 
     fig, axs = plt.subplots(
-        2, figsize=(12, 5), sharex=True, gridspec_kw={"hspace": 0.1}
+        2, figsize=(9, 7), sharex=True, gridspec_kw={"hspace": 0.1}
     )
 
     # Plot real part of permittivity
