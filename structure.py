@@ -77,8 +77,9 @@ class Structure:
         Calculates the k_x and k_0 values for the structure
         """
         print("Calculating k_x and k_0")  # Add this line
-        self.k_x = tf.cast(tf.sqrt(float(self.eps_prism)) * tf.sin(self.incident_angle), dtype=tf.complex64)
+        self.k_x = tf.cast(tf.sqrt(tf.cast(self.eps_prism, dtype=tf.float64)) * tf.sin(tf.cast(self.incident_angle, dtype=tf.float64)), dtype=tf.float64)
         self.k_0 = self.frequency * 2.0 * m.pi
+        print("Calculated k_x and k_0")  # Add this line
 
     def get_layers(self, layer_data_list):
         """
@@ -122,13 +123,12 @@ class Structure:
         """
         Calculates the reflectivity for the given transfer matrix.
         """
-        print("Calculating reflectivity")  # Add this line
         bottom_line = self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
         self.r_pp = (self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 3, 2] - self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 0, 2]) / bottom_line
         self.r_ps = (self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 1, 2] - (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 0, 2])) / bottom_line
         self.r_sp = (self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 3, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
         self.r_ss = (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
-
+    
     def execute(self, payload):
         """
         Executes the calculation of the reflectivity for the given scenario data and layers.
@@ -139,31 +139,28 @@ class Structure:
         Returns:
             None
         """
-        try:
-            print("Executing structure")  # Add this line
-            
-            # Get the scenario data
-            print("Getting scenario data")  # Add this line
-            self.get_scenario(payload.get("ScenarioData"))
-            print("Got scenario data")  # Add this line
-            
-            # Get the layers
-            print("Getting layers")  # Add this line
-            self.get_layers(payload.get("Layers", None))
-            print("Got layers")  # Add this line
-            
-            # Calculate the transfer matrix
-            print("Calculating transfer matrix")  # Add this line
-            self.calculate()
-            print("Calculated transfer matrix")  # Add this line
+        print("Executing structure")  # Add this line
+        
+        # Get the scenario data
+        print("Getting scenario data")  # Add this line
+        self.get_scenario(payload.get("ScenarioData"))
+        print("Got scenario data")  # Add this line
+        
+        # Get the layers
+        print("Getting layers")  # Add this line
+        self.get_layers(payload.get("Layers", None))
+        print("Got layers")  # Add this line
+        
+        # Calculate the transfer matrix
+        print("Calculating transfer matrix")  # Add this line
+        self.calculate()
+        print("Calculated transfer matrix")  # Add this line
 
-            # Calculate the reflectivity
-            print("Calculating reflectivity")  # Add this line
-            self.calculate_reflectivity()
-            print("Calculated reflectivity")  # Add this line
+        # Calculate the reflectivity
+        print("Calculating reflectivity")  # Add this line
+        self.calculate_reflectivity()
+        print("Calculated reflectivity")  # Add this line
 
-        except Exception as e:
-            print(f"An exception occurred: {str(e)}")
 
     def plot(self):
         """

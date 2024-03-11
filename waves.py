@@ -225,7 +225,10 @@ class Wave:
 
 
     def wave_sorting(self):
+        print("Wave sorting")
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
+        print(f"Wavevectors shape: {wavevectors.shape}")
+        print(f"Fields shape: {fields.shape}")
         
         def sort_vector(waves):
             # Check if the vector contains complex numbers
@@ -256,89 +259,75 @@ class Wave:
         transmitted_fields = stack_indices(sorted_fields, [0, 1])
         reflected_fields = stack_indices(sorted_fields, [2, 3])
 
+        print(f"Transmitted wavevectors shape: {transmitted_wavevectors.shape}")
+        print(f"Reflected wavevectors shape: {reflected_wavevectors.shape}")
+        print(f"Transmitted fields shape: {transmitted_fields.shape}")
+        print(f"Reflected fields shape: {reflected_fields.shape}")
+
         return transmitted_wavevectors, reflected_wavevectors, transmitted_fields, reflected_fields
     
 
     def get_matrix(self, eigenvalues, eigenvectors):
-        """
-        Short term replacement of berreman
-        TODO: add azimuthal and dispersion modes for anisotropic non semi infinite.
-        Azimuthal: k_0 = k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
-        Dispersion: Nothing needed
-        """
+        print(f"Get matrix for mode: {self.mode}")
         if self.semi_infinite:
+            print(f"Eigenvectors shape (semi-infinite): {eigenvectors.shape}")
             return eigenvectors
 
         eigenvalues_diag = tf.linalg.diag(eigenvalues)
+        print(f"Eigenvalues diagonal shape: {eigenvalues_diag.shape}")
 
         match self.mode:
             case 'Incident':
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+                eigenvalues_diag = eigenvalues_diag[:, tf.newaxis, ...]
+                eigenvectors = eigenvectors[:, tf.newaxis, ...]
+                print(f"k_0 shape: {k_0.shape}")
+                print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
+                print(f"Eigenvectors shape (after adjustment): {eigenvectors.shape}")
 
-            case 'airgap':
-                eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
+            case 'airgap' | 'simple_airgap':
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
-                eigenvectors = eigenvectors[tf.newaxis, ...]
-
-            case 'azimuthal_airgap':
                 eigenvalues_diag = eigenvalues_diag[tf.newaxis, ...]
-                k_0 = self.k_0[:, tf.newaxis, tf.newaxis]
+                print(f"k_0 shape: {k_0.shape}")
+                print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
+
+                # Reshape eigenvectors to have compatible dimensions
                 eigenvectors = eigenvectors[tf.newaxis, ...]
+                print(f"Eigenvectors shape (after reshaping): {eigenvectors.shape}")
 
-            case 'Azimuthal':
-                k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
-
-            case 'Dispersion':
-                k_0 = self.k_0
-
-            case 'simple_airgap':
-                k_0 = self.k_0
-
-            case _:
-                raise NotImplementedError(f"Mode {self.mode} not implemented")
+                # Reshape k_0 to match the batch dimension of eigenvalues_diag and eigenvectors
+                # k_0 = tf.broadcast_to(k_0, eigenvalues_diag.shape[:2] + k_0.shape[2:])
+                print(f"k_0 shape (after broadcasting): {k_0.shape}")
 
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
-        transfer_matrix = eigenvectors @ partial @ tf.linalg.inv(eigenvectors)
+        print(f"Partial matrix shape: {partial.shape}")
+
+        # Use tf.linalg.solve instead of matrix inversion
+        transfer_matrix = tf.matmul(eigenvectors, tf.matmul(partial, tf.linalg.inv(eigenvectors)))
+        print(f"Transfer matrix shape: {transfer_matrix.shape}")
 
         return transfer_matrix
     
+    
     def poynting_reshaping(self):
-
+        print(f"Poynting reshaping for mode: {self.mode}")
         match self.mode:
-            case 'Dispersion':
-                k_x = self.k_x[:, tf.newaxis,  tf.newaxis]
-                eps_tensor = self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]
-                mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
-
             case 'Incident':
                 k_x = self.k_x[tf.newaxis, :, tf.newaxis]
-                eps_tensor = self.eps_tensor[:,tf.newaxis, tf.newaxis, ...]
+                eps_tensor = self.eps_tensor[:, tf.newaxis, tf.newaxis, ...]
                 mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
+                print(f"k_x shape: {k_x.shape}")
+                print(f"eps_tensor shape: {eps_tensor.shape}")
+                print(f"mu_tensor shape: {mu_tensor.shape}")
 
-            case 'Azimuthal':
-                k_x = self.k_x
-                eps_tensor = self.eps_tensor[:, :, tf.newaxis, ...]
-                mu_tensor = tf.ones_like(eps_tensor) * self.mu_tensor
-
-            case 'airgap':
+            case 'airgap' | 'simple_airgap':
                 k_x = self.k_x[:, tf.newaxis]
                 eps_tensor = self.eps_tensor[tf.newaxis, ...]
                 mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+                print(f"k_x shape: {k_x.shape}")
+                print(f"eps_tensor shape: {eps_tensor.shape}")
+                print(f"mu_tensor shape: {mu_tensor.shape}")
 
-            case 'simple_airgap':
-                k_x = self.k_x[:,tf.newaxis]
-                eps_tensor = self.eps_tensor[tf.newaxis, ...]
-                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
-
-            case 'azimuthal_airgap':
-                k_x = self.k_x[tf.newaxis]
-                eps_tensor = self.eps_tensor[tf.newaxis, ...]
-                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
-
-            case _:
-                raise NotImplementedError(f"Mode {self.mode} not implemented for poynting vector")
-
-        
         return k_x, eps_tensor, mu_tensor
 
             
@@ -448,32 +437,52 @@ class Wave:
     
     
     def sort_profile_back_to_matrix(self):
-        transmitted_fields = tf.stack([
-            self.profile.transmitted_Ex,
+        print("Sorting profile back to matrix")
+        transmitted_new_profile = tf.stack(
+            [self.profile.transmitted_Ex,
             self.profile.transmitted_Ey,
             self.profile.transmitted_Hx,
-            self.profile.transmitted_Hy
-        ], axis=-1)
-
-        reflected_fields = tf.stack([
-            self.profile.reflected_Ex,
-            self.profile.reflected_Ey,
-            self.profile.reflected_Hx,
-            self.profile.reflected_Hy
-        ], axis=-1)
-
-        transmitted_kz = self.profile.transmitted_k_z
-        reflected_kz = self.profile.reflected_k_z
+            self.profile.transmitted_Hy],
+            axis=-2
+        )
+        print(f"Transmitted new profile shape: {transmitted_new_profile.shape}")
 
         if self.semi_infinite:
-            reflected_fields = tf.zeros_like(reflected_fields)
-            reflected_kz = tf.zeros_like(transmitted_kz)
+            transfer_matrix = tf.stack(
+                [
+                    transmitted_new_profile[..., 0],
+                    tf.zeros_like(transmitted_new_profile[..., 1]),
+                    transmitted_new_profile[..., 1],
+                    tf.zeros_like(transmitted_new_profile[..., 1]),
+                ],
+                axis=-1,
+            )
+            print(f"Transfer matrix shape (semi-infinite): {transfer_matrix.shape}")
+            return transfer_matrix
+        else:
+            reflected_new_profile = tf.stack(
+                [self.profile.reflected_Ex,
+                self.profile.reflected_Ey,
+                self.profile.reflected_Hx,
+                self.profile.reflected_Hy],
+                axis=-2
+            )
+            print(f"Reflected new profile shape: {reflected_new_profile.shape}")
 
-        eigenvalues = tf.concat([transmitted_kz, reflected_kz], axis=-1)
+            eigenvalues = tf.concat(
+                [self.profile.transmitted_k_z, self.profile.reflected_k_z], axis=-1
+            )
+            print(f"Eigenvalues shape: {eigenvalues.shape}")
 
-        eigenvectors = tf.concat([transmitted_fields, reflected_fields], axis=-2)
+            eigenvectors = tf.concat(
+                [transmitted_new_profile, reflected_new_profile], axis=-1
+            )
+            print(f"Eigenvectors shape: {eigenvectors.shape}")
 
-        return eigenvectors, eigenvalues
+            transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
+            print(f"Transfer matrix shape: {transfer_matrix.shape}")
+
+            return transfer_matrix
         
 
     def execute(self):
@@ -492,7 +501,6 @@ class Wave:
 
         self.profile = WaveProfile(profile)
 
-        eigenvectors, eigenvalues = self.sort_profile_back_to_matrix()
-        matrix = self.get_matrix(eigenvalues, eigenvectors)
+        matrix = self.sort_profile_back_to_matrix()
 
         return profile, matrix

@@ -36,6 +36,8 @@ def main():
     
     print("Finished executing Structure object")  # Add this line
 
+    structure.plot()
+
 if __name__ == '__main__':
     print("Starting main function")  # Add this line
     main()
