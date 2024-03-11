@@ -573,4 +573,4 @@ class Wave:
 
         matrix = self.sort_profile_back_to_matrix()
 
-        return profile, matrix
+        return self.profile, matrix
