@@ -138,7 +138,7 @@ class AirGapLayer(Layer):
             self.mode = 'simple_airgap'
     
     def create(self):
-        self.profile = Wave(
+        self.profile, self.matrix = Wave(
             self.kx,
             self.non_magnetic_tensor,
             self.non_magnetic_tensor,
@@ -146,6 +146,7 @@ class AirGapLayer(Layer):
             k_0 = self.k0,
             thickness=self.thickness,
         ).execute()
+
 
 
 class CrystalLayer(Layer):
@@ -161,7 +162,7 @@ class CrystalLayer(Layer):
         self.create()
 
     def create(self):
-        self.profile = Wave(
+        self.profile, self.matrix = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
@@ -184,13 +185,14 @@ class SemiInfiniteCrystalLayer(Layer):
         self.create()
 
     def create(self):
-        self.profile = Wave(
+        self.profile, self.matrix = Wave(
         self.kx,
         self.eps_tensor,
         self.non_magnetic_tensor,
         self.scenario,
         semi_infinite=True,
         ).execute()
+
 
 
 class IsotropicSemiInfiniteLayer(Layer):

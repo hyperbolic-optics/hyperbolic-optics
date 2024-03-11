@@ -22,7 +22,7 @@ class AnisotropicMaterial(object):
     Includes functions to calculate permittivity tensor components.
     Assumes these materials are not magnetic.
     """
-    def __init__(self, frequency_length = 300, run_on_device_decorator = run_on_device):
+    def __init__(self, frequency_length = 410, run_on_device_decorator = run_on_device):
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
 
@@ -110,7 +110,7 @@ class AnisotropicMaterial(object):
 
 
 class Quartz(AnisotropicMaterial):
-    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+    def __init__(self, freq_min = 410., freq_max = 600.0):
         super().__init__()
         self.name = "Quartz"
         self.frequency = tf.cast(
@@ -187,7 +187,7 @@ class Calcite(AnisotropicMaterial):
 
 
 class CalciteLower(Calcite):
-    def __init__(self, freq_min = 850.0, freq_max = 920.0):
+    def __init__(self, freq_min = 860.0, freq_max = 920.0):
         super().__init__()
         self.name = "Calcite-Lower"
         self.frequency = tf.cast(
@@ -196,7 +196,7 @@ class CalciteLower(Calcite):
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, freq_min = 1350.0, freq_max = 1600.0):
+    def __init__(self, freq_min = 1300.0, freq_max = 1600.0):
         super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
@@ -205,7 +205,7 @@ class CalciteUpper(Calcite):
 
 
 class Sapphire(AnisotropicMaterial):
-    def __init__(self, freq_min = 410.0, freq_max = 600.0):
+    def __init__(self, freq_min = 210.0, freq_max = 1000.0):
         super().__init__()
         self.name = "Sapphire"
         self.frequency = tf.cast(
@@ -238,10 +238,8 @@ class Sapphire(AnisotropicMaterial):
 
 
 class Antiferromagnet(object):
-    @run_on_device
-    def __init__(self, frequency_length, run_on_device_decorator):
+    def __init__(self, frequency_length):
         self.frequency_length = frequency_length
-        self.run_on_device = run_on_device_decorator
         self.frequency = tf.cast(
             tf.linspace(52.0, 54.0, self.frequency_length), dtype=tf.complex128
         )
@@ -258,7 +256,7 @@ class Antiferromagnet(object):
         )
         self.damping_parameter = 1.27e-4 * tf.sqrt(self.resonant_frequency_squared)
 
-    @run_on_device
+
     def fetch_epsilon_mu(self):
         X = 1.0 / (
             self.resonant_frequency_squared
@@ -290,7 +288,6 @@ class Antiferromagnet(object):
 
         return mu_3, mu_t, magnet_permittivity
 
-    @run_on_device
     def magnet_tensors(self):
         mu_3, mu_t, magnet_permittivity = self.fetch_epsilon_mu()
 

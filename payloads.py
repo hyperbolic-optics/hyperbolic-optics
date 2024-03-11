@@ -36,23 +36,18 @@ def mock_azimuthal_payload():
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 5.5
+            "permittivity": 11.5
         },
         {
             "type": "Isotropic Middle-Stack Layer",
-            "thickness": 0.1
+            "thickness": 1.5
         },
         {
-            "type": "Crystal Layer",
-            "thickness": 1.,
+            "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
-            "rotationY": 45,
-            "rotationZ": 0,
-        },
-        {
-            "type": "Semi Infinite Isotropic Layer",
-            "permittivity": 1.
+            "rotationY": 70,
+            "rotationZ": 45,
         }
     ],
     })
@@ -69,20 +64,18 @@ def mock_dispersion_payload():
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 40.
+            "permittivity": 11.5
         },
         {
-            "type": "Crystal Layer",
-            "thickness": 3.,
+            "type": "Isotropic Middle-Stack Layer",
+            "thickness": 1.5
+        },
+        {
+            "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
-            "rotationY": 90,
-            "rotationZ": 0,
-            "rotationZType": "relative"
-        },
-        {
-            "type": "Semi Infinite Isotropic Layer",
-            "permittivity": 1.
+            "rotationY": 70,
+            "rotationZ": 45,
         }
     ],
     })

@@ -26,7 +26,6 @@ class WaveProfile:
         self.reflected_Pz = profile['reflected']['Pz_physical']
         self.reflected_k_z = profile['reflected']['propagation']
 
-
 class Wave:
     """
     This class will be used to represent the four partial waves in a layer of the structure
@@ -267,10 +266,12 @@ class Wave:
         Azimuthal: k_0 = k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
         Dispersion: Nothing needed
         """
+        if self.semi_infinite:
+            return eigenvectors
+
         eigenvalues_diag = tf.linalg.diag(eigenvalues)
 
         match self.mode:
-
             case 'Incident':
                 k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
 
@@ -360,7 +361,6 @@ class Wave:
         transmitted_Ez = (-1./eps_tensor[...,2,2]) * (k_x * transmitted_Hy + eps_tensor[...,2,0] * transmitted_Ex + eps_tensor[...,2,1] * transmitted_Ey)
         reflected_Ez = (-1./eps_tensor[...,2,2]) * (k_x * reflected_Hy + eps_tensor[...,2,0] * reflected_Ex + eps_tensor[...,2,1] * reflected_Ey)
 
-
         transmitted_Hz = (1./mu_tensor[...,2,2]) * (k_x * transmitted_Ey - mu_tensor[...,2,0] * transmitted_Hx - mu_tensor[...,2,1] * transmitted_Hy)
         reflected_Hz = (1./mu_tensor[...,2,2]) * (k_x * reflected_Ey - mu_tensor[...,2,0] * reflected_Hx - mu_tensor[...,2,1] * reflected_Hy)
 
@@ -445,6 +445,35 @@ class Wave:
             profile[element] = tf.gather(profile[element], sorting_indices, axis=-1, batch_dims=self.batch_dims)
 
         return profile
+    
+    
+    def sort_profile_back_to_matrix(self):
+        transmitted_fields = tf.stack([
+            self.profile.transmitted_Ex,
+            self.profile.transmitted_Ey,
+            self.profile.transmitted_Hx,
+            self.profile.transmitted_Hy
+        ], axis=-1)
+
+        reflected_fields = tf.stack([
+            self.profile.reflected_Ex,
+            self.profile.reflected_Ey,
+            self.profile.reflected_Hx,
+            self.profile.reflected_Hy
+        ], axis=-1)
+
+        transmitted_kz = self.profile.transmitted_k_z
+        reflected_kz = self.profile.reflected_k_z
+
+        if self.semi_infinite:
+            reflected_fields = tf.zeros_like(reflected_fields)
+            reflected_kz = tf.zeros_like(transmitted_kz)
+
+        eigenvalues = tf.concat([transmitted_kz, reflected_kz], axis=-1)
+
+        eigenvectors = tf.concat([transmitted_fields, reflected_fields], axis=-2)
+
+        return eigenvectors, eigenvalues
         
 
     def execute(self):
@@ -461,6 +490,9 @@ class Wave:
             'reflected': reflected_wave_profile
         }
 
-        profile_to_return = WaveProfile(profile)
+        self.profile = WaveProfile(profile)
 
-        return profile
+        eigenvectors, eigenvalues = self.sort_profile_back_to_matrix()
+        matrix = self.get_matrix(eigenvalues, eigenvectors)
+
+        return profile, matrix
