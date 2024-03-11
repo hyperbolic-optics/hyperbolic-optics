@@ -299,6 +299,29 @@ class Wave:
                 # k_0 = tf.broadcast_to(k_0, eigenvalues_diag.shape[:2] + k_0.shape[2:])
                 print(f"k_0 shape (after broadcasting): {k_0.shape}")
 
+            case 'Azimuthal':
+
+                k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+                print(f"k_0 shape: {k_0.shape}")
+
+                eigenvalues_diag = eigenvalues_diag[tf.newaxis, tf.newaxis, ...]
+                print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
+
+                # Reshape eigenvectors to have compatible dimensions
+                eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, ...]
+                print(f"Eigenvectors shape (after reshaping): {eigenvectors.shape}")
+
+            case 'azimuthal_airgap':
+                k_0 = self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+                print(f"k_0 shape: {k_0.shape}")
+
+                eigenvalues_diag = eigenvalues_diag[tf.newaxis, tf.newaxis, ...]
+                print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
+
+                # Reshape eigenvectors to have compatible dimensions
+                eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, ...]
+                print(f"Eigenvectors shape (after reshaping): {eigenvectors.shape}")
+
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
         print(f"Partial matrix shape: {partial.shape}")
 
@@ -322,9 +345,27 @@ class Wave:
 
             case 'airgap' | 'simple_airgap':
                 k_x = self.k_x[:, tf.newaxis]
-                eps_tensor = self.eps_tensor[tf.newaxis, ...]
+                eps_tensor = self.eps_tensor
                 mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
                 print(f"k_x shape: {k_x.shape}")
+                print(f"eps_tensor shape: {eps_tensor.shape}")
+                print(f"mu_tensor shape: {mu_tensor.shape}")
+
+            case 'Azimuthal':
+                k_x = self.k_x
+                # k_x = self.k_x[:, tf.newaxis, tf.newaxis]
+                eps_tensor = self.eps_tensor[:, :, tf.newaxis, ...]
+                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+                # print(f"k_x shape: {k_x.shape}")
+                print(f"eps_tensor shape: {eps_tensor.shape}")
+                print(f"mu_tensor shape: {mu_tensor.shape}")
+
+            case 'azimuthal_airgap':
+                k_x = self.k_x
+                # k_x = self.k_x[:, tf.newaxis]
+                eps_tensor = self.eps_tensor[tf.newaxis, ...]
+                mu_tensor = self.mu_tensor * tf.ones_like(eps_tensor)
+                # print(f"k_x shape: {k_x.shape}")
                 print(f"eps_tensor shape: {eps_tensor.shape}")
                 print(f"mu_tensor shape: {mu_tensor.shape}")
 
@@ -338,6 +379,8 @@ class Wave:
         k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
 
         transmitted_Ex = transmitted_fields[..., 0, :]
+        print(f"transmitted_Ex shape: {transmitted_Ex.shape}")
+
         transmitted_Ey = transmitted_fields[..., 1, :]
         reflected_Ex = reflected_fields[..., 0, :]
         reflected_Ey = reflected_fields[..., 1, :]
