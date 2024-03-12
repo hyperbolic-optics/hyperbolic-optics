@@ -55,7 +55,7 @@ class Wave:
         self.eigenvectors = None
         self.berreman_matrix = None
 
-    def _get_mode_shapes(self, mode, k_x, eps_tensor, mu_tensor, eigenvalues=None, eigenvectors=None):
+    def _get_mode_shapes(self, mode, k_x, eps_tensor, mu_tensor, eigenvalues=None, eigenvectors=None, poynting = False):
         """
         Get the reshaped tensors based on the mode.
 
@@ -87,6 +87,18 @@ class Wave:
 
         reshaped_tensors = mode_shape_map[mode]()
 
+        if poynting:
+            mode_poynting_map = {
+                'Incident': (lambda: (self.k_x[tf.newaxis, :, tf.newaxis], self.eps_tensor[:, tf.newaxis, tf.newaxis, ...], tf.ones_like(self.eps_tensor[:, tf.newaxis, tf.newaxis, ...]) * self.mu_tensor)),
+                'airgap': (lambda: (self.k_x[:, tf.newaxis], self.eps_tensor, self.mu_tensor * tf.ones_like(self.eps_tensor))),
+                'simple_airgap': (lambda: (self.k_x[:, tf.newaxis], self.eps_tensor, self.mu_tensor * tf.ones_like(self.eps_tensor))),
+                'Azimuthal': (lambda: (self.k_x, self.eps_tensor[:, :, tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[:, :, tf.newaxis, ...]))),
+                'azimuthal_airgap': (lambda: (self.k_x, self.eps_tensor[tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[tf.newaxis, ...]))),
+                'Dispersion': (lambda: (self.k_x[:, tf.newaxis, tf.newaxis], self.eps_tensor[tf.newaxis, :, tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]))),
+            }
+
+            reshaped_tensors = mode_poynting_map[mode]()
+
         if eigenvalues is not None and eigenvectors is not None:
             eigenvalues_diag = tf.linalg.diag(eigenvalues)
             mode_matrix_map = {
@@ -102,7 +114,7 @@ class Wave:
 
         return reshaped_tensors
     
-    
+
     def mode_reshaping(self):
         """
         Reshape the k_x, eps_tensor, and mu_tensor based on the mode.
@@ -286,63 +298,49 @@ class Wave:
     
 
     def get_matrix(self, eigenvalues, eigenvectors):
+        """
+        Get the transfer matrix based on the mode.
+
+        Args:
+            eigenvalues (tf.Tensor): The eigenvalues tensor.
+            eigenvectors (tf.Tensor): The eigenvectors tensor.
+
+        Returns:
+            tf.Tensor: The transfer matrix.
+        """
         print(f"Get matrix for mode: {self.mode}")
         if self.semi_infinite:
             print(f"Eigenvectors shape (semi-infinite): {eigenvectors.shape}")
             return eigenvectors
 
-        eigenvalues_diag = tf.linalg.diag(eigenvalues)
-        print(f"Eigenvalues diagonal shape: {eigenvalues_diag.shape}")
+        _, _, _, k_0, eigenvalues_diag, eigenvectors = self._get_mode_shapes(
+            self.mode, self.k_x, self.eps_tensor, self.mu_tensor, eigenvalues, eigenvectors
+        )
 
-        mode_matrix_map = {
-            'Incident': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
-            'airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis] if tf.is_tensor(self.k_0) else self.k_0, eigenvalues_diag[tf.newaxis, ...], eigenvectors[tf.newaxis, ...])),
-            'simple_airgap': (lambda: (self.k_0, eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
-            'Azimuthal': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
-            'azimuthal_airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
-            'Dispersion': (lambda: (self.k_0, eigenvalues_diag, eigenvectors)),
-        }
-
-        if self.mode not in mode_matrix_map:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
-
-        k_0, eigenvalues_diag, eigenvectors = mode_matrix_map[self.mode]()
-
-        #print(f"k_0 shape: {k_0.shape}")
         print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
         print(f"Eigenvectors shape (after adjustment): {eigenvectors.shape}")
 
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
         print(f"Partial matrix shape: {partial.shape}")
 
-        # Use tf.linalg.solve instead of matrix inversion
         transfer_matrix = tf.matmul(eigenvectors, tf.matmul(partial, tf.linalg.inv(eigenvectors)))
         print(f"Transfer matrix shape: {transfer_matrix.shape}")
 
         return transfer_matrix
     
-    
     def poynting_reshaping(self):
+        """
+        Reshape the tensors for Poynting vector calculation based on the mode.
+
+        Returns:
+            tuple: A tuple containing the reshaped k_x, eps_tensor, and mu_tensor.
+        """
         print(f"Poynting reshaping for mode: {self.mode}")
-        mode_poynting_map = {
-            'Incident': (lambda: (self.k_x[tf.newaxis, :, tf.newaxis], self.eps_tensor[:, tf.newaxis, tf.newaxis, ...], tf.ones_like(self.eps_tensor[:, tf.newaxis, tf.newaxis, ...]) * self.mu_tensor)),
-            'airgap': (lambda: (self.k_x[:, tf.newaxis], self.eps_tensor, self.mu_tensor * tf.ones_like(self.eps_tensor))),
-            'simple_airgap': (lambda: (self.k_x[:, tf.newaxis], self.eps_tensor, self.mu_tensor * tf.ones_like(self.eps_tensor))),
-            'Azimuthal': (lambda: (self.k_x, self.eps_tensor[:, :, tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[:, :, tf.newaxis, ...]))),
-            'azimuthal_airgap': (lambda: (self.k_x, self.eps_tensor[tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[tf.newaxis, ...]))),
-            'Dispersion': (lambda: (self.k_x[:, tf.newaxis, tf.newaxis], self.eps_tensor[tf.newaxis, :, tf.newaxis, ...], self.mu_tensor * tf.ones_like(self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]))),
-        }
-
-        if self.mode not in mode_poynting_map:
-            raise NotImplementedError(f"Mode {self.mode} not implemented for poynting vector")
-
-        k_x, eps_tensor, mu_tensor = mode_poynting_map[self.mode]()
+        k_x, eps_tensor, mu_tensor = self._get_mode_shapes(self.mode, self.k_x, self.eps_tensor, self.mu_tensor, poynting=True)
         print(f"k_x shape: {k_x.shape}")
         print(f"eps_tensor shape: {eps_tensor.shape}")
         print(f"mu_tensor shape: {mu_tensor.shape}")
-
         return k_x, eps_tensor, mu_tensor
-
             
 
     def get_poynting(self, transmitted_waves, reflected_waves, transmitted_fields, reflected_fields):
