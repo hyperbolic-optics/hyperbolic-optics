@@ -55,6 +55,53 @@ class Wave:
         self.eigenvectors = None
         self.berreman_matrix = None
 
+    def _get_mode_shapes(self, mode, k_x, eps_tensor, mu_tensor, eigenvalues=None, eigenvectors=None):
+        """
+        Get the reshaped tensors based on the mode.
+
+        Args:
+            mode (str): The mode of the operation.
+            k_x (tf.Tensor): The wavevector in the x direction.
+            eps_tensor (tf.Tensor): The epsilon tensor.
+            mu_tensor (tf.Tensor): The mu tensor.
+            eigenvalues (tf.Tensor, optional): The eigenvalues tensor. Defaults to None.
+            eigenvectors (tf.Tensor, optional): The eigenvectors tensor. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing the reshaped tensors.
+
+        Raises:
+            NotImplementedError: If the mode is not recognized.
+        """
+        mode_shape_map = {
+            'Incident': (lambda: (k_x[:, tf.newaxis], eps_tensor[tf.newaxis, ...], mu_tensor * tf.ones_like(eps_tensor))),
+            'Azimuthal': (lambda: (k_x, eps_tensor, mu_tensor * tf.ones_like(eps_tensor))),
+            'Dispersion': (lambda: (k_x[:, tf.newaxis], eps_tensor[tf.newaxis, ...], mu_tensor * tf.ones_like(eps_tensor))),
+            'airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
+            'simple_airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
+            'azimuthal_airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
+        }
+
+        if mode not in mode_shape_map:
+            raise NotImplementedError(f"Mode {mode} not implemented")
+
+        reshaped_tensors = mode_shape_map[mode]()
+
+        if eigenvalues is not None and eigenvectors is not None:
+            eigenvalues_diag = tf.linalg.diag(eigenvalues)
+            mode_matrix_map = {
+                'Incident': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
+                'airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis] if tf.is_tensor(self.k_0) else self.k_0, eigenvalues_diag[tf.newaxis, ...], eigenvectors[tf.newaxis, ...])),
+                'simple_airgap': (lambda: (self.k_0, eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
+                'Azimuthal': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
+                'azimuthal_airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
+                'Dispersion': (lambda: (self.k_0, eigenvalues_diag, eigenvectors)),
+            }
+            k_0, eigenvalues_diag, eigenvectors = mode_matrix_map[mode]()
+            reshaped_tensors += (k_0, eigenvalues_diag, eigenvectors)
+
+        return reshaped_tensors
+    
     
     def mode_reshaping(self):
         """
@@ -63,23 +110,7 @@ class Wave:
         Returns:
             tuple: A tuple containing the reshaped k_x, eps_tensor, and mu_tensor.
         """
-        k_x = self.k_x
-        eps_tensor = self.eps_tensor
-        mu_tensor = self.mu_tensor
-
-        mode_reshaping_map = {
-            'Incident': (lambda: (self.k_x[:, tf.newaxis], eps_tensor[tf.newaxis, ...], mu_tensor * tf.ones_like(eps_tensor))),
-            'Azimuthal': (lambda: (k_x, eps_tensor, mu_tensor * tf.ones_like(eps_tensor))),
-            'Dispersion': (lambda: (k_x[:, tf.newaxis], eps_tensor[tf.newaxis, ...], mu_tensor * tf.ones_like(eps_tensor))),
-            'airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
-            'simple_airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
-            'azimuthal_airgap': (lambda: (k_x, eps_tensor, mu_tensor)),
-        }
-
-        if self.mode not in mode_reshaping_map:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
-
-        k_x, eps_tensor, mu_tensor = mode_reshaping_map[self.mode]()
+        k_x, eps_tensor, mu_tensor = self._get_mode_shapes(self.mode, self.k_x, self.eps_tensor, self.mu_tensor)
         return k_x, eps_tensor, mu_tensor
 
     
