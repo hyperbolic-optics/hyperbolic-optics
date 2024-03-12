@@ -102,10 +102,10 @@ class Wave:
         if eigenvalues is not None and eigenvectors is not None:
             eigenvalues_diag = tf.linalg.diag(eigenvalues)
             mode_matrix_map = {
-                'Incident': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
+                'Incident': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag, eigenvectors)),
                 'airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis] if tf.is_tensor(self.k_0) else self.k_0, eigenvalues_diag[tf.newaxis, ...], eigenvectors[tf.newaxis, ...])),
                 'simple_airgap': (lambda: (self.k_0, eigenvalues_diag[:, tf.newaxis, ...], eigenvectors[:, tf.newaxis, ...])),
-                'Azimuthal': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
+                'Azimuthal': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag, eigenvectors)),
                 'azimuthal_airgap': (lambda: (self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis], eigenvalues_diag[tf.newaxis, tf.newaxis, ...], eigenvectors[tf.newaxis, tf.newaxis, ...])),
                 'Dispersion': (lambda: (self.k_0, eigenvalues_diag, eigenvectors)),
             }
