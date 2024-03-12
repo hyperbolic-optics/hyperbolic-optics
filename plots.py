@@ -81,12 +81,12 @@ def contour_plot_simple_incidence(structure):
     fig, ax = plt.subplots(2, 3, figsize=(12, 7))
     
     ax_to_plot = [
-        (R_pp, "$|r_{pp}|^2$", 0, 0),
-        (R_ps, "$|r_{ps}|^2$", 0, 1),
-        (R_pp_total, "$|r_{pp}|^2 + |r_{ps}|^2$", 0, 2),
-        (R_sp, "$|r_{sp}|^2$", 1, 0),
-        (R_ss, "$|r_{ss}|^2$", 1, 1),
-        (R_ss_total, "$|r_{ss}|^2 + |r_{sp}|^2$", 1, 2),
+        (R_pp, "$R_{pp}$", 0, 0),
+        (R_ps, "$R_{ps}$", 0, 1),
+        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
+        (R_sp, "$R_{sp}$", 1, 0),
+        (R_ss, "$R_{ss}$", 1, 1),
+        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
     ]
 
     for data, title, row, col in ax_to_plot:
@@ -125,12 +125,12 @@ def contour_plot_simple_azimuthal(structure):
     fig, ax = plt.subplots(2, 3, figsize=(12, 7))
 
     ax_to_plot = [
-        (R_pp, "$|r_{pp}|^2$", 0, 0),
-        (R_ps, "$|r_{ps}|^2$", 0, 1),
-        (R_pp_total, "$|r_{pp}|^2 + |r_{ps}|^2$", 0, 2),
-        (R_sp, "$|r_{sp}|^2$", 1, 0),
-        (R_ss, "$|r_{ss}|^2$", 1, 1),
-        (R_ss_total, "$|r_{ss}|^2 + |r_{sp}|^2$", 1, 2),
+        (R_pp, "$R_{pp}$", 0, 0),
+        (R_ps, "$R_{ps}$", 0, 1),
+        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
+        (R_sp, "$R_{sp}$", 1, 0),
+        (R_ss, "$R_{ss}$", 1, 1),
+        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
     ]
 
     for data, title, row, col in ax_to_plot:
@@ -177,12 +177,12 @@ def contour_plot_simple_dispersion(structure):
     )
 
     ax_to_plot = [
-        (R_pp, "$|R_{pp}|^2$", 0, 0),
-        (R_ps, "$|R_{ps}|^2$", 0, 1),
-        (R_pp_total, "$|R_{pp}|^2 + |R_{ps}|^2$", 0, 2),
-        (R_sp, "$|R_{sp}|^2$", 1, 0),
-        (R_ss, "$|R_{ss}|^2$", 1, 1),
-        (R_ss_total, "$|R_{ss}|^2 + |R_{sp}|^2$", 1, 2),
+        (R_pp, "$R_{pp}$", 0, 0),
+        (R_ps, "$R_{ps}$", 0, 1),
+        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
+        (R_sp, "$R_{sp}$", 1, 0),
+        (R_ss, "$R_{ss}$", 1, 1),
+        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
     ]
 
     colorbar_list = []
@@ -204,6 +204,7 @@ def contour_plot_simple_dispersion(structure):
         # Remove the labels, polar coordinates speak for themselves
         ax[row, col].set_xlabel("")
         ax[row, col].set_ylabel("")
+        ax[row, col].grid(False)
     
     plt.tight_layout()
     plt.show()
