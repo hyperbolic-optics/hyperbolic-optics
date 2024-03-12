@@ -128,6 +128,13 @@ class Structure:
         self.r_ps = (self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 1, 2] - (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 0, 2])) / bottom_line
         self.r_sp = (self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 3, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
         self.r_ss = (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]) / bottom_line
+
+    def calculate_transmissivity(self):
+        bottom_line = self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2] - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
+        self.t_pp = (self.transfer_matrix[..., 0, 0]) / bottom_line
+        self.t_ps = (self.transfer_matrix[..., 0, 2]) / bottom_line
+        self.t_sp = (self.transfer_matrix[..., 2, 0]) / bottom_line
+        self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
     
     def execute(self, payload):
         """
