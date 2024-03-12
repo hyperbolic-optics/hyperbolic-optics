@@ -193,35 +193,30 @@ class Wave:
 
 
     def delta_permutations(self):
-        match self.mode:
-            case 'Incident':
-                permutation = [2, 1, 3, 0]
-                self.batch_dims = 2
+        """
+        Perform permutations on the Berreman matrix based on the mode.
 
-            case 'Azimuthal':
-                permutation = [1, 2, 3, 0]
-                self.batch_dims = 2
+        This method transposes the Berreman matrix according to the specified
+        permutation for each mode. It also sets the `batch_dims` attribute
+        based on the mode.
 
-            case 'Dispersion':
-                permutation = [1, 2, 3, 0]
-                self.batch_dims = 2
+        Raises:
+            NotImplementedError: If the mode is not recognized.
+        """
+        mode_permutations = {
+            'Incident': ([2, 1, 3, 0], 2),
+            'Azimuthal': ([1, 2, 3, 0], 2),
+            'Dispersion': ([1, 2, 3, 0], 2),
+            'airgap': ([1, 2, 0], 1),
+            'simple_airgap': ([1, 2, 0], 1),
+            'azimuthal_airgap': ([1, 0], 0),
+        }
 
-            case 'airgap':
-                permutation = [1, 2, 0]
-                self.batch_dims = 1
+        if self.mode not in mode_permutations:
+            raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-            case 'simple_airgap':
-                permutation = [1, 2, 0]
-                self.batch_dims = 1
-
-            case 'azimuthal_airgap':
-                permutation = [1, 0]
-                self.batch_dims = 0
-
-            case _:
-                raise NotImplementedError(f"Mode {self.mode} not implemented")
-        
-        self.berreman_matrix = tf.transpose(self.berreman_matrix, perm = permutation)
+        permutation, self.batch_dims = mode_permutations[self.mode]
+        self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
 
 
     def wave_sorting(self):
@@ -400,76 +395,66 @@ class Wave:
 
             
 
-    def get_poynting(self, *args):
-        transmitted_waves, reflected_waves, transmitted_fields, reflected_fields = args
+    def get_poynting(self, transmitted_waves, reflected_waves, transmitted_fields, reflected_fields):
+        """
+        Calculate the Poynting vector components for transmitted and reflected waves.
 
+        Args:
+            transmitted_waves (tf.Tensor): Transmitted wavevectors.
+            reflected_waves (tf.Tensor): Reflected wavevectors.
+            transmitted_fields (tf.Tensor): Transmitted field components (Ex, Ey, Hx, Hy).
+            reflected_fields (tf.Tensor): Reflected field components (Ex, Ey, Hx, Hy).
+
+        Returns:
+            tuple: A tuple containing the transmitted and reflected wave profiles.
+        """
         k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
 
-        transmitted_Ex = transmitted_fields[..., 0, :]
-        print(f"transmitted_Ex shape: {transmitted_Ex.shape}")
+        def calculate_fields(fields):
+            Ex, Ey = fields[..., 0, :], fields[..., 1, :]
+            Hx, Hy = fields[..., 2, :], fields[..., 3, :]
+            return Ex, Ey, Hx, Hy
 
-        transmitted_Ey = transmitted_fields[..., 1, :]
-        reflected_Ex = reflected_fields[..., 0, :]
-        reflected_Ey = reflected_fields[..., 1, :]
+        transmitted_Ex, transmitted_Ey, transmitted_Hx, transmitted_Hy = calculate_fields(transmitted_fields)
+        reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy = calculate_fields(reflected_fields)
 
-        transmitted_Hx = transmitted_fields[..., 2, :]
-        transmitted_Hy = transmitted_fields[..., 3, :]
-        reflected_Hx = reflected_fields[..., 2, :]
-        reflected_Hy = reflected_fields[..., 3, :]
+        def calculate_Ez_Hz(Ex, Ey, Hx, Hy):
+            Ez = (-1. / eps_tensor[..., 2, 2]) * (k_x * Hy + eps_tensor[..., 2, 0] * Ex + eps_tensor[..., 2, 1] * Ey)
+            Hz = (1. / mu_tensor[..., 2, 2]) * (k_x * Ey - mu_tensor[..., 2, 0] * Hx - mu_tensor[..., 2, 1] * Hy)
+            return Ez, Hz
 
-        transmitted_Ez = (-1./eps_tensor[...,2,2]) * (k_x * transmitted_Hy + eps_tensor[...,2,0] * transmitted_Ex + eps_tensor[...,2,1] * transmitted_Ey)
-        reflected_Ez = (-1./eps_tensor[...,2,2]) * (k_x * reflected_Hy + eps_tensor[...,2,0] * reflected_Ex + eps_tensor[...,2,1] * reflected_Ey)
+        transmitted_Ez, transmitted_Hz = calculate_Ez_Hz(transmitted_Ex, transmitted_Ey, transmitted_Hx, transmitted_Hy)
+        reflected_Ez, reflected_Hz = calculate_Ez_Hz(reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy)
 
-        transmitted_Hz = (1./mu_tensor[...,2,2]) * (k_x * transmitted_Ey - mu_tensor[...,2,0] * transmitted_Hx - mu_tensor[...,2,1] * transmitted_Hy)
-        reflected_Hz = (1./mu_tensor[...,2,2]) * (k_x * reflected_Ey - mu_tensor[...,2,0] * reflected_Hx - mu_tensor[...,2,1] * reflected_Hy)
+        def calculate_poynting(Ex, Ey, Ez, Hx, Hy, Hz):
+            Px = Ey * Hz - Ez * Hy
+            Py = Ez * Hx - Ex * Hz
+            Pz = Ex * Hy - Ey * Hx
+            physical_Px = 0.5 * tf.math.real(Ey * tf.math.conj(Hz) - Ez * tf.math.conj(Hy))
+            physical_Py = 0.5 * tf.math.real(Ez * tf.math.conj(Hx) - Ex * tf.math.conj(Hz))
+            physical_Pz = 0.5 * tf.math.real(Ex * tf.math.conj(Hy) - Ey * tf.math.conj(Hx))
+            return Px, Py, Pz, physical_Px, physical_Py, physical_Pz
 
-        transmitted_Px = transmitted_Ey * transmitted_Hz - transmitted_Ez * transmitted_Hy
-        transmitted_Py = transmitted_Ez * transmitted_Hx - transmitted_Ex * transmitted_Hz
-        transmitted_Pz = transmitted_Ex * transmitted_Hy - transmitted_Ey * transmitted_Hx
+        transmitted_poynting = calculate_poynting(transmitted_Ex, transmitted_Ey, transmitted_Ez,
+                                                transmitted_Hx, transmitted_Hy, transmitted_Hz)
+        reflected_poynting = calculate_poynting(reflected_Ex, reflected_Ey, reflected_Ez,
+                                                reflected_Hx, reflected_Hy, reflected_Hz)
 
-        physical_Px_transmitted = 0.5 * tf.math.real(transmitted_Ey * tf.math.conj(transmitted_Hz) - transmitted_Ez * tf.math.conj(transmitted_Hy))
-        physical_Py_transmitted = 0.5 * tf.math.real(transmitted_Ez * tf.math.conj(transmitted_Hx) - transmitted_Ex * tf.math.conj(transmitted_Hz))
-        physical_Pz_transmitted = 0.5 * tf.math.real(transmitted_Ex * tf.math.conj(transmitted_Hy) - transmitted_Ey * tf.math.conj(transmitted_Hx))
+        def create_wave_profile(fields, poynting, waves):
+            Ex, Ey, Ez, Hx, Hy, Hz = fields
+            Px, Py, Pz, physical_Px, physical_Py, physical_Pz = poynting
+            return {
+                'Ex': Ex, 'Ey': Ey, 'Ez': Ez, 'Hx': Hx, 'Hy': Hy, 'Hz': Hz,
+                'Px': Px, 'Py': Py, 'Pz': Pz,
+                'Px_physical': physical_Px, 'Py_physical': physical_Py, 'Pz_physical': physical_Pz,
+                'propagation': waves
+            }
 
-        reflected_Px = 0.5 * tf.math.real(reflected_Ey * tf.math.conj(reflected_Hz) - reflected_Ez * tf.math.conj(reflected_Hy))
-        reflected_Py = 0.5 * tf.math.real(reflected_Ez * tf.math.conj(reflected_Hx) - reflected_Ex * tf.math.conj(reflected_Hz))
-        reflected_Pz = 0.5 * tf.math.real(reflected_Ex * tf.math.conj(reflected_Hy) - reflected_Ey * tf.math.conj(reflected_Hx))
+        transmitted_fields = (transmitted_Ex, transmitted_Ey, transmitted_Ez, transmitted_Hx, transmitted_Hy, transmitted_Hz)
+        reflected_fields = (reflected_Ex, reflected_Ey, reflected_Ez, reflected_Hx, reflected_Hy, reflected_Hz)
 
-        physical_Px_reflected = 0.5 * tf.math.real(reflected_Ey * tf.math.conj(reflected_Hz) - reflected_Ez * tf.math.conj(reflected_Hy))
-        physical_Py_reflected = 0.5 * tf.math.real(reflected_Ez * tf.math.conj(reflected_Hx) - reflected_Ex * tf.math.conj(reflected_Hz))
-        physical_Pz_reflected = 0.5 * tf.math.real(reflected_Ex * tf.math.conj(reflected_Hy) - reflected_Ey * tf.math.conj(reflected_Hx))
-    
-        transmitted_wave_profile = {
-            'Ex': transmitted_Ex,
-            'Ey': transmitted_Ey,
-            'Ez': transmitted_Ez,
-            'Hx': transmitted_Hx,
-            'Hy': transmitted_Hy,
-            'Hz': transmitted_Hz,
-            'Px': transmitted_Px,
-            'Py': transmitted_Py,
-            'Pz': transmitted_Pz,
-            'Px_physical': physical_Px_transmitted,
-            'Py_physical': physical_Py_transmitted,
-            'Pz_physical': physical_Pz_transmitted,
-            'propagation': transmitted_waves
-        }
-
-        reflected_wave_profile = {
-            'Ex': reflected_Ex,
-            'Ey': reflected_Ey,
-            'Ez': reflected_Ez,
-            'Hx': reflected_Hx,
-            'Hy': reflected_Hy,
-            'Hz': reflected_Hz,
-            'Px': reflected_Px,
-            'Py': reflected_Py,
-            'Pz': reflected_Pz,
-            'Px_physical': physical_Px_reflected,
-            'Py_physical': physical_Py_reflected,
-            'Pz_physical': physical_Pz_reflected,
-            'propagation': reflected_waves
-        }
+        transmitted_wave_profile = create_wave_profile(transmitted_fields, transmitted_poynting, transmitted_waves)
+        reflected_wave_profile = create_wave_profile(reflected_fields, reflected_poynting, reflected_waves)
 
         return transmitted_wave_profile, reflected_wave_profile
     
