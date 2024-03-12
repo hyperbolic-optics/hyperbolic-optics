@@ -48,7 +48,7 @@ class ScenarioSetup(ABC):
         self.incident_angle = tf.linspace(
             tf.constant(-m.pi/2., dtype=tf.float64),
             tf.constant(m.pi/2., dtype=tf.float64),
-            180)
+            360)
 
 
     def create_azimuthal_scenario(self):
@@ -59,7 +59,7 @@ class ScenarioSetup(ABC):
         self.azimuthal_angle = tf.linspace(
             tf.constant(0. + 1.e-15, dtype=tf.float64),
             tf.constant(2. * m.pi, dtype=tf.float64),
-            180)
+            360)
 
 
     def create_dispersion_scenario(self):
