@@ -35,7 +35,7 @@ class Layer(ABC):
 
         self.thickness = data.get('thickness', None)
         if self.thickness:
-            self.thickness*=1e-4
+            self.thickness = float(self.thickness) * 1.e-4
 
     def material_factory(self):
         """
