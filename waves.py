@@ -68,19 +68,34 @@ class Wave:
         eigenvectors=None,
         poynting=False,
     ):
-        """Get the reshaped tensors based on the mode."""
+        """
+        Get the reshaped tensors based on the specified mode.
+
+        Args:
+            mode (str): The mode of the operation.
+            k_x (tf.Tensor): The wavevector in the x direction.
+            eps_tensor (tf.Tensor): The permittivity tensor.
+            mu_tensor (tf.Tensor): The permeability tensor.
+            eigenvalues (tf.Tensor, optional): The eigenvalues tensor. Defaults to None.
+            eigenvectors (tf.Tensor, optional): The eigenvectors tensor. Defaults to None.
+            poynting (bool, optional): Flag indicating whether to calculate Poynting vector components. Defaults to False.
+
+        Returns:
+            tuple: The reshaped tensors based on the specified mode.
+
+        Raises:
+            NotImplementedError: If the specified mode is not implemented.
+        """
+        # Define common lambda functions for tensor reshaping
+        expand_k_x = lambda: k_x[:, tf.newaxis]
+        expand_eps_tensor = lambda: eps_tensor[tf.newaxis, ...]
+        ones_like_eps_tensor = lambda: tf.ones_like(eps_tensor)
+
+        # Define mode-specific tensor reshaping
         mode_shape_map = {
-            "Incident": lambda: (
-                k_x[:, tf.newaxis],
-                eps_tensor[tf.newaxis, ...],
-                mu_tensor * tf.ones_like(eps_tensor),
-            ),
-            "Azimuthal": lambda: (k_x, eps_tensor, mu_tensor * tf.ones_like(eps_tensor)),
-            "Dispersion": lambda: (
-                k_x[:, tf.newaxis],
-                eps_tensor[tf.newaxis, ...],
-                mu_tensor * tf.ones_like(eps_tensor),
-            ),
+            "Incident": lambda: (expand_k_x(), expand_eps_tensor(), mu_tensor * ones_like_eps_tensor()),
+            "Azimuthal": lambda: (k_x, eps_tensor, mu_tensor * ones_like_eps_tensor()),
+            "Dispersion": lambda: (expand_k_x(), expand_eps_tensor(), mu_tensor * ones_like_eps_tensor()),
             "airgap": lambda: (k_x, eps_tensor, mu_tensor),
             "simple_airgap": lambda: (k_x, eps_tensor, mu_tensor),
             "azimuthal_airgap": lambda: (k_x, eps_tensor, mu_tensor),
@@ -92,12 +107,17 @@ class Wave:
         reshaped_tensors = mode_shape_map[mode]()
 
         if poynting:
+            # Define common lambda functions for Poynting vector calculation
+            expand_k_x_poynting = lambda: self.k_x[tf.newaxis, :, tf.newaxis]
+            expand_eps_tensor_poynting = lambda: self.eps_tensor[:, tf.newaxis, tf.newaxis, ...]
+            ones_like_eps_tensor_poynting = lambda: tf.ones_like(self.eps_tensor[:, tf.newaxis, tf.newaxis, ...])
+
+            # Define mode-specific tensor reshaping for Poynting vector calculation
             mode_poynting_map = {
                 "Incident": lambda: (
-                    self.k_x[tf.newaxis, :, tf.newaxis],
-                    self.eps_tensor[:, tf.newaxis, tf.newaxis, ...],
-                    tf.ones_like(self.eps_tensor[:, tf.newaxis, tf.newaxis, ...])
-                    * self.mu_tensor,
+                    expand_k_x_poynting(),
+                    expand_eps_tensor_poynting(),
+                    ones_like_eps_tensor_poynting() * self.mu_tensor,
                 ),
                 "airgap": lambda: (
                     self.k_x[:, tf.newaxis],
@@ -122,8 +142,7 @@ class Wave:
                 "Dispersion": lambda: (
                     self.k_x[:, tf.newaxis, tf.newaxis],
                     self.eps_tensor[tf.newaxis, :, tf.newaxis, ...],
-                    self.mu_tensor
-                    * tf.ones_like(self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]),
+                    self.mu_tensor * tf.ones_like(self.eps_tensor[tf.newaxis, :, tf.newaxis, ...]),
                 ),
             }
 
@@ -131,16 +150,15 @@ class Wave:
 
         if eigenvalues is not None and eigenvectors is not None:
             eigenvalues_diag = tf.linalg.diag(eigenvalues)
+
+            # Define common lambda functions for matrix calculation
+            expand_k_0 = lambda: self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
+
+            # Define mode-specific tensor reshaping for matrix calculation
             mode_matrix_map = {
-                "Incident": lambda: (
-                    self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis],
-                    eigenvalues_diag,
-                    eigenvectors,
-                ),
+                "Incident": lambda: (expand_k_0(), eigenvalues_diag, eigenvectors),
                 "airgap": lambda: (
-                    self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis]
-                    if tf.is_tensor(self.k_0)
-                    else self.k_0,
+                    expand_k_0() if tf.is_tensor(self.k_0) else self.k_0,
                     eigenvalues_diag[tf.newaxis, ...],
                     eigenvectors[tf.newaxis, ...],
                 ),
@@ -149,18 +167,15 @@ class Wave:
                     eigenvalues_diag[:, tf.newaxis, ...],
                     eigenvectors[:, tf.newaxis, ...],
                 ),
-                "Azimuthal": lambda: (
-                    self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis],
-                    eigenvalues_diag,
-                    eigenvectors,
-                ),
+                "Azimuthal": lambda: (expand_k_0(), eigenvalues_diag, eigenvectors),
                 "azimuthal_airgap": lambda: (
-                    self.k_0[:, tf.newaxis, tf.newaxis, tf.newaxis],
+                    expand_k_0(),
                     eigenvalues_diag[tf.newaxis, tf.newaxis, ...],
                     eigenvectors[tf.newaxis, tf.newaxis, ...],
                 ),
                 "Dispersion": lambda: (self.k_0, eigenvalues_diag, eigenvectors),
             }
+
             k_0, eigenvalues_diag, eigenvectors = mode_matrix_map[mode]()
             reshaped_tensors += (k_0, eigenvalues_diag, eigenvectors)
 
@@ -231,7 +246,7 @@ class Wave:
             [m20, m21, m22, m23],
             [m30, m31, m32, m33]
         ], axis=-1)
-        
+
 
     def delta_permutations(self):
         """Perform permutations on the Berreman matrix based on the mode."""
