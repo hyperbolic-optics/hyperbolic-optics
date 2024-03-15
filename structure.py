@@ -7,7 +7,7 @@ import functools
 import operator
 import tensorflow as tf
 
-from material_params import CalciteUpper, Quartz, Sapphire
+from material_params import CalciteUpper, Quartz, Sapphire, GalliumOxide
 from plots import (
     contour_plot_simple_incidence,
     contour_plot_simple_azimuthal,
@@ -58,6 +58,8 @@ class Structure:
             self.frequency = Sapphire().frequency
         elif material == "Calcite":
             self.frequency = CalciteUpper().frequency
+        elif material == "GalliumOxide":
+            self.frequency = GalliumOxide().frequency
         else:
             raise NotImplementedError("Material not implemented")
 
