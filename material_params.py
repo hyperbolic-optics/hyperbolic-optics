@@ -1,11 +1,10 @@
 """
 Material Parameters
 
-Used to define the given materials in our setup.
-This includes permittivity and permeability tensors, recommended frequencies,
-parameters, etc.
+This module defines the material parameters for various anisotropic materials, such as Quartz, Sapphire, and Calcite.
+It includes permittivity and permeability tensors, recommended frequencies, and other relevant parameters.
 
-Includes ambient incident and exit mediums.
+The module also includes ambient incident and exit mediums.
 
 Future plan is to integrate this better with Layers.py, to separate the parameters.
 """
@@ -16,21 +15,44 @@ from scipy import constants
 from device_config import run_on_device
 
 
-class AnisotropicMaterial(object):
+class AnisotropicMaterial:
     """
-    Abstract class for anisotropic materials, such as Quartz, Sapphire, Calcite.
-    Includes functions to calculate permittivity tensor components.
-    Assumes these materials are not magnetic.
+    Abstract class for anisotropic materials, such as Quartz, Sapphire, and Calcite.
+
+    This class provides methods to calculate permittivity tensor components for anisotropic materials.
+    It assumes that these materials are not magnetic.
+
+    Attributes:
+        frequency_length (int): The length of the frequency range.
+        run_on_device (function): Decorator function for device execution.
     """
-    def __init__(self, frequency_length = 410, run_on_device_decorator = run_on_device):
+
+    def __init__(self, frequency_length=410, run_on_device_decorator=run_on_device):
+        """
+        Initialize the AnisotropicMaterial class.
+
+        Args:
+            frequency_length (int): The length of the frequency range. Default is 410.
+            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+        """
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
-
 
     @run_on_device
     def permittivity_calc_for_freq(self, frequency, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
         """
-        Calculates the permittivity for a given frequency, using the parameters.
+        Calculate the permittivity for a given frequency using the provided parameters.
+
+        Args:
+            frequency (float): The frequency at which to calculate the permittivity.
+            high_freq (float): The high-frequency permittivity.
+            omega_tn (tf.Tensor): The transverse phonon frequencies.
+            gamma_tn (tf.Tensor): The transverse phonon damping coefficients.
+            omega_ln (tf.Tensor): The longitudinal phonon frequencies.
+            gamma_ln (tf.Tensor): The longitudinal phonon damping coefficients.
+
+        Returns:
+            tf.Tensor: The calculated permittivity at the given frequency.
         """
         frequency = tf.expand_dims(tf.constant([frequency], dtype=tf.complex128), 0)
         omega_ln_expanded = tf.expand_dims(omega_ln, 1)
@@ -41,7 +63,7 @@ class AnisotropicMaterial(object):
 
         top_line = (
             omega_ln_expanded**2.0
-            - frequency**2.0    
+            - frequency**2.0
             - complex_one_j * frequency * gamma_ln_expanded
         )
         bottom_line = (
@@ -53,9 +75,17 @@ class AnisotropicMaterial(object):
 
         return (high_freq * tf.reduce_prod(result, axis=0))[0]
 
-
     @run_on_device
     def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        """
+        Fetch the permittivity tensor for a requested frequency.
+
+        Args:
+            requested_frequency (float): The requested frequency.
+
+        Returns:
+            tf.Tensor: The permittivity tensor at the requested frequency.
+        """
         params = self.permittivity_parameters()
 
         eps_ext = self.permittivity_calc_for_freq(requested_frequency, **params["extraordinary"])
@@ -66,9 +96,21 @@ class AnisotropicMaterial(object):
 
         return eps_tensor
 
-
     @run_on_device
     def permittivity_calc(self, high_freq, omega_tn, gamma_tn, omega_ln, gamma_ln):
+        """
+        Calculate the permittivity over the frequency range.
+
+        Args:
+            high_freq (float): The high-frequency permittivity.
+            omega_tn (tf.Tensor): The transverse phonon frequencies.
+            gamma_tn (tf.Tensor): The transverse phonon damping coefficients.
+            omega_ln (tf.Tensor): The longitudinal phonon frequencies.
+            gamma_ln (tf.Tensor): The longitudinal phonon damping coefficients.
+
+        Returns:
+            tf.Tensor: The calculated permittivity over the frequency range.
+        """
         frequency = tf.expand_dims(self.frequency, 0)
         omega_ln_expanded = tf.expand_dims(omega_ln, 1)
         gamma_ln_expanded = tf.expand_dims(gamma_ln, 1)
@@ -78,7 +120,7 @@ class AnisotropicMaterial(object):
 
         top_line = (
             omega_ln_expanded**2.0
-            - frequency**2.0    
+            - frequency**2.0
             - complex_one_j * frequency * gamma_ln_expanded
         )
         bottom_line = (
@@ -92,6 +134,12 @@ class AnisotropicMaterial(object):
 
     @run_on_device
     def permittivity_fetch(self):
+        """
+        Fetch the permittivity values for the ordinary and extraordinary axes.
+
+        Returns:
+            tuple: A tuple containing the permittivity values for the extraordinary and ordinary axes.
+        """
         params = self.permittivity_parameters()
 
         eps_ext = self.permittivity_calc(**params["extraordinary"])
@@ -101,6 +149,12 @@ class AnisotropicMaterial(object):
 
     @run_on_device
     def fetch_permittivity_tensor(self):
+        """
+        Fetch the permittivity tensor.
+
+        Returns:
+            tf.Tensor: The permittivity tensor.
+        """
         eps_ext, eps_ord = self.permittivity_fetch()
 
         diag_tensors = tf.stack([eps_ord, eps_ord, eps_ext], axis=1)
@@ -110,7 +164,24 @@ class AnisotropicMaterial(object):
 
 
 class Quartz(AnisotropicMaterial):
-    def __init__(self, freq_min = 410., freq_max = 600.0):
+    """
+    Class representing the Quartz material.
+
+    Quartz is an anisotropic material with specific permittivity parameters.
+
+    Attributes:
+        name (str): The name of the material.
+        frequency (tf.Tensor): The frequency range for Quartz.
+    """
+
+    def __init__(self, freq_min=410.0, freq_max=600.0):
+        """
+        Initialize the Quartz class.
+
+        Args:
+            freq_min (float): The minimum frequency value. Default is 410.0.
+            freq_max (float): The maximum frequency value. Default is 600.0.
+        """
         super().__init__()
         self.name = "Quartz"
         self.frequency = tf.cast(
@@ -119,6 +190,12 @@ class Quartz(AnisotropicMaterial):
 
     @run_on_device
     def permittivity_parameters(self):
+        """
+        Get the permittivity parameters for Quartz.
+
+        Returns:
+            dict: A dictionary containing the permittivity parameters for the ordinary and extraordinary axes.
+        """
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.356, dtype=tf.complex128),
@@ -152,12 +229,26 @@ class Quartz(AnisotropicMaterial):
 
 
 class Calcite(AnisotropicMaterial):
+    """
+    Class representing the Calcite material.
+
+    Calcite is an anisotropic material with specific permittivity parameters.
+    """
 
     def __init__(self):
+        """
+        Initialize the Calcite class.
+        """
         super().__init__()
 
     @run_on_device
     def permittivity_parameters(self):
+        """
+        Get the permittivity parameters for Calcite.
+
+        Returns:
+            dict: A dictionary containing the permittivity parameters for the ordinary and extraordinary axes.
+        """
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(2.7, dtype=tf.complex128),
@@ -187,7 +278,22 @@ class Calcite(AnisotropicMaterial):
 
 
 class CalciteLower(Calcite):
-    def __init__(self, freq_min = 860.0, freq_max = 920.0):
+    """
+    Class representing the lower frequency range of Calcite.
+
+    Attributes:
+        name (str): The name of the material.
+        frequency (tf.Tensor): The lower frequency range for Calcite.
+    """
+
+    def __init__(self, freq_min=860.0, freq_max=920.0):
+        """
+        Initialize the CalciteLower class.
+
+        Args:
+            freq_min (float): The minimum frequency value. Default is 860.0.
+            freq_max (float): The maximum frequency value. Default is 920.0.
+        """
         super().__init__()
         self.name = "Calcite-Lower"
         self.frequency = tf.cast(
@@ -196,7 +302,22 @@ class CalciteLower(Calcite):
 
 
 class CalciteUpper(Calcite):
-    def __init__(self, freq_min = 1300.0, freq_max = 1600.0):
+    """
+    Class representing the upper frequency range of Calcite.
+
+    Attributes:
+        name (str): The name of the material.
+        frequency (tf.Tensor): The upper frequency range for Calcite.
+    """
+
+    def __init__(self, freq_min=1300.0, freq_max=1600.0):
+        """
+        Initialize the CalciteUpper class.
+
+        Args:
+            freq_min (float): The minimum frequency value. Default is 1300.0.
+            freq_max (float): The maximum frequency value. Default is 1600.0.
+        """
         super().__init__()
         self.name = "Calcite-Upper"
         self.frequency = tf.cast(
@@ -205,7 +326,24 @@ class CalciteUpper(Calcite):
 
 
 class Sapphire(AnisotropicMaterial):
-    def __init__(self, freq_min = 210.0, freq_max = 1000.0):
+    """
+    Class representing the Sapphire material.
+
+    Sapphire is an anisotropic material with specific permittivity parameters.
+
+    Attributes:
+        name (str): The name of the material.
+        frequency (tf.Tensor): The frequency range for Sapphire.
+    """
+
+    def __init__(self, freq_min=210.0, freq_max=1000.0):
+        """
+        Initialize the Sapphire class.
+
+        Args:
+            freq_min (float): The minimum frequency value. Default is 210.0.
+            freq_max (float): The maximum frequency value. Default is 1000.0.
+        """
         super().__init__()
         self.name = "Sapphire"
         self.frequency = tf.cast(
@@ -214,6 +352,12 @@ class Sapphire(AnisotropicMaterial):
 
     @run_on_device
     def permittivity_parameters(self):
+        """
+        Get the permittivity parameters for Sapphire.
+
+        Returns:
+            dict: A dictionary containing the permittivity parameters for the ordinary and extraordinary axes.
+        """
         parameters = {
             "ordinary": {
                 "high_freq": tf.constant(3.077, dtype=tf.complex128),
