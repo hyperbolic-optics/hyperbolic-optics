@@ -381,8 +381,30 @@ class Sapphire(AnisotropicMaterial):
         return parameters
 
 
-class Antiferromagnet(object):
+class Antiferromagnet:
+    """
+    Class representing an antiferromagnetic material.
+
+    Attributes:
+        frequency_length (int): The length of the frequency range.
+        frequency (tf.Tensor): The frequency range for the antiferromagnetic material.
+        name (str): The name of the material.
+        gamma (tf.Tensor): The gyromagnetic ratio.
+        B0 (tf.Tensor): The external magnetic field.
+        Ba (tf.Tensor): The anisotropy field.
+        Be (tf.Tensor): The exchange field.
+        magnetisation (tf.Tensor): The magnetization of the material.
+        resonant_frequency_squared (tf.Tensor): The square of the resonant frequency.
+        damping_parameter (tf.Tensor): The damping parameter.
+    """
+
     def __init__(self, frequency_length):
+        """
+        Initialize the Antiferromagnet class.
+
+        Args:
+            frequency_length (int): The length of the frequency range.
+        """
         self.frequency_length = frequency_length
         self.frequency = tf.cast(
             tf.linspace(52.0, 54.0, self.frequency_length), dtype=tf.complex128
@@ -400,8 +422,13 @@ class Antiferromagnet(object):
         )
         self.damping_parameter = 1.27e-4 * tf.sqrt(self.resonant_frequency_squared)
 
-
     def fetch_epsilon_mu(self):
+        """
+        Fetch the epsilon and mu values for the antiferromagnetic material.
+
+        Returns:
+            tuple: A tuple containing mu_3, mu_t, and magnet_permittivity.
+        """
         X = 1.0 / (
             self.resonant_frequency_squared
             - (
@@ -433,6 +460,12 @@ class Antiferromagnet(object):
         return mu_3, mu_t, magnet_permittivity
 
     def magnet_tensors(self):
+        """
+        Get the permeability and permittivity tensors for the antiferromagnetic material.
+
+        Returns:
+            tuple: A tuple containing the permeability_tensor and permittivity_tensor.
+        """
         mu_3, mu_t, magnet_permittivity = self.fetch_epsilon_mu()
 
         permeability_tensor = tf.stack(
@@ -465,14 +498,37 @@ class Antiferromagnet(object):
         return permeability_tensor, permittivity_tensor
 
 
-class AmbientIncidentMedium(object):
-    def __init__(self, permittivity, kx, run_on_device_decorator = run_on_device):
+class AmbientIncidentMedium:
+    """
+    Class representing the ambient incident medium.
+
+    Attributes:
+        permittivity (float): The permittivity of the ambient incident medium.
+        theta (tf.Tensor): The incident angle.
+        run_on_device (function): Decorator function for device execution.
+    """
+
+    def __init__(self, permittivity, kx, run_on_device_decorator=run_on_device):
+        """
+        Initialize the AmbientIncidentMedium class.
+
+        Args:
+            permittivity (float): The permittivity of the ambient incident medium.
+            kx (float): The x-component of the wavevector.
+            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+        """
         self.permittivity = permittivity
-        self.theta = tf.cast(tf.math.asin(kx / (permittivity**0.5)), dtype= tf.float64)
+        self.theta = tf.cast(tf.math.asin(kx / (permittivity**0.5)), dtype=tf.float64)
         self.run_on_device = run_on_device_decorator
 
     @run_on_device
     def construct_tensor(self):
+        """
+        Construct the tensor for the ambient incident medium.
+
+        Returns:
+            tf.Tensor: The constructed tensor.
+        """
         n = tf.sqrt(self.permittivity)
         cos_theta = tf.cos(self.theta)
         n_cos_theta = n * cos_theta
@@ -521,11 +577,17 @@ class AmbientIncidentMedium(object):
 
     @run_on_device
     def construct_tensor_singular(self):
+        """
+        Construct the singular tensor for the ambient incident medium.
+
+        Returns:
+            tf.Tensor: The constructed singular tensor.
+        """
         n = tf.sqrt(self.permittivity)
         cos_theta = tf.cos(self.theta)
         n_cos_theta = n * cos_theta
 
-        # Combine updates into a single tensor with shape [180, 4, 4]
+        # Combine updates into a single tensor with shape [4, 4]
         element1 = tf.stack([0.0, 1.0, -1.0 / n_cos_theta, 0.0])
         element2 = tf.stack([0.0, 1.0, 1.0 / n_cos_theta, 0.0])
         element3 = tf.stack([1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
@@ -536,8 +598,27 @@ class AmbientIncidentMedium(object):
         return 0.5 * tf.cast(matrix, dtype=tf.complex128)
 
 
-class AmbientExitMedium(object):
-    def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator = run_on_device):
+class AmbientExitMedium:
+    """
+    Class representing the ambient exit medium.
+
+    Attributes:
+        theta_incident (float): The incident angle.
+        N_exit (tf.Tensor): The refractive index of the exit medium.
+        N_incident (tf.Tensor): The refractive index of the incident medium.
+        run_on_device (function): Decorator function for device execution.
+    """
+
+    def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator=run_on_device):
+        """
+        Initialize the AmbientExitMedium class.
+
+        Args:
+            incident_angle (float): The incident angle.
+            permittivity_incident (float): The permittivity of the incident medium.
+            permittivity_exit (float): The permittivity of the exit medium.
+            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+        """
         self.theta_incident = incident_angle
         self.N_exit = tf.sqrt(permittivity_exit)
         self.N_incident = tf.sqrt(permittivity_incident)
@@ -545,8 +626,14 @@ class AmbientExitMedium(object):
 
     @run_on_device
     def construct_tensor(self):
+        """
+        Construct the tensor for the ambient exit medium.
+
+        Returns:
+            tf.Tensor: The constructed tensor.
+        """
         sin_theta_incident = tf.sin(self.theta_incident)
-        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.
+        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
         expr_inside_sqrt_complex = tf.cast(expr_inside_sqrt, dtype=tf.complex128)
         cos_theta_f = tf.sqrt(expr_inside_sqrt_complex)
         self.N_exit = tf.cast(self.N_exit, dtype=tf.complex128)
@@ -554,47 +641,63 @@ class AmbientExitMedium(object):
 
         element1 = tf.stack([
             tf.zeros_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f), 
-            cos_theta_f, 
-            -cos_theta_f], 
+            tf.zeros_like(cos_theta_f),
+            cos_theta_f,
+            -cos_theta_f],
             axis=-1)
-        
+
         element2 = tf.stack([
-            tf.ones_like(cos_theta_f), 
-            tf.ones_like(cos_theta_f), 
-            tf.zeros_like(cos_theta_f), 
-            tf.zeros_like(cos_theta_f)], 
+            tf.ones_like(cos_theta_f),
+            tf.ones_like(cos_theta_f),
+            tf.zeros_like(cos_theta_f),
+            tf.zeros_like(cos_theta_f)],
             axis=-1)
-        
+
         element3 = tf.stack([
-            -Nf_cos_theta_f, 
-            Nf_cos_theta_f, 
-            tf.zeros_like(cos_theta_f), 
-            tf.zeros_like(cos_theta_f)], 
+            -Nf_cos_theta_f,
+            Nf_cos_theta_f,
+            tf.zeros_like(cos_theta_f),
+            tf.zeros_like(cos_theta_f)],
             axis=-1)
-        
+
         element4 = tf.stack([
-            tf.zeros_like(cos_theta_f), 
-            tf.zeros_like(cos_theta_f), 
-            self.N_exit * tf.ones_like(cos_theta_f), 
-            self.N_exit * tf.ones_like(cos_theta_f)], 
+            tf.zeros_like(cos_theta_f),
+            tf.zeros_like(cos_theta_f),
+            self.N_exit * tf.ones_like(cos_theta_f),
+            self.N_exit * tf.ones_like(cos_theta_f)],
             axis=-1)
 
         # Stack the elements
         matrix = tf.stack([element1, element2, element3, element4], axis=1)
 
-
         return tf.cast(matrix, dtype=tf.complex128)
 
 
+class Air:
+    """
+    Class representing air.
 
-class Air(object):
-    def __init__(self, run_on_device_decorator = run_on_device):
+    Attributes:
+        run_on_device (function): Decorator function for device execution.
+    """
+
+    def __init__(self, run_on_device_decorator=run_on_device):
+        """
+        Initialize the Air class.
+
+        Args:
+            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+        """
         self.run_on_device = run_on_device_decorator
-        pass
 
     @run_on_device
     def construct_tensor_singular(self):
+        """
+        Construct the singular tensor for air.
+
+        Returns:
+            tf.Tensor: The constructed singular tensor.
+        """
         tensor = tf.constant(
             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=tf.complex128
         )
