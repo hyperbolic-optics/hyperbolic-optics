@@ -149,13 +149,6 @@ class Mueller:
         if self.mueller_matrix is False:
             raise ValueError("Anisotropic sample Mueller matrix not set.")
 
-        # # Apply the sample's Mueller matrix to the light
-        # reflected_light = tf.matmul(self.mueller_matrix, light)
-
-        # # Apply the remaining optical components to the reflected light
-        # for component in reversed(self.optical_components):
-        #     reflected_light = tf.matmul(component, reflected_light)
-
         # Extract the reflectivity (first element of the Stokes vector)
         reflectivity = light[..., 0, 0]
 
