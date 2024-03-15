@@ -174,94 +174,64 @@ class Wave:
         return k_x, eps_tensor, mu_tensor
 
     def delta_matrix_calc(self):
-        """Calculate the Berreman 4x4 matrix for the layer."""
+        """
+        Construct the 4x4 Berreman transfer matrix.
+
+        Args:
+            k_x (tf.Tensor): The x-component of the wavevector.
+            eps_tensor (tf.Tensor): The permittivity tensor.
+            mu_tensor (tf.Tensor): The permeability tensor.
+
+        Returns:
+            tf.Tensor: The 4x4 Berreman transfer matrix.
+        """
         k_x, eps_tensor, mu_tensor = self.mode_reshaping()
 
-        self.berreman_matrix = tf.stack(
-            [
-                [
-                    -k_x * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2],
-                    k_x
-                    * (
-                        (mu_tensor[..., 1, 2] / mu_tensor[..., 2, 2])
-                        - (eps_tensor[..., 2, 1] / eps_tensor[..., 2, 2])
-                    ),
-                    (
-                        mu_tensor[..., 1, 0]
-                        - (
-                            mu_tensor[..., 1, 2]
-                            * mu_tensor[..., 2, 0]
-                            / mu_tensor[..., 2, 2]
-                        )
-                    )
-                    * tf.ones_like(k_x),
-                    mu_tensor[..., 1, 1]
-                    - (mu_tensor[..., 1, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2])
-                    - (k_x ** 2) / eps_tensor[..., 2, 2],
-                ],
-                [
-                    tf.zeros_like(-k_x * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]),
-                    -k_x * mu_tensor[..., 0, 2] / mu_tensor[..., 2, 2],
-                    (
-                        (mu_tensor[..., 0, 2] * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2])
-                        - mu_tensor[..., 0, 0]
-                    )
-                    * tf.ones_like(k_x),
-                    (
-                        (mu_tensor[..., 0, 2] * mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2])
-                        - mu_tensor[..., 0, 1]
-                    )
-                    * tf.ones_like(k_x),
-                ],
-                [
-                    (
-                        (
-                            eps_tensor[..., 1, 2]
-                            * eps_tensor[..., 2, 0]
-                            / eps_tensor[..., 2, 2]
-                        )
-                        - eps_tensor[..., 1, 0]
-                    )
-                    * tf.ones_like(k_x),
-                    (k_x ** 2) / mu_tensor[..., 2, 2]
-                    - eps_tensor[..., 1, 1]
-                    + (
-                        eps_tensor[..., 1, 2]
-                        * eps_tensor[..., 2, 1]
-                        / eps_tensor[..., 2, 2]
-                    ),
-                    -k_x * mu_tensor[..., 2, 0] / mu_tensor[..., 2, 2],
-                    k_x
-                    * (
-                        (eps_tensor[..., 1, 2] / eps_tensor[..., 2, 2])
-                        - (mu_tensor[..., 2, 1] / mu_tensor[..., 2, 2])
-                    ),
-                ],
-                [
-                    (
-                        eps_tensor[..., 0, 0]
-                        - (
-                            eps_tensor[..., 0, 2]
-                            * eps_tensor[..., 2, 0]
-                            / eps_tensor[..., 2, 2]
-                        )
-                    )
-                    * tf.ones_like(k_x),
-                    (
-                        eps_tensor[..., 0, 1]
-                        - (
-                            eps_tensor[..., 0, 2]
-                            * eps_tensor[..., 2, 1]
-                            / eps_tensor[..., 2, 2]
-                        )
-                    )
-                    * tf.ones_like(k_x),
-                    tf.zeros_like(-k_x * eps_tensor[..., 2, 0] / eps_tensor[..., 2, 2]),
-                    -k_x * eps_tensor[..., 0, 2] / eps_tensor[..., 2, 2],
-                ],
-            ],
-            axis=-1,
-        )
+        # Extract relevant tensor components
+        eps_20, eps_21, eps_22 = eps_tensor[..., 2, 0], eps_tensor[..., 2, 1], eps_tensor[..., 2, 2]
+        eps_10, eps_11, eps_12 = eps_tensor[..., 1, 0], eps_tensor[..., 1, 1], eps_tensor[..., 1, 2]
+        eps_00, eps_01, eps_02 = eps_tensor[..., 0, 0], eps_tensor[..., 0, 1], eps_tensor[..., 0, 2]
+        mu_12, mu_22 = mu_tensor[..., 1, 2], mu_tensor[..., 2, 2]
+        mu_10, mu_20 = mu_tensor[..., 1, 0], mu_tensor[..., 2, 0]
+        mu_11, mu_21 = mu_tensor[..., 1, 1], mu_tensor[..., 2, 1]
+        mu_02 = mu_tensor[..., 0, 2]
+        mu_00, mu_01 = mu_tensor[..., 0, 0], mu_tensor[..., 0, 1]
+
+        # Precompute common terms
+        k_x_sq = k_x ** 2
+        eps_22_inv = 1.0 / eps_22
+        mu_22_inv = 1.0 / mu_22
+        ones_like_k_x = tf.ones_like(k_x)
+
+        # Construct the matrix elements
+        m00 = -k_x * eps_20 * eps_22_inv
+        m01 = k_x * (mu_12 * mu_22_inv - eps_21 * eps_22_inv)
+        m02 = (mu_10 - mu_12 * mu_20 * mu_22_inv) * ones_like_k_x
+        m03 = mu_11 - mu_12 * mu_21 * mu_22_inv - k_x_sq * eps_22_inv
+
+        m10 = tf.zeros_like(m00)
+        m11 = -k_x * mu_02 * mu_22_inv
+        m12 = (mu_02 * mu_20 * mu_22_inv - mu_00) * ones_like_k_x
+        m13 = (mu_02 * mu_21 * mu_22_inv - mu_01) * ones_like_k_x
+
+        m20 = (eps_12 * eps_20 * eps_22_inv - eps_10) * ones_like_k_x
+        m21 = k_x_sq * mu_22_inv - eps_11 + eps_12 * eps_21 * eps_22_inv
+        m22 = -k_x * mu_20 * mu_22_inv
+        m23 = k_x * (eps_12 * eps_22_inv - mu_21 * mu_22_inv)
+
+        m30 = (eps_00 - eps_02 * eps_20 * eps_22_inv) * ones_like_k_x
+        m31 = (eps_01 - eps_02 * eps_21 * eps_22_inv) * ones_like_k_x
+        m32 = tf.zeros_like(m00)
+        m33 = -k_x * eps_02 * eps_22_inv
+
+        # Stack the matrix elements into a 4x4 matrix
+        self.berreman_matrix = tf.stack([
+            [m00, m01, m02, m03],
+            [m10, m11, m12, m13],
+            [m20, m21, m22, m23],
+            [m30, m31, m32, m33]
+        ], axis=-1)
+        
 
     def delta_permutations(self):
         """Perform permutations on the Berreman matrix based on the mode."""
@@ -281,24 +251,41 @@ class Wave:
         self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
 
     def wave_sorting(self):
-        """Sort the wavevectors and fields based on the eigenvalues."""
+        """
+        Sort the wavevectors and fields based on the eigenvalues.
+
+        Returns:
+            tuple: A tuple containing the sorted transmitted and reflected wavevectors and fields.
+        """
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
 
         def sort_vector(waves):
+            """
+            Sort the wavevectors based on their real and imaginary parts.
+
+            Args:
+                waves (tf.Tensor): The wavevectors to be sorted.
+
+            Returns:
+                tf.Tensor: The indices for sorting the wavevectors.
+            """
             is_complex = tf.math.abs(tf.math.imag(waves)) > 0
             idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
             idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
             indices = tf.where(is_complex, idx_imag, idx_real)
             return indices
 
+        # Sort the wavevectors based on their rank
         if tf.rank(wavevectors) > 1:
             indices = tf.map_fn(sort_vector, wavevectors, dtype=tf.int32)
         else:
             indices = sort_vector(wavevectors)
 
+        # Gather the sorted wavevectors and fields
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
         sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
 
+        # Split the sorted wavevectors and fields into transmitted and reflected components
         transmitted_wavevectors = tf.stack([sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1)
         reflected_wavevectors = tf.stack([sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1)
         transmitted_fields = tf.stack([sorted_fields[..., 0], sorted_fields[..., 1]], axis=-1)
@@ -306,32 +293,73 @@ class Wave:
 
         return transmitted_wavevectors, reflected_wavevectors, transmitted_fields, reflected_fields
 
+
     def get_matrix(self, eigenvalues, eigenvectors):
-        """Get the transfer matrix based on the mode."""
+        """
+        Get the transfer matrix based on the mode.
+
+        Args:
+            eigenvalues (tf.Tensor): The eigenvalues of the Berreman matrix.
+            eigenvectors (tf.Tensor): The eigenvectors of the Berreman matrix.
+
+        Returns:
+            tf.Tensor: The transfer matrix.
+        """
         if self.semi_infinite:
             return eigenvectors
 
+        # Get the mode shapes
         _, _, _, k_0, eigenvalues_diag, eigenvectors = self._get_mode_shapes(
             self.mode, self.k_x, self.eps_tensor, self.mu_tensor, eigenvalues, eigenvectors
         )
 
+        # Calculate the partial matrix
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
+
+        # Calculate the transfer matrix
         transfer_matrix = tf.matmul(eigenvectors, tf.matmul(partial, tf.linalg.inv(eigenvectors)))
 
         return transfer_matrix
 
+
     def poynting_reshaping(self):
-        """Reshape the tensors for Poynting vector calculation based on the mode."""
+        """
+        Reshape the tensors for Poynting vector calculation based on the mode.
+
+        Returns:
+            tuple: A tuple containing the reshaped k_x, eps_tensor, and mu_tensor.
+        """
         k_x, eps_tensor, mu_tensor = self._get_mode_shapes(
             self.mode, self.k_x, self.eps_tensor, self.mu_tensor, poynting=True
         )
         return k_x, eps_tensor, mu_tensor
 
+
     def get_poynting(self, transmitted_waves, reflected_waves, transmitted_fields, reflected_fields):
-        """Calculate the Poynting vector components for transmitted and reflected waves."""
+        """
+        Calculate the Poynting vector components for transmitted and reflected waves.
+
+        Args:
+            transmitted_waves (tf.Tensor): The transmitted wavevectors.
+            reflected_waves (tf.Tensor): The reflected wavevectors.
+            transmitted_fields (tf.Tensor): The transmitted field components.
+            reflected_fields (tf.Tensor): The reflected field components.
+
+        Returns:
+            tuple: A tuple containing the transmitted and reflected wave profiles.
+        """
         k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
 
         def calculate_fields(fields):
+            """
+            Extract the field components from the input tensor.
+
+            Args:
+                fields (tf.Tensor): The input tensor containing the field components.
+
+            Returns:
+                tuple: A tuple containing the extracted field components (Ex, Ey, Hx, Hy).
+            """
             Ex, Ey = fields[..., 0, :], fields[..., 1, :]
             Hx, Hy = fields[..., 2, :], fields[..., 3, :]
             return Ex, Ey, Hx, Hy
@@ -340,6 +368,18 @@ class Wave:
         reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy = calculate_fields(reflected_fields)
 
         def calculate_Ez_Hz(Ex, Ey, Hx, Hy):
+            """
+            Calculate the Ez and Hz components based on the input field components.
+
+            Args:
+                Ex (tf.Tensor): The Ex field component.
+                Ey (tf.Tensor): The Ey field component.
+                Hx (tf.Tensor): The Hx field component.
+                Hy (tf.Tensor): The Hy field component.
+
+            Returns:
+                tuple: A tuple containing the calculated Ez and Hz components.
+            """
             Ez = (-1.0 / eps_tensor[..., 2, 2]) * (k_x * Hy + eps_tensor[..., 2, 0] * Ex + eps_tensor[..., 2, 1] * Ey)
             Hz = (1.0 / mu_tensor[..., 2, 2]) * (k_x * Ey - mu_tensor[..., 2, 0] * Hx - mu_tensor[..., 2, 1] * Hy)
             return Ez, Hz
@@ -348,6 +388,21 @@ class Wave:
         reflected_Ez, reflected_Hz = calculate_Ez_Hz(reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy)
 
         def calculate_poynting(Ex, Ey, Ez, Hx, Hy, Hz):
+            """
+            Calculate the Poynting vector components based on the input field components.
+
+            Args:
+                Ex (tf.Tensor): The Ex field component.
+                Ey (tf.Tensor): The Ey field component.
+                Ez (tf.Tensor): The Ez field component.
+                Hx (tf.Tensor): The Hx field component.
+                Hy (tf.Tensor): The Hy field component.
+                Hz (tf.Tensor): The Hz field component.
+
+            Returns:
+                tuple: A tuple containing the calculated Poynting vector components
+                    (Px, Py, Pz, physical_Px, physical_Py, physical_Pz).
+            """
             Px = Ey * Hz - Ez * Hy
             Py = Ez * Hx - Ex * Hz
             Pz = Ex * Hy - Ey * Hx
@@ -364,6 +419,19 @@ class Wave:
         )
 
         def create_wave_profile(fields, poynting, waves):
+            """
+            Create a wave profile dictionary based on the input field components, Poynting vector components,
+            and wavevectors.
+
+            Args:
+                fields (tuple): A tuple containing the field components (Ex, Ey, Ez, Hx, Hy, Hz).
+                poynting (tuple): A tuple containing the Poynting vector components
+                    (Px, Py, Pz, physical_Px, physical_Py, physical_Pz).
+                waves (tf.Tensor): The wavevectors.
+
+            Returns:
+                dict: A dictionary representing the wave profile.
+            """
             Ex, Ey, Ez, Hx, Hy, Hz = fields
             Px, Py, Pz, physical_Px, physical_Py, physical_Pz = poynting
             return {
@@ -390,8 +458,17 @@ class Wave:
 
         return transmitted_wave_profile, reflected_wave_profile
 
+
     def sort_poynting_indices(self, profile):
-        """Sort the Poynting vector by the z-component."""
+        """
+        Sort the Poynting vector by the z-component.
+
+        Args:
+            profile (dict): A dictionary containing the wave profile.
+
+        Returns:
+            dict: The updated wave profile with sorted indices.
+        """
         poynting_x = tf.math.abs(profile["Px"]) ** 2
         poynting_y = tf.math.abs(profile["Py"]) ** 2
 
