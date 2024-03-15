@@ -255,10 +255,7 @@ class Wave:
 
 
     def wave_sorting(self):
-        print("Wave sorting")
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
-        print(f"Wavevectors shape: {wavevectors.shape}")
-        print(f"Fields shape: {fields.shape}")
         
         def sort_vector(waves):
             # Check if the vector contains complex numbers
@@ -289,11 +286,6 @@ class Wave:
         transmitted_fields = stack_indices(sorted_fields, [0, 1])
         reflected_fields = stack_indices(sorted_fields, [2, 3])
 
-        print(f"Transmitted wavevectors shape: {transmitted_wavevectors.shape}")
-        print(f"Reflected wavevectors shape: {reflected_wavevectors.shape}")
-        print(f"Transmitted fields shape: {transmitted_fields.shape}")
-        print(f"Reflected fields shape: {reflected_fields.shape}")
-
         return transmitted_wavevectors, reflected_wavevectors, transmitted_fields, reflected_fields
     
 
@@ -308,23 +300,16 @@ class Wave:
         Returns:
             tf.Tensor: The transfer matrix.
         """
-        print(f"Get matrix for mode: {self.mode}")
         if self.semi_infinite:
-            print(f"Eigenvectors shape (semi-infinite): {eigenvectors.shape}")
             return eigenvectors
 
         _, _, _, k_0, eigenvalues_diag, eigenvectors = self._get_mode_shapes(
             self.mode, self.k_x, self.eps_tensor, self.mu_tensor, eigenvalues, eigenvectors
         )
 
-        print(f"Eigenvalues diagonal shape (after adjustment): {eigenvalues_diag.shape}")
-        print(f"Eigenvectors shape (after adjustment): {eigenvectors.shape}")
-
         partial = tf.linalg.expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
-        print(f"Partial matrix shape: {partial.shape}")
 
         transfer_matrix = tf.matmul(eigenvectors, tf.matmul(partial, tf.linalg.inv(eigenvectors)))
-        print(f"Transfer matrix shape: {transfer_matrix.shape}")
 
         return transfer_matrix
     
@@ -335,11 +320,7 @@ class Wave:
         Returns:
             tuple: A tuple containing the reshaped k_x, eps_tensor, and mu_tensor.
         """
-        print(f"Poynting reshaping for mode: {self.mode}")
         k_x, eps_tensor, mu_tensor = self._get_mode_shapes(self.mode, self.k_x, self.eps_tensor, self.mu_tensor, poynting=True)
-        print(f"k_x shape: {k_x.shape}")
-        print(f"eps_tensor shape: {eps_tensor.shape}")
-        print(f"mu_tensor shape: {mu_tensor.shape}")
         return k_x, eps_tensor, mu_tensor
             
 
@@ -440,7 +421,6 @@ class Wave:
     
     
     def sort_profile_back_to_matrix(self):
-        print("Sorting profile back to matrix")
         transmitted_new_profile = tf.stack(
             [self.profile.transmitted_Ex,
             self.profile.transmitted_Ey,
@@ -448,7 +428,6 @@ class Wave:
             self.profile.transmitted_Hy],
             axis=-2
         )
-        print(f"Transmitted new profile shape: {transmitted_new_profile.shape}")
 
         if self.semi_infinite:
             transfer_matrix = tf.stack(
@@ -460,7 +439,6 @@ class Wave:
                 ],
                 axis=-1,
             )
-            print(f"Transfer matrix shape (semi-infinite): {transfer_matrix.shape}")
             return transfer_matrix
         else:
             reflected_new_profile = tf.stack(
@@ -470,20 +448,16 @@ class Wave:
                 self.profile.reflected_Hy],
                 axis=-2
             )
-            print(f"Reflected new profile shape: {reflected_new_profile.shape}")
 
             eigenvalues = tf.concat(
                 [self.profile.transmitted_k_z, self.profile.reflected_k_z], axis=-1
             )
-            print(f"Eigenvalues shape: {eigenvalues.shape}")
 
             eigenvectors = tf.concat(
                 [transmitted_new_profile, reflected_new_profile], axis=-1
             )
-            print(f"Eigenvectors shape: {eigenvectors.shape}")
 
             transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
-            print(f"Transfer matrix shape: {transfer_matrix.shape}")
 
             return transfer_matrix
         

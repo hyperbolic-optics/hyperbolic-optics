@@ -60,6 +60,77 @@ def plot_permittivity(material, eps_ext, eps_ord):
     plt.close()
 
 
+def contour_plot_mueller_incidence(structure, reflectivity):
+    x_axis = np.round(np.degrees(structure.incident_angle.numpy().real), 1)
+    frequency = structure.frequency.numpy().real
+    
+    # Correctly create the figure and axes object
+    fig, ax = plt.subplots(figsize=(6, 5))
+    
+    # Use the axes object for plotting
+    cax = ax.pcolormesh(x_axis, frequency, reflectivity, cmap="magma")
+    
+    # Set the ticks and labels on the axes object, not the figure
+    ax.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
+    ax.set_xlabel("Incident Angle / $^\circ$")
+    ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
+
+    # Create a colorbar and set its label
+    cbar = fig.colorbar(cax, ax=ax)
+    cbar.set_label('Reflectivity')
+
+    plt.show()
+
+def contour_plot_mueller_azimuthal(structure, reflectivity):
+    x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+    frequency = structure.frequency.numpy().real
+    
+    # Correctly create the figure and axes object
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Use the axes object for plotting
+    cax = ax.pcolormesh(x_axis, frequency, reflectivity, cmap="magma")
+    
+    # Set the ticks and labels on the axes object, not the figure
+    ax.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
+    ax.set_xlabel("Azimuthal Rotation / $^\circ$")
+    ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
+
+    # Create a colorbar and set its label
+    cbar = fig.colorbar(cax, ax=ax)
+    cbar.set_label('Reflectivity')
+    cbar.mappable.set_clim(0, )
+
+    plt.show()
+
+def contour_plot_mueller_dispersion(structure, reflectivity):
+    incident_angle = structure.incident_angle.numpy().real
+    z_rotation = structure.azimuthal_angle.numpy().real
+
+    # Correctly create the figure and axes object
+    fig, ax = plt.subplots(figsize=(12, 10), subplot_kw= dict(projection = 'polar'))
+    
+    # Use the axes object for plotting
+    cax = ax.pcolormesh(z_rotation, incident_angle, reflectivity, cmap="magma")
+    
+    # Set the ticks and labels on the axes object, not the figure
+    ax.set_xticks(np.linspace(0, 2*np.pi, 5))
+    ax.set_xlabel("Azimuthal Rotation / $^\circ$")
+    ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
+    ax.set_xticklabels(['0', '90', '180', '270', '360'])  # azimuthal rotation in degrees
+    ax.set_yticklabels("")  # incident angle in degrees
+
+    # Remove the labels, polar coordinates speak for themselves
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.grid(False)
+
+    # Create a colorbar and set its label
+    cbar = fig.colorbar(cax, ax=ax)
+    cbar.set_label('Reflectivity')
+    cbar.mappable.set_clim(0, )
+    plt.show()
+
 def contour_plot_simple_incidence(structure):
 
     x_axis = np.round(np.degrees(structure.incident_angle), 1)
@@ -148,7 +219,6 @@ def contour_plot_simple_azimuthal(structure):
     plt.tight_layout()
     plt.show()
     plt.close()
-
 
 def contour_plot_simple_dispersion(structure):
     
