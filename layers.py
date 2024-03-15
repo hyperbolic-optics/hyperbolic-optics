@@ -203,7 +203,7 @@ class IsotropicSemiInfiniteLayer(Layer):
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
         self.eps_incident = (tf.cast(kx, dtype=tf.float64)/ tf.sin(self.incident_angle))**2.
-        self.eps_exit = float(data.get('permittivity', None))
+        self.eps_exit = tf.cast(data.get('permittivity'), dtype=tf.float64)
 
         if not self.eps_exit:
             raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
@@ -219,6 +219,8 @@ class IsotropicSemiInfiniteLayer(Layer):
             self.matrix = exit_medium.construct_tensor()[tf.newaxis, tf.newaxis, ...]
         elif self.scenario == 'Dispersion':
             self.matrix = exit_medium.construct_tensor()[:, tf.newaxis, ...]
+
+        print("Created isotropic semi-infinite layer")
 
 
 class LayerFactory:

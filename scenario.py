@@ -17,20 +17,16 @@ class ScenarioSetup(ABC):
     Abstract class for a scenario setup
     """
     def __init__(self, data):
-        print("Initializing ScenarioSetup")  # Add this line
         self.type = data.get("type")
         self.incident_angle = data.get("incidentAngle", None)
         self.azimuthal_angle = data.get("azimuthal_angle", None)
         self.frequency = data.get("frequency", None)
-        print("Got scenario data attributes")  # Add this line
         self.create_scenario()
-        print("Finished creating scenario")  # Add this line
 
     def create_scenario(self):
         """
         Creates the scenario based on the type
         """
-        print(f"Creating scenario of type: {self.type}")  # Add this line
         if self.type == 'Incident':
             self.create_incident_scenario()
         elif self.type == 'Azimuthal':
@@ -48,7 +44,7 @@ class ScenarioSetup(ABC):
         self.incident_angle = tf.linspace(
             tf.constant(-m.pi/2., dtype=tf.float64),
             tf.constant(m.pi/2., dtype=tf.float64),
-            180)
+            360)
 
 
     def create_azimuthal_scenario(self):
@@ -59,7 +55,7 @@ class ScenarioSetup(ABC):
         self.azimuthal_angle = tf.linspace(
             tf.constant(0. + 1.e-15, dtype=tf.float64),
             tf.constant(2. * m.pi, dtype=tf.float64),
-            180)
+            360)
 
 
     def create_dispersion_scenario(self):
