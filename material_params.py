@@ -11,7 +11,7 @@ Future plan is to integrate this better with Layers.py, to separate the paramete
 
 import tensorflow as tf
 from scipy import constants
-
+import numpy as np
 from device_config import run_on_device
 
 
@@ -380,9 +380,10 @@ class Sapphire(UniaxialMaterial):
         }
         return parameters
 
+
 class MonoclinicMaterial:
     
-    def __init__(self, frequency_length=410, run_on_device_decorator=run_on_device):
+    def __init__(self, frequency_length=1010, run_on_device_decorator=run_on_device):
         """
         Initialize the AnisotropicMaterial class.
 
@@ -396,12 +397,12 @@ class MonoclinicMaterial:
 
 class GalliumOxide(MonoclinicMaterial):
 
-    def __init__(self, freq_min=300.0, freq_max=600.0):
+    def __init__(self, freq_min=200.0, freq_max=1000.0):
         super().__init__()
         self.name = "GalliumOxide"
         self.frequency = tf.cast(
             tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex128
-        )
+        )[:, tf.newaxis]
 
 
     @run_on_device
@@ -411,57 +412,58 @@ class GalliumOxide(MonoclinicMaterial):
                 "high_freq": tf.constant(3.71, dtype=tf.complex128),
                 "amplitude": tf.constant(
                     [544.9, 727.1, 592.1, 78], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "omega_tn": tf.constant(
                     [663.17, 448.66, 296.63, 154.84],
                     dtype=tf.complex128,
-                ),
+                )[tf.newaxis, :],
                 "gamma_tn": tf.constant(
                     [3.2, 10.5, 14.9, 2.4], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "alpha_tn": tf.constant(
                     [0., 0., 0., 0.], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "omega_ln": tf.constant(
                     [781.3, 562.8, 345.9, 156.3],
                     dtype=tf.complex128,
-                ),
+                )[tf.newaxis, :],
                 "gamma_ln": tf.constant(
                     [0., 0., 0., 0.], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "alpha_ln": tf.constant(
                     [0., 0., 0., 0.], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
             },
             "Bu": {
                 "high_freq": 
                     {
                         "xx": tf.constant(3.75, dtype=tf.complex128),
                         "yy": tf.constant(3.21, dtype=tf.complex128),
+                        "xy": tf.constant(-0.08, dtype=tf.complex128),
                 },
                 "amplitude": tf.constant(
                     [266.2, 406.5, 821.9, 795.7, 365.8, 164.2, 485.7, 520.7], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "omega_tn": tf.constant(
                     [743.48, 692.44, 572.52, 432.57, 356.79, 279.15, 262.34, 213.79],
                     dtype=tf.complex128,
-                ),
+                )[tf.newaxis, :],
                 "gamma_tn": tf.constant(
                     [11.0, 6.55, 12.36, 10.13, 3.83, 1.98, 1.75, 1.9], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "alpha_tn": tf.constant(
-                    [47.8, 5.1, 106, 21.0, 144, 4, 158.5, 80.9], dtype=tf.complex128
-                ),
+                    [47.8, 5.1, 106., 21.0, 144., 4., 158.5, 80.9], dtype=tf.complex128
+                )[tf.newaxis, :],
                 "omega_ln": tf.constant(
                     [810., 770., 709., 595., 389., 305., 286., 269.],
                     dtype=tf.complex128,
-                ),
+                )[tf.newaxis, :],
                 "gamma_ln": tf.constant(
                     [0., 0., 0., 0., 0., 0., 0., 0.], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
                 "alpha_ln": tf.constant(
                     [73., -30., 6., 73., -31., -42., 21., 27.], dtype=tf.complex128
-                ),
+                )[tf.newaxis, :],
             },
         }
 
@@ -470,7 +472,26 @@ class GalliumOxide(MonoclinicMaterial):
     def permittivity_calc(self):
         parameters = self.permittivity_parameters()
 
-        
+        # Calculation for Bu modes
+        partial_calc_tn_bu = parameters["Bu"]["amplitude"]**2. / (parameters["Bu"]["omega_tn"]**2.0 - self.frequency**2.0 - 1.j * self.frequency * parameters["Bu"]["gamma_tn"])
+
+        eps_xx_bu = tf.reduce_sum(partial_calc_tn_bu * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
+        eps_xy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0) * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0), axis=1)
+        eps_yy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
+
+        # Calculation for Au modes
+        partial_calc_tn_au = parameters["Au"]["amplitude"]**2. / (parameters["Au"]["omega_tn"]**2.0 - self.frequency**2.0 - 1.j * self.frequency * parameters["Au"]["gamma_tn"])
+        eps_zz_au = tf.reduce_sum(partial_calc_tn_au, axis=1)
+
+        # Combine the results
+        eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu
+        eps_xy = parameters["Bu"]["high_freq"]["xy"] + eps_xy_bu
+        eps_yy = parameters["Bu"]["high_freq"]["yy"] + eps_yy_bu
+        eps_zz = parameters["Au"]["high_freq"] + eps_zz_au
+
+        return eps_zz
+
+
 
 class Antiferromagnet:
     """
