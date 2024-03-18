@@ -15,7 +15,7 @@ from scipy import constants
 from device_config import run_on_device
 
 
-class AnisotropicMaterial:
+class UniaxialMaterial:
     """
     Abstract class for anisotropic materials, such as Quartz, Sapphire, and Calcite.
 
@@ -163,7 +163,7 @@ class AnisotropicMaterial:
         return eps_tensor
 
 
-class Quartz(AnisotropicMaterial):
+class Quartz(UniaxialMaterial):
     """
     Class representing the Quartz material.
 
@@ -174,7 +174,7 @@ class Quartz(AnisotropicMaterial):
         frequency (tf.Tensor): The frequency range for Quartz.
     """
 
-    def __init__(self, freq_min=350.0, freq_max=600.0):
+    def __init__(self, freq_min=410.0, freq_max=600.0):
         """
         Initialize the Quartz class.
 
@@ -228,7 +228,7 @@ class Quartz(AnisotropicMaterial):
         return parameters
 
 
-class Calcite(AnisotropicMaterial):
+class Calcite(UniaxialMaterial):
     """
     Class representing the Calcite material.
 
@@ -325,7 +325,7 @@ class CalciteUpper(Calcite):
         )
 
 
-class Sapphire(AnisotropicMaterial):
+class Sapphire(UniaxialMaterial):
     """
     Class representing the Sapphire material.
 
@@ -380,9 +380,11 @@ class Sapphire(AnisotropicMaterial):
         }
         return parameters
 
+class MonoclinicMaterial:
+    pass
 
-class GalliumOxide(AnisotropicMaterial):
-    def __init__(self, freq_min=300.0, freq_max=1000.0):
+class GalliumOxide(MonoclinicMaterial):
+    def __init__(self, freq_min=300.0, freq_max=600.0):
         super().__init__()
         self.name = "GalliumOxide"
         self.frequency = tf.cast(
@@ -392,7 +394,7 @@ class GalliumOxide(AnisotropicMaterial):
     @run_on_device
     def permittivity_parameters(self):
         parameters = {
-            "extraordinary": {
+            "Bu": {
                 "high_freq": tf.constant(3.57, dtype=tf.complex128),
                 "omega_tn": tf.constant(
                     [154.8, 296.6, 448.6, 663.1], dtype=tf.complex128
@@ -407,21 +409,24 @@ class GalliumOxide(AnisotropicMaterial):
                     [2.4, 14.9, 10.5, 3.2], dtype=tf.complex128
                 ),
             },
-            "ordinary": {
-                "high_freq": tf.constant(3.57, dtype=tf.complex128),
+            "Au": {
+                "high_freq": tf.constant(None, dtype=tf.complex128),
                 "omega_tn": tf.constant(
-                    [213.7, 262.3, 279.1, 356.7, 432.5, 572.5, 692.4, 743.4],
+                    [743.48, 692.44, 572.52, 432.57, 356.79, 279.15, 262.34, 213.79],
                     dtype=tf.complex128,
                 ),
                 "gamma_tn": tf.constant(
-                    [1.9, 1.7, 1.9, 3.8, 10.1, 12.3, 6.5, 11.0], dtype=tf.complex128
+                    [11.0, 6.55, 12.36, 10.13, 3.83, 1.98, 1.75, 1.9], dtype=tf.complex128
+                ),
+                "alpha_tn": tf.constant(
+                    [47.8, 5.1, 106, 21.0, 144, 4, 158.5, 80.9], dtype=tf.complex128
                 ),
                 "omega_ln": tf.constant(
-                    [26.9, 28.6, 30.5, 38.9, 59.5, 70.9, 77.0, 81.0],
+                    [810., 770., 709., 595., 389., 305., 286., 269.],
                     dtype=tf.complex128,
                 ),
                 "gamma_ln": tf.constant(
-                    [1.9, 1.7, 1.9, 3.8, 10.1, 12.3, 6.5, 11.0], dtype=tf.complex128
+                    [], dtype=tf.complex128
                 ),
             },
         }

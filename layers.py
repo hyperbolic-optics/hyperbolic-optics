@@ -13,6 +13,7 @@ from material_params import (
     Sapphire,
     CalciteLower,
     AmbientExitMedium,
+    GalliumOxide,
 )
 from waves import Wave
 from anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
@@ -51,6 +52,8 @@ class Layer(ABC):
             self.material = CalciteUpper()
         elif self.material == "CalciteLower":
             self.material = CalciteLower()
+        elif self.material == "GalliumOxide":
+            self.material = GalliumOxide()
         else:
             raise NotImplementedError(f"Material {self.material} not implemented")
 
