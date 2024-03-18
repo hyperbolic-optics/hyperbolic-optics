@@ -383,7 +383,7 @@ class Sapphire(UniaxialMaterial):
 
 class MonoclinicMaterial:
     
-    def __init__(self, frequency_length=1010, run_on_device_decorator=run_on_device):
+    def __init__(self, frequency_length=400, run_on_device_decorator=run_on_device):
         """
         Initialize the AnisotropicMaterial class.
 
@@ -397,12 +397,12 @@ class MonoclinicMaterial:
 
 class GalliumOxide(MonoclinicMaterial):
 
-    def __init__(self, freq_min=200.0, freq_max=1000.0):
+    def __init__(self, freq_min=300.0, freq_max=1000.0):
         super().__init__()
         self.name = "GalliumOxide"
         self.frequency = tf.cast(
             tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex128
-        )[:, tf.newaxis]
+        )
 
 
     @run_on_device
@@ -472,15 +472,16 @@ class GalliumOxide(MonoclinicMaterial):
     def permittivity_calc(self):
         parameters = self.permittivity_parameters()
 
+        frequency = self.frequency[:,tf.newaxis]
         # Calculation for Bu modes
-        partial_calc_tn_bu = parameters["Bu"]["amplitude"]**2. / (parameters["Bu"]["omega_tn"]**2.0 - self.frequency**2.0 - 1.j * self.frequency * parameters["Bu"]["gamma_tn"])
+        partial_calc_tn_bu = parameters["Bu"]["amplitude"]**2. / (parameters["Bu"]["omega_tn"]**2.0 - frequency**2.0 - 1.j * frequency * parameters["Bu"]["gamma_tn"])
 
         eps_xx_bu = tf.reduce_sum(partial_calc_tn_bu * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
         eps_xy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0) * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0), axis=1)
         eps_yy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
 
         # Calculation for Au modes
-        partial_calc_tn_au = parameters["Au"]["amplitude"]**2. / (parameters["Au"]["omega_tn"]**2.0 - self.frequency**2.0 - 1.j * self.frequency * parameters["Au"]["gamma_tn"])
+        partial_calc_tn_au = parameters["Au"]["amplitude"]**2. / (parameters["Au"]["omega_tn"]**2.0 - frequency**2.0 - 1.j * frequency * parameters["Au"]["gamma_tn"])
         eps_zz_au = tf.reduce_sum(partial_calc_tn_au, axis=1)
 
         # Combine the results
@@ -489,8 +490,23 @@ class GalliumOxide(MonoclinicMaterial):
         eps_yy = parameters["Bu"]["high_freq"]["yy"] + eps_yy_bu
         eps_zz = parameters["Au"]["high_freq"] + eps_zz_au
 
-        return eps_zz
+        return eps_xx, eps_yy, eps_zz, eps_xy
+    
+    @run_on_device
+    def fetch_permittivity_tensor(self):
+        eps_xx, eps_yy, eps_zz, eps_xy = self.permittivity_calc()
 
+        eps_tensor = tf.stack(
+            [
+                [eps_xx, eps_xy, tf.zeros_like(eps_xx)],
+                [eps_xy, eps_yy, tf.zeros_like(eps_xx)],
+                [tf.zeros_like(eps_xx), tf.zeros_like(eps_xx), eps_zz]
+            ],
+            axis=-1,
+        )
+        eps_tensor = tf.transpose(eps_tensor, perm=[1, 2, 0])
+
+        return eps_tensor
 
 
 class Antiferromagnet:
