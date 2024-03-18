@@ -381,9 +381,21 @@ class Sapphire(UniaxialMaterial):
         return parameters
 
 class MonoclinicMaterial:
-    pass
+    
+    def __init__(self, frequency_length=410, run_on_device_decorator=run_on_device):
+        """
+        Initialize the AnisotropicMaterial class.
+
+        Args:
+            frequency_length (int): The length of the frequency range. Default is 410.
+            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+        """
+        self.frequency_length = frequency_length
+        self.run_on_device = run_on_device_decorator
+
 
 class GalliumOxide(MonoclinicMaterial):
+
     def __init__(self, freq_min=300.0, freq_max=600.0):
         super().__init__()
         self.name = "GalliumOxide"
@@ -391,26 +403,45 @@ class GalliumOxide(MonoclinicMaterial):
             tf.linspace(freq_min, freq_max, self.frequency_length), dtype=tf.complex128
         )
 
+
     @run_on_device
     def permittivity_parameters(self):
         parameters = {
-            "Bu": {
-                "high_freq": tf.constant(3.57, dtype=tf.complex128),
+            "Au": {
+                "high_freq": tf.constant(3.71, dtype=tf.complex128),
+                "amplitude": tf.constant(
+                    [544.9, 727.1, 592.1, 78], dtype=tf.complex128
+                ),
                 "omega_tn": tf.constant(
-                    [154.8, 296.6, 448.6, 663.1], dtype=tf.complex128
+                    [663.17, 448.66, 296.63, 154.84],
+                    dtype=tf.complex128,
                 ),
                 "gamma_tn": tf.constant(
-                    [2.4, 14.9, 10.5, 3.2], dtype=tf.complex128
+                    [3.2, 10.5, 14.9, 2.4], dtype=tf.complex128
+                ),
+                "alpha_tn": tf.constant(
+                    [0., 0., 0., 0.], dtype=tf.complex128
                 ),
                 "omega_ln": tf.constant(
-                    [156.3, 345.9, 562.8, 781.3], dtype=tf.complex128
+                    [781.3, 562.8, 345.9, 156.3],
+                    dtype=tf.complex128,
                 ),
                 "gamma_ln": tf.constant(
-                    [2.4, 14.9, 10.5, 3.2], dtype=tf.complex128
+                    [0., 0., 0., 0.], dtype=tf.complex128
+                ),
+                "alpha_ln": tf.constant(
+                    [0., 0., 0., 0.], dtype=tf.complex128
                 ),
             },
-            "Au": {
-                "high_freq": tf.constant(None, dtype=tf.complex128),
+            "Bu": {
+                "high_freq": 
+                    {
+                        "xx": tf.constant(3.75, dtype=tf.complex128),
+                        "yy": tf.constant(3.21, dtype=tf.complex128),
+                },
+                "amplitude": tf.constant(
+                    [266.2, 406.5, 821.9, 795.7, 365.8, 164.2, 485.7, 520.7], dtype=tf.complex128
+                ),
                 "omega_tn": tf.constant(
                     [743.48, 692.44, 572.52, 432.57, 356.79, 279.15, 262.34, 213.79],
                     dtype=tf.complex128,
@@ -426,12 +457,20 @@ class GalliumOxide(MonoclinicMaterial):
                     dtype=tf.complex128,
                 ),
                 "gamma_ln": tf.constant(
-                    [], dtype=tf.complex128
+                    [0., 0., 0., 0., 0., 0., 0., 0.], dtype=tf.complex128
+                ),
+                "alpha_ln": tf.constant(
+                    [73., -30., 6., 73., -31., -42., 21., 27.], dtype=tf.complex128
                 ),
             },
         }
 
         return parameters
+    
+    def permittivity_calc(self):
+        parameters = self.permittivity_parameters()
+
+        
 
 class Antiferromagnet:
     """
