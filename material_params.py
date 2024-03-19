@@ -397,7 +397,7 @@ class MonoclinicMaterial:
 
 class GalliumOxide(MonoclinicMaterial):
 
-    def __init__(self, freq_min=300.0, freq_max=1000.0):
+    def __init__(self, freq_min=350.0, freq_max=800.0):
         super().__init__()
         self.name = "GalliumOxide"
         self.frequency = tf.cast(
@@ -505,6 +505,46 @@ class GalliumOxide(MonoclinicMaterial):
             axis=-1,
         )
         eps_tensor = tf.transpose(eps_tensor, perm=[1, 2, 0])
+
+        return eps_tensor
+    
+    @run_on_device
+    def permittivity_calc_for_freq(self, frequency):
+        parameters = self.permittivity_parameters()
+
+        frequency = tf.constant([[frequency]], dtype=tf.complex128)
+
+        # Calculation for Bu modes
+        partial_calc_tn_bu = parameters["Bu"]["amplitude"]**2. / (parameters["Bu"]["omega_tn"]**2.0 - frequency**2.0 - 1.j * frequency * parameters["Bu"]["gamma_tn"])
+
+        eps_xx_bu = tf.reduce_sum(partial_calc_tn_bu * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
+        eps_xy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0) * tf.cos(parameters["Bu"]["alpha_tn"] * np.pi / 180.0), axis=1)
+        eps_yy_bu = tf.reduce_sum(partial_calc_tn_bu * tf.sin(parameters["Bu"]["alpha_tn"] * np.pi / 180.0)**2.0, axis=1)
+
+        # Calculation for Au modes
+        partial_calc_tn_au = parameters["Au"]["amplitude"]**2. / (parameters["Au"]["omega_tn"]**2.0 - frequency**2.0 - 1.j * frequency * parameters["Au"]["gamma_tn"])
+        eps_zz_au = tf.reduce_sum(partial_calc_tn_au, axis=1)
+
+        # Combine the results
+        eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu
+        eps_xy = parameters["Bu"]["high_freq"]["xy"] + eps_xy_bu
+        eps_yy = parameters["Bu"]["high_freq"]["yy"] + eps_yy_bu
+        eps_zz = parameters["Au"]["high_freq"] + eps_zz_au
+
+        return eps_xx[0], eps_yy[0], eps_zz[0], eps_xy[0]
+
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        eps_xx, eps_yy, eps_zz, eps_xy = self.permittivity_calc_for_freq(requested_frequency)
+
+        eps_tensor = tf.stack(
+            [
+                [eps_xx, eps_xy, tf.zeros_like(eps_xx)],
+                [eps_xy, eps_yy, tf.zeros_like(eps_xx)],
+                [tf.zeros_like(eps_xx), tf.zeros_like(eps_xx), eps_zz]
+            ],
+            axis=0,
+        )
 
         return eps_tensor
 
