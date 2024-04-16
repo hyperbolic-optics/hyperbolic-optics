@@ -77,7 +77,7 @@ def contour_plot_mueller_incidence(structure, reflectivity):
 
     # Create a colorbar and set its label
     cbar = fig.colorbar(cax, ax=ax)
-    cbar.set_label('Reflectivity')
+    cbar.set_label('Reflectivity', size=18)
 
     plt.show()
 
@@ -117,7 +117,7 @@ def contour_plot_mueller_dispersion(structure, reflectivity):
     ax.set_xticks(np.linspace(0, 2*np.pi, 5))
     ax.set_xlabel("Azimuthal Rotation / $^\circ$")
     ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
-    ax.set_xticklabels(['0', '90', '180', '270', '360'])  # azimuthal rotation in degrees
+    ax.set_xticklabels(['0', '90', '180   ', '270', ''], size=18)  # azimuthal rotation in degrees
     ax.set_yticklabels("")  # incident angle in degrees
 
     # Remove the labels, polar coordinates speak for themselves
@@ -127,7 +127,7 @@ def contour_plot_mueller_dispersion(structure, reflectivity):
 
     # Create a colorbar and set its label
     cbar = fig.colorbar(cax, ax=ax)
-    cbar.set_label('Reflectivity')
+    cbar.set_label('Reflectivity', size=18)
     cbar.mappable.set_clim(0, )
     plt.show()
 
@@ -239,7 +239,6 @@ def contour_plot_simple_dispersion(structure):
     R_ss = reflectivities[3]
     R_pp_total = R_pp + R_ps
     R_ss_total = R_ss + R_sp
-
 
     fig, ax = plt.subplots(2, 3, figsize=(18, 7), subplot_kw= dict(projection = 'polar'))
     plt.subplots_adjust(
