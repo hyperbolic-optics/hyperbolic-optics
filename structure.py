@@ -163,6 +163,8 @@ class Structure:
         # Calculate the reflectivity
         self.calculate_reflectivity()
 
+        self.calculate_transmissivity()
+
     def plot(self):
         """Plot the reflectivity for the given scenario."""
         if self.scenario.type == "Incident":

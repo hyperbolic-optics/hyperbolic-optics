@@ -104,6 +104,7 @@ def contour_plot_mueller_azimuthal(structure, reflectivity):
     plt.show()
 
 def contour_plot_mueller_dispersion(structure, reflectivity):
+
     incident_angle = structure.incident_angle.numpy().real
     z_rotation = structure.azimuthal_angle.numpy().real
 
