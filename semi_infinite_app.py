@@ -1,4 +1,4 @@
-from structure import Structure
+from hyperbolic_optics.structure import Structure
 import json
 from payloads import updating_payload
 from matplotlib import pyplot as plt
