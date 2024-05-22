@@ -15,5 +15,5 @@ setup(
     description='4x4 Transfer Matrix Method for Anisotropic Multilayer Structures, with Mueller Matrix Calculations',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/MarkCunningham0410/hyperbolic-optics',
+    url='https://github.com/MarkCunningham0410/hyperbolic_optics',
 )
