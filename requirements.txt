@@ -1,4 +1,4 @@
 tensorflow
-flask
-flask-cors
+scipy
+numpy
 

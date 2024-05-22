@@ -31,23 +31,23 @@ def mock_azimuthal_payload():
     payload = json.dumps({
         "ScenarioData": {
         "type": "Azimuthal",
-        "incidentAngle": 45,
+        "incidentAngle": 50,
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 11.5
+            "permittivity": 50.5
         },
         {
             "type": "Isotropic Middle-Stack Layer",
-            "thickness": 1.5
+            "thickness": 0.1
         },
         {
             "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
-            "rotationY": 70,
-            "rotationZ": 45,
+            "rotationY": 90,
+            "rotationZ": 0,
         }
     ],
     })
