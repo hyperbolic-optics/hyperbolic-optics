@@ -6,10 +6,10 @@ creates the structure object then produces the reflectivity spectra.
 """
 
 import json
+import tensorflow as tf
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.mueller import Mueller
 from payloads import mock_incident_payload, mock_azimuthal_payload, mock_dispersion_payload
-import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 from hyperbolic_optics.plots import contour_plot_mueller_incidence, contour_plot_mueller_azimuthal, contour_plot_mueller_dispersion
 
