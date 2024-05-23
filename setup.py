@@ -8,6 +8,7 @@ setup(
         'tensorflow',
         'numpy',
         'scipy',
+        'matplotlib',
         # Add any other dependencies here
     ],
     author='Mark Cunningham',
