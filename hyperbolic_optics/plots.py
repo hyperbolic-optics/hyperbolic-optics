@@ -109,11 +109,10 @@ def contour_plot_mueller_dispersion(structure, reflectivity):
     z_rotation = structure.azimuthal_angle.numpy().real
 
     # Correctly create the figure and axes object
-    fig, ax = plt.subplots(figsize=(12, 10), subplot_kw= dict(projection = 'polar'))
+    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw= dict(projection = 'polar'))
     
     # Use the axes object for plotting
     cax = ax.pcolormesh(z_rotation, incident_angle, reflectivity, cmap="magma")
-    
     # Set the ticks and labels on the axes object, not the figure
     ax.set_xticks(np.linspace(0, 2*np.pi, 5))
     ax.set_xlabel("Azimuthal Rotation / $^\circ$")
@@ -129,7 +128,7 @@ def contour_plot_mueller_dispersion(structure, reflectivity):
     # Create a colorbar and set its label
     cbar = fig.colorbar(cax, ax=ax)
     cbar.set_label('Reflectivity', size=18)
-    cbar.mappable.set_clim(0, )
+    # cbar.mappable.set_clim(0, )
     plt.show()
 
 def contour_plot_simple_incidence(structure):

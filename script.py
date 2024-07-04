@@ -17,7 +17,7 @@ def main():
     """
     Main function
     """
-    mode = 'azimuthal'
+    mode = 'dispersion'
     if mode == 'incident':
         payload = json.loads(mock_incident_payload())
     elif mode == 'azimuthal':
@@ -37,11 +37,11 @@ def main():
     mueller = Mueller()
     mueller.add_optical_component('linear_polarizer', 0)  # First polarizer
     mueller.add_optical_component('anisotropic_sample', structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss)
-    # # mueller.add_optical_component('linear_polarizer', 45)  # Second polarizer
+    # mueller.add_optical_component('linear_polarizer', 45)  # Second polarizer
     reflectivity = mueller.calculate_reflectivity()
     # contour_plot_mueller_incidence(structure,reflectivity)
-    contour_plot_mueller_azimuthal(structure,reflectivity)
-    # # contour_plot_mueller_dispersion(structure,reflectivity)
+    # contour_plot_mueller_azimuthal(structure,reflectivity)
+    contour_plot_mueller_dispersion(structure,reflectivity)
 
 if __name__ == '__main__':
     main()

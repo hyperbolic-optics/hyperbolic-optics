@@ -59,23 +59,23 @@ def mock_dispersion_payload():
     payload = json.dumps({
     "ScenarioData": {
         "type": "Dispersion",
-        "frequency": 475
+        "frequency": 460
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 11.5
+            "permittivity": 50.
         },
         {
             "type": "Isotropic Middle-Stack Layer",
-            "thickness": 1.5
+            "thickness": 0.1
         },
         {
             "type": "Semi Infinite Anisotropic Layer",
             "material": "Quartz",
             "rotationX": 0,
-            "rotationY": 70,
-            "rotationZ": 45,
+            "rotationY": 90,
+            "rotationZ": 0,
         }
     ],
     })
@@ -113,15 +113,6 @@ def updating_payload(scenario, material, eps_prism, air_gap_thickness, rotationY
             "thickness": air_gap_thickness,
             "permittivity": 1.
         },
-        {
-            "type": "Crystal Layer",
-            "thickness": 0.1,
-            "material": material,
-            "rotationX": 0.,
-            "rotationY": 66.7,
-            "rotationZ": 180.,
-            "rotationZType": "relative"
-        }
     ]
 
     bulk_layer = {

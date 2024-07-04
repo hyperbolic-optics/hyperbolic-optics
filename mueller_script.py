@@ -35,13 +35,13 @@ def main():
     # Create the Mueller object
     mueller = Mueller(structure)
     # Set the incident polarization (optional)
-    mueller.set_incident_polarization('linear', angle = 40)
+    mueller.set_incident_polarization('elliptical', alpha = 40, ellipticity = 40)
     # Add optical components before the anisotropic sample (if any)
     mueller.add_optical_component('anisotropic_sample')
-    # mueller.add_optical_component('linear_polarizer', 0)  # First polarizer
-    # mueller.add_optical_component('half_wave_plate', 90)  # First quarter wave plate
+    mueller.add_optical_component('linear_polarizer', 0)  # First polarizer
+    mueller.add_optical_component('half_wave_plate', 90)  # First quarter wave plate
 
-    reflectivity = mueller.get_azimuth()
+    reflectivity = mueller.get_stokes_parameters()['S0']
 
     contour_plot_mueller_dispersion(structure, reflectivity)
 
