@@ -2,12 +2,13 @@ import tensorflow as tf
 import numpy as np
 
 class Mueller:
-    def __init__(self, structure):
+    def __init__(self, structure, debug=False):
         """
         Initialize the Mueller class.
 
         Args:
             structure: The structure object containing scenario information.
+            debug (bool): Enable debug output (default: False)
         """
         self.structure = structure
         self.mueller_matrix = None
@@ -15,6 +16,24 @@ class Mueller:
         self.incident_stokes = tf.constant([1, 0, 0, 0], dtype=tf.float64)  # Default to unpolarized light
         self.optical_components = []
         self.anisotropic_sample_added = False
+        self.debug = debug
+
+    def _debug_print(self, message):
+        """Print debug message if debug is enabled."""
+        if self.debug:
+            print(message)
+
+    def _summarize_array(self, arr, name):
+        """Summarize an array with statistics and sample points."""
+        if isinstance(arr, tf.Tensor):
+            arr = arr.numpy()
+        flat_arr = arr.flatten()
+        summary = f"{name} - Shape: {arr.shape}, Min: {np.min(flat_arr):.6f}, Max: {np.max(flat_arr):.6f}, " \
+                  f"Mean: {np.mean(flat_arr):.6f}, Std: {np.std(flat_arr):.6f}"
+        sample_points = np.linspace(0, len(flat_arr) - 1, 5, dtype=int)
+        samples = flat_arr[sample_points]
+        summary += f"\nSample points: {samples}"
+        return summary
 
     def set_incident_polarization(self, polarization_type, **kwargs):
         """
@@ -39,6 +58,9 @@ class Mueller:
             self.incident_stokes = self._elliptical_polarization(alpha, ellipticity)
         else:
             raise ValueError(f"Unsupported polarization type: {polarization_type}")
+        
+        self._debug_print(f"Set incident polarization: {polarization_type}")
+        self._debug_print(self._summarize_array(self.incident_stokes, "Incident Stokes vector"))
 
     def _linear_polarization(self, angle):
         """
@@ -196,6 +218,8 @@ class Mueller:
         ], dtype=tf.complex128)[tf.newaxis, tf.newaxis, ...]
 
         self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
+        self._debug_print("Calculated Mueller matrix for anisotropic sample:")
+        self._debug_print(self._summarize_array(self.mueller_matrix, "Mueller matrix"))
 
     def add_optical_component(self, component_type, *args):
         """
@@ -219,6 +243,7 @@ class Mueller:
             self.optical_components.append(self.half_wave_plate(*args))
         else:
             raise ValueError(f"Unsupported optical component type: {component_type}")
+        self._debug_print(f"Added optical component: {component_type}")
 
     def calculate_stokes_parameters(self):
         """
@@ -227,14 +252,17 @@ class Mueller:
         Returns:
             Stokes parameters of the system (tf.Tensor).
         """
-        # Start with the incident Stokes vector
         stokes_vector = tf.reshape(self.incident_stokes, [1, 1, 4, 1])
+        self._debug_print(f"Initial Stokes vector: {stokes_vector.numpy().flatten()}")
 
-        # Apply optical components in order
-        for component in self.optical_components:
+        for i, component in enumerate(self.optical_components):
             stokes_vector = tf.matmul(component, stokes_vector)
+            self._debug_print(f"After component {i}:")
+            self._debug_print(self._summarize_array(stokes_vector, f"Stokes vector"))
 
         self.stokes_parameters = stokes_vector[..., 0]
+        self._debug_print("Final Stokes parameters:")
+        self._debug_print(self._summarize_array(self.stokes_parameters, "Stokes parameters"))
         return self.stokes_parameters
 
     def get_reflectivity(self):
@@ -250,17 +278,21 @@ class Mueller:
         return self.stokes_parameters[..., 0]
 
     def get_degree_of_polarisation(self):
-        """
-        Calculate the degree of polarization.
-
-        Returns:
-            Degree of polarization (tf.Tensor).
-        """
         if self.stokes_parameters is None:
             self.calculate_stokes_parameters()
 
         s0, s1, s2, s3 = tf.unstack(self.stokes_parameters, axis=-1)
-        return tf.sqrt(s1**2 + s2**2 + s3**2) / s0
+        
+        # Avoid division by zero
+        epsilon = 1e-10
+        s0_safe = tf.maximum(s0, epsilon)
+        
+        dop = tf.sqrt(s1**2 + s2**2 + s3**2) / s0_safe
+        
+        # Clip to ensure DOP is always between 0 and 1
+        dop = tf.clip_by_value(dop, 0.0, 1.0)
+        
+        return dop
 
     def get_ellipticity(self):
         """
@@ -332,4 +364,22 @@ class Mueller:
         """
         stokes = self.get_stokes_parameters()
         polarisation = self.get_polarisation_parameters()
-        return {**stokes, **polarisation}
+        all_params = {**stokes, **polarisation}
+        
+        if self.debug:
+            print("Summary of all parameters:")
+            for param, value in all_params.items():
+                print(self._summarize_array(value, param))
+        
+        return all_params
+
+    def reset(self):
+        """
+        Reset the Mueller object to its initial state.
+        """
+        self.mueller_matrix = None
+        self.stokes_parameters = None
+        self.incident_stokes = tf.constant([1, 0, 0, 0], dtype=tf.float64)
+        self.optical_components = []
+        self.anisotropic_sample_added = False
+        self._debug_print("Mueller object reset to initial state.")

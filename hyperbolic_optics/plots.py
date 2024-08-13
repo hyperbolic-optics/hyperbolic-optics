@@ -60,221 +60,151 @@ def plot_permittivity(material, eps_ext, eps_ord):
     plt.close()
 
 
-def contour_plot_mueller_incidence(structure, reflectivity):
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
+def contour_plot_mueller_incidence(structure, param, title=None):
     x_axis = np.round(np.degrees(structure.incident_angle.numpy().real), 1)
     frequency = structure.frequency.numpy().real
     
-    # Correctly create the figure and axes object
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=(10, 8))
     
-    # Use the axes object for plotting
-    cax = ax.pcolormesh(x_axis, frequency, reflectivity, cmap="magma")
+    im = ax.pcolormesh(x_axis, frequency, param, cmap="magma")
+    cbar = plt.colorbar(im, ax=ax)
+    if title:
+        cbar.set_label(title)
+        ax.set_title(title)
     
-    # Set the ticks and labels on the axes object, not the figure
     ax.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
     ax.set_xlabel("Incident Angle / $^\circ$")
     ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
 
-    # Create a colorbar and set its label
-    cbar = fig.colorbar(cax, ax=ax)
-    cbar.set_label('Reflectivity', size=18)
-
+    plt.tight_layout()
     plt.show()
 
-def contour_plot_mueller_azimuthal(structure, reflectivity):
-    x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+def contour_plot_mueller_azimuthal(structure, param, title=None):
+    x_axis = np.round(np.degrees(structure.azimuthal_angle.numpy().real), 1)
     frequency = structure.frequency.numpy().real
     
-    # Correctly create the figure and axes object
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(10, 8))
     
-    # Use the axes object for plotting
-    cax = ax.pcolormesh(x_axis, frequency, reflectivity, cmap="magma")
+    im = ax.pcolormesh(x_axis, frequency, param, cmap="magma")
+    cbar = plt.colorbar(im, ax=ax)
+    if title:
+        cbar.set_label(title)
+        ax.set_title(title)
     
-    # Set the ticks and labels on the axes object, not the figure
     ax.set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
     ax.set_xlabel("Azimuthal Rotation / $^\circ$")
     ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
 
-    # Create a colorbar and set its label
-    cbar = fig.colorbar(cax, ax=ax)
-    cbar.set_label('Reflectivity')
-    cbar.mappable.set_clim(0, )
-
+    plt.tight_layout()
     plt.show()
 
-def contour_plot_mueller_dispersion(structure, reflectivity):
-
+def contour_plot_mueller_dispersion(structure, param, title=None):
     incident_angle = structure.incident_angle.numpy().real
     z_rotation = structure.azimuthal_angle.numpy().real
 
-    # Correctly create the figure and axes object
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw= dict(projection = 'polar'))
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
     
-    # Use the axes object for plotting
-    cax = ax.pcolormesh(z_rotation, incident_angle, reflectivity, cmap="magma")
-    # Set the ticks and labels on the axes object, not the figure
+    im = ax.pcolormesh(z_rotation, incident_angle, param, cmap="magma")
+    cbar = plt.colorbar(im, ax=ax)
+    if title:
+        cbar.set_label(title)
+        ax.set_title(title)
+    
     ax.set_xticks(np.linspace(0, 2*np.pi, 5))
-    ax.set_xlabel("Azimuthal Rotation / $^\circ$")
-    ax.set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
-    ax.set_xticklabels(['0', '90', '180   ', '270', ''], size=18)  # azimuthal rotation in degrees
-    ax.set_yticklabels("")  # incident angle in degrees
+    ax.set_xticklabels(['0', '90', '180', '270', '360'])
+    ax.set_yticklabels("")
 
-    # Remove the labels, polar coordinates speak for themselves
     ax.set_xlabel("")
     ax.set_ylabel("")
     ax.grid(False)
 
-    # Create a colorbar and set its label
-    cbar = fig.colorbar(cax, ax=ax)
-    cbar.set_label('Reflectivity', size=18)
-    # cbar.mappable.set_clim(0, )
+    plt.tight_layout()
     plt.show()
 
-def contour_plot_simple_incidence(structure):
-
-    x_axis = np.round(np.degrees(structure.incident_angle), 1)
+def contour_plot_simple_incidence(structure, params):
+    x_axis = np.round(np.degrees(structure.incident_angle.numpy().real), 1)
     frequency = structure.frequency.numpy().real
-    reflectivities = [structure.r_pp,
-                      structure.r_ps,
-                      structure.r_sp,
-                      structure.r_ss]
 
-    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-    # reflectivities = np.round(np.asarray(reflectivities).imag, 6)
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_pp_total = R_pp + R_ps
-    R_ss_total = R_ss + R_sp
-
-    fig, ax = plt.subplots(2, 3, figsize=(12, 7))
+    fig, ax = plt.subplots(2, 3, figsize=(18, 12))
     
     ax_to_plot = [
-        (R_pp, "$R_{pp}$", 0, 0),
-        (R_ps, "$R_{ps}$", 0, 1),
-        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
-        (R_sp, "$R_{sp}$", 1, 0),
-        (R_ss, "$R_{ss}$", 1, 1),
-        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
+        (params['S0'], "S0", 0, 0),
+        (params['S1'], "S1", 0, 1),
+        (params['S2'], "S2", 0, 2),
+        (params['S3'], "S3", 1, 0),
+        (params['DOP'], "DOP", 1, 1),
+        (params['Ellipticity'], "Ellipticity", 1, 2),
     ]
 
     for data, title, row, col in ax_to_plot:
         im = ax[row, col].pcolormesh(x_axis, frequency, data, cmap="magma")
-                                     #norm = color.SymLogNorm(vmin=data.min(), vmax=data.max(), linthresh = 0.01))
         cbar = plt.colorbar(im, ax=ax[row, col])
-        # cbar.mappable.set_clim(
-        #     0.0,
-        # )
         cbar.set_label(title)
         ax[row, col].set_title(title)
         ax[row, col].set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
         ax[row, col].set_xlabel("Incident Angle / $^\circ$")
-        ax[row, col].set_ylabel("$\omega/2\pi c (cm^{-1})$")
+        ax[row, col].set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
 
     plt.tight_layout()
     plt.show()
-    plt.close()
 
-
-def contour_plot_simple_azimuthal(structure):
-    
-    x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
+def contour_plot_simple_azimuthal(structure, params):
+    x_axis = np.round(np.degrees(structure.azimuthal_angle.numpy().real), 1)
     frequency = structure.frequency.numpy().real
-    reflectivities = np.asarray([structure.r_pp, structure.r_ps,
-                      structure.r_sp, structure.r_ss])
 
-    reflectivities = np.round((reflectivities * np.conj(reflectivities)).real, 6)
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_pp_total = R_pp + R_ps
-    R_ss_total = R_ss + R_sp
-
-    fig, ax = plt.subplots(2, 3, figsize=(12, 7))
-
+    fig, ax = plt.subplots(2, 3, figsize=(18, 12))
+    
     ax_to_plot = [
-        (R_pp, "$R_{pp}$", 0, 0),
-        (R_ps, "$R_{ps}$", 0, 1),
-        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
-        (R_sp, "$R_{sp}$", 1, 0),
-        (R_ss, "$R_{ss}$", 1, 1),
-        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
+        (params['S0'], "S0", 0, 0),
+        (params['S1'], "S1", 0, 1),
+        (params['S2'], "S2", 0, 2),
+        (params['S3'], "S3", 1, 0),
+        (params['DOP'], "DOP", 1, 1),
+        (params['Ellipticity'], "Ellipticity", 1, 2),
     ]
 
     for data, title, row, col in ax_to_plot:
         im = ax[row, col].pcolormesh(x_axis, frequency, data, cmap="magma")
         cbar = plt.colorbar(im, ax=ax[row, col])
-        cbar.mappable.set_clim(
-            0.0,
-        )
         cbar.set_label(title)
         ax[row, col].set_title(title)
         ax[row, col].set_xticks(np.linspace(x_axis.min(), x_axis.max(), 5))
         ax[row, col].set_xlabel("Azimuthal Rotation / $^\circ$")
-        ax[row, col].set_ylabel("$\omega/2\pi c (cm^{-1})$")
+        ax[row, col].set_ylabel("$\omega/2\pi c$ (cm$^{-1}$)")
 
     plt.tight_layout()
     plt.show()
-    plt.close()
 
-def contour_plot_simple_dispersion(structure):
-    
-    reflectivities = np.asarray([structure.r_pp,
-                      structure.r_ps,
-                      structure.r_sp,
-                      structure.r_ss])
+def contour_plot_simple_dispersion(structure, params):
     incident_angle = structure.incident_angle.numpy().real
     z_rotation = structure.azimuthal_angle.numpy().real
 
-    reflectivities = np.round((reflectivities * np.conj(reflectivities)), 6).real
-
-    # reflectivities = np.round(reflectivities.imag, 6)
-
-    R_pp = reflectivities[0]
-    R_ps = reflectivities[1]
-    R_sp = reflectivities[2]
-    R_ss = reflectivities[3]
-    R_pp_total = R_pp + R_ps
-    R_ss_total = R_ss + R_sp
-
-    fig, ax = plt.subplots(2, 3, figsize=(18, 7), subplot_kw= dict(projection = 'polar'))
-    plt.subplots_adjust(
-        left=0.15, right=0.9, bottom=0.25, top=0.85, hspace=0.5, wspace=0.4
-    )
-
+    fig, ax = plt.subplots(2, 3, figsize=(18, 12), subplot_kw=dict(projection='polar'))
+    
     ax_to_plot = [
-        (R_pp, "$R_{pp}$", 0, 0),
-        (R_ps, "$R_{ps}$", 0, 1),
-        (R_pp_total, "$R_{pp} + R_{ps}$", 0, 2),
-        (R_sp, "$R_{sp}$", 1, 0),
-        (R_ss, "$R_{ss}$", 1, 1),
-        (R_ss_total, "$R_{ss} + R_{sp}$", 1, 2),
+        (params['S0'], "S0", 0, 0),
+        (params['S1'], "S1", 0, 1),
+        (params['S2'], "S2", 0, 2),
+        (params['S3'], "S3", 1, 0),
+        (params['DOP'], "DOP", 1, 1),
+        (params['Ellipticity'], "Ellipticity", 1, 2),
     ]
 
-    colorbar_list = []
     for data, title, row, col in ax_to_plot:
-        im = ax[row, col].pcolormesh(
-            z_rotation, incident_angle,  data, cmap="magma")
+        im = ax[row, col].pcolormesh(z_rotation, incident_angle, data, cmap="magma")
         cbar = plt.colorbar(im, ax=ax[row, col])
-        colorbar_list.append(cbar)
-        # cbar.mappable.set_clim(
-        #     0,
-        # )
         cbar.set_label(title)
         ax[row, col].set_title(title)
-        # Adjust labels and ticks
         ax[row, col].set_xticks(np.linspace(0, 2*np.pi, 5))
-        ax[row, col].set_xticklabels(['0', '90', '180', '270', '360'])  # azimuthal rotation in degrees
-        ax[row, col].set_yticklabels("")  # incident angle in degrees
-
-        # Remove the labels, polar coordinates speak for themselves
+        ax[row, col].set_xticklabels(['0', '90', '180', '270', '360'])
+        ax[row, col].set_yticklabels("")
         ax[row, col].set_xlabel("")
         ax[row, col].set_ylabel("")
         ax[row, col].grid(False)
-    
+
     plt.tight_layout()
     plt.show()
-    plt.close()
