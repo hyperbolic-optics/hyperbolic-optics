@@ -140,9 +140,18 @@ class Structure:
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
         )
         self.t_pp = (self.transfer_matrix[..., 0, 0]) / bottom_line
-        self.t_ps = (self.transfer_matrix[..., 0, 2]) / bottom_line
-        self.t_sp = (self.transfer_matrix[..., 2, 0]) / bottom_line
+        self.t_ps = (-self.transfer_matrix[..., 0, 2]) / bottom_line
+        self.t_sp = (-self.transfer_matrix[..., 2, 0]) / bottom_line
         self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
+
+
+    def display_layer_info(self):
+        """Display the information for each layer in the structure."""
+        for layer in self.layers:
+            print(layer)
+            print(layer)
+
+        
 
     def execute(self, payload):
         """
@@ -162,8 +171,6 @@ class Structure:
 
         # Calculate the reflectivity
         self.calculate_reflectivity()
-
-        self.calculate_transmissivity()
 
     def plot(self):
         """Plot the reflectivity for the given scenario."""
