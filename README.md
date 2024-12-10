@@ -83,7 +83,7 @@ mueller.add_optical_component(
     structure.r_ss,
 )
 
-reflectivity = mueller.calculate_reflectivity()
+reflectivity = mueller.calculate_reflectivity() #### DEPRECATED - NEEDS CHANGED
 contour_plot_mueller_incidence(structure, reflectivity)
 ```
 
