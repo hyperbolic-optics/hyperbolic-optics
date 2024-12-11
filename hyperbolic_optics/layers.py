@@ -5,13 +5,14 @@ Layers module for constructing individual layers in the device.
 from abc import ABC, abstractmethod
 import math as m
 import tensorflow as tf
-from hyperbolic_optics.material_params import (
+from hyperbolic_optics.materials import (
     Air,
     CalciteUpper,
     Quartz,
     Sapphire,
     CalciteLower,
     GalliumOxide,
+    ArbitraryMaterial,
 )
 from hyperbolic_optics.waves import Wave
 from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
@@ -227,8 +228,18 @@ class Layer(ABC):
             self.thickness = float(self.thickness) * 1e-4
 
     def material_factory(self):
-        """Create the material object based on the material name."""
-        if self.material == "Quartz":
+        """Create the material object based on the material name or specifications.
+        
+        This method handles both predefined materials (like Quartz, Sapphire) and
+        arbitrary materials specified via a dictionary of parameters.
+        
+        Returns:
+            Material object: An instance of a material class with the specified properties
+        """
+        if isinstance(self.material, dict):
+            # Create an ArbitraryMaterial instance instead of returning the dict
+            self.material = ArbitraryMaterial(self.material)
+        elif self.material == "Quartz":
             self.material = Quartz()
         elif self.material == "Sapphire":
             self.material = Sapphire()
@@ -301,17 +312,33 @@ class PrismLayer(Layer):
 
 
 class AirGapLayer(Layer):
-    """The airgap layer."""
+    """The airgap/isotropic middle layer."""
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.permittivity = data.get("permittivity", 1.0)
-        self.non_magnetic_tensor = self.non_magnetic_tensor * self.permittivity
+        
+        # Handle complex permittivity input
+        perm = data.get("permittivity", 1.0)
+        if isinstance(perm, dict):
+            if "real" in perm or "imag" in perm:
+                self.permittivity = complex(perm.get('real', 0), perm.get('imag', 0))
+            else:
+                # Handle nested permittivity structure if present
+                self.permittivity = {k: complex(v.get('real', 0), v.get('imag', 0)) 
+                                   if isinstance(v, dict) else v 
+                                   for k, v in perm.items()}
+        else:
+            self.permittivity = complex(perm, 0)
+            
+        # Create the isotropic material tensor
+        self.isotropic_material = Air(permittivity=self.permittivity)
+        self.non_magnetic_tensor = self.isotropic_material.construct_tensor_singular()
+        
         self.calculate_mode()
         self.create()
 
     def calculate_mode(self):
-        """Determine the mode of the airgap layer."""
+        """Determine the mode of the airgap/isotropic layer."""
         if self.scenario == "Incident":
             self.mode = "airgap"
         elif self.scenario == "Azimuthal":
