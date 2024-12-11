@@ -11,7 +11,7 @@ from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.mueller import Mueller
 from payloads import mock_incident_payload, mock_azimuthal_payload, mock_dispersion_payload
 tf.get_logger().setLevel("ERROR")
-from hyperbolic_optics.plots import contour_plot_mueller_incidence, contour_plot_mueller_azimuthal, contour_plot_mueller_dispersion
+from hyperbolic_optics.plots import plot_mueller_dispersion, plot_mueller_azimuthal, plot_kx_frequency
 
 import sys
 print(sys.executable)
@@ -42,9 +42,9 @@ def main():
     mueller.add_optical_component('anisotropic_sample', structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss)
     # mueller.add_optical_component('linear_polarizer', 45)  # Second polarizer
     mueller.get_all_parameters()
-    contour_plot_mueller_incidence(structure,mueller.get_stokes_parameters()['S0'])
-    # # contour_plot_mueller_azimuthal(structure,reflectivity)
-    # contour_plot_mueller_dispersion(structure,mueller.get_stokes_parameters()['S0'])
+    # plot_kx_frequency(structure,mueller.get_stokes_parameters()['S0'])
+    # plot_mueller_azimuthal(structure,mueller.get_stokes_parameters()['S0'])
+    plot_mueller_dispersion(structure,mueller.get_stokes_parameters()['S0'])
 
 if __name__ == '__main__':
     main()
