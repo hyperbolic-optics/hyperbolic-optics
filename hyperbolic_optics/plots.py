@@ -420,9 +420,9 @@ def plot_kx_frequency(structure: object, param: np.ndarray,
     
     # Determine step size based on the range
     if max_kx < 3:
-        step = 0.5  # Half-integer steps for small ranges
+        step = 1  # Half-integer steps for small ranges
     elif max_kx < 8:
-        step = 1    # Integer steps for medium ranges
+        step = 2    # Integer steps for medium ranges
     elif max_kx < 15:
         step = 3    # Steps of 3 for larger ranges
     else:
@@ -731,16 +731,26 @@ def plot_mueller_dispersion(structure: object, param: np.ndarray,
     ax.set_aspect('equal')
     ax.set_xlim(-max_k * 1.1, max_k * 1.1)
     ax.set_ylim(-max_k * 1.1, max_k * 1.1)
+
     
-    # Set ticks based on max_k
+    # Determine step size based on the range
     if max_k < 3:
-        tick_spacing = 1
-    elif max_k < 6:
-        tick_spacing = 2
+        step = 0.5  # Half-integer steps for small ranges
+    elif max_k < 8:
+        step = 2    # Integer steps for medium ranges
+    elif max_k < 15:
+        step = 3    # Steps of 3 for larger ranges
     else:
-        tick_spacing = 3
-        
-    ticks = np.arange(-int(max_k), int(max_k) + 1, tick_spacing)
+        step = 5    # Steps of 5 for very large ranges
+    
+    # Calculate maximum tick value
+    max_tick = (int(max_k) // step) * step
+    
+    # Generate symmetrical ticks around zero
+    positive_ticks = np.arange(0, max_tick + step/2, step)
+    negative_ticks = -np.arange(step, max_tick + step/2, step)
+    ticks = np.concatenate([negative_ticks, positive_ticks])
+    ticks = ticks[np.abs(ticks) <= max_k]
     ax.set_xticks(ticks)
     ax.set_yticks(ticks)
     
