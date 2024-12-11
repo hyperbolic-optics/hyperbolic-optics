@@ -42,9 +42,9 @@ def main():
     mueller.add_optical_component('anisotropic_sample', structure.r_pp, structure.r_ps, structure.r_sp, structure.r_ss)
     # mueller.add_optical_component('linear_polarizer', 45)  # Second polarizer
     mueller.get_all_parameters()
-    # plot_kx_frequency(structure,mueller.get_stokes_parameters()['S0'])
+    plot_kx_frequency(structure,mueller.get_stokes_parameters()['S0'])
     # plot_mueller_azimuthal(structure,mueller.get_stokes_parameters()['S0'])
-    plot_mueller_dispersion(structure,mueller.get_stokes_parameters()['S0'])
+    # plot_mueller_dispersion(structure,mueller.get_stokes_parameters()['S0'])
 
 if __name__ == '__main__':
     main()
