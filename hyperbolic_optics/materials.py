@@ -310,7 +310,7 @@ class CalciteUpper(Calcite):
         frequency (tf.Tensor): The upper frequency range for Calcite.
     """
 
-    def __init__(self, freq_min=1300.0, freq_max=1600.0):
+    def __init__(self, freq_min=1400.0, freq_max=1550.0):
         """
         Initialize the CalciteUpper class.
 
@@ -379,6 +379,66 @@ class Sapphire(UniaxialMaterial):
             },
         }
         return parameters
+    
+
+class ArbitraryMaterial:
+    def __init__(self, material_data, run_on_device_decorator=run_on_device):
+        self.name = "Arbitrary Material"
+        self.run_on_device = run_on_device_decorator
+        
+        # Helper function to convert various formats to complex numbers
+        def to_complex(value):
+            if value is None:
+                return complex(0, 0)
+            if isinstance(value, dict):
+                # Handle {"real": x, "imag": y} format
+                return complex(value.get("real", 0), value.get("imag", 0))
+            if isinstance(value, str):
+                # Handle "x+yj" format by letting Python's complex() handle it
+                try:
+                    return complex(value.replace(" ", ""))
+                except ValueError:
+                    return complex(0, 0)
+            # Handle real numbers
+            return complex(value, 0)
+        
+        # Convert each component, with defaults
+        self.eps_xx = to_complex(material_data.get("eps_xx", 1.0))
+        self.eps_yy = to_complex(material_data.get("eps_yy", 1.0))
+        self.eps_zz = to_complex(material_data.get("eps_zz", 1.0))
+        self.eps_xy = to_complex(material_data.get("eps_xy", 0.0))
+        self.eps_xz = to_complex(material_data.get("eps_xz", 0.0))
+        self.eps_yz = to_complex(material_data.get("eps_yz", 0.0))
+        self.mu_r = to_complex(material_data.get("mu_r", 1.0))
+    
+    @run_on_device
+    def fetch_permittivity_tensor(self):
+        """
+        Construct and return the complete permittivity tensor for the material.
+        Uses tf.constant to create the tensor directly from complex numbers.
+        """
+        tensor_elements = [
+            [self.eps_xx, self.eps_xy, self.eps_xz],
+            [self.eps_xy, self.eps_yy, self.eps_yz],
+            [self.eps_xz, self.eps_yz, self.eps_zz]
+        ]
+        print(tf.constant(tensor_elements, dtype=tf.complex128))
+        return tf.constant(tensor_elements, dtype=tf.complex128)
+    
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        """
+        For this material, the permittivity is frequency-independent,
+        so we just return the same tensor regardless of frequency.
+        """
+        return self.fetch_permittivity_tensor()
+        
+    def construct_magnetic_tensor(self):
+        """
+        Construct the magnetic permeability tensor scaled by mu_r.
+        """
+        base_tensor = Air().construct_tensor_singular()
+        return base_tensor * self.mu_r
 
 
 class MonoclinicMaterial:
@@ -550,30 +610,44 @@ class GalliumOxide(MonoclinicMaterial):
 
 class Air:
     """
-    Class representing air.
-
-    Attributes:
-        run_on_device (function): Decorator function for device execution.
+    Class representing air or an isotropic medium.
+    
+    Can now handle complex permittivity values.
     """
 
-    def __init__(self, run_on_device_decorator=run_on_device):
+    def __init__(self, permittivity=1.0, run_on_device_decorator=run_on_device):
         """
-        Initialize the Air class.
+        Initialize the Air/isotropic medium class.
 
         Args:
-            run_on_device_decorator (function): Decorator function for device execution. Default is run_on_device.
+            permittivity (complex, dict, or float): The permittivity value. Can be:
+                - Complex number
+                - Dict with 'real' and 'imag' keys
+                - Float (will be treated as real part with 0 imaginary)
+            run_on_device_decorator (function): Decorator function for device execution.
         """
         self.run_on_device = run_on_device_decorator
+        
+        # Handle different permittivity input formats
+        if isinstance(permittivity, dict):
+            self.permittivity = complex(permittivity.get('real', 0), permittivity.get('imag', 0))
+        elif isinstance(permittivity, (int, float)):
+            self.permittivity = complex(permittivity, 0)
+        else:
+            self.permittivity = permittivity
 
     @run_on_device
     def construct_tensor_singular(self):
         """
-        Construct the singular tensor for air.
+        Construct the singular tensor for the isotropic medium.
 
         Returns:
             tf.Tensor: The constructed singular tensor.
         """
         tensor = tf.constant(
-            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=tf.complex128
+            [[self.permittivity, 0.0, 0.0], 
+             [0.0, self.permittivity, 0.0], 
+             [0.0, 0.0, self.permittivity]], 
+            dtype=tf.complex128
         )
         return tensor

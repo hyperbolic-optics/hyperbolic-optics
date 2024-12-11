@@ -58,24 +58,35 @@ def mock_azimuthal_payload():
 def mock_dispersion_payload():
     payload = json.dumps({
     "ScenarioData": {
-        "type": "Dispersion",
-        "frequency": 460
+        "type": "Incident",
+        # "frequency": 1460
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
             "permittivity": 50.
         },
+        # {
+        #     "type": "Isotropic Middle-Stack Layer",
+        #     "thickness": 0.1,
+        #     "permittivity": {"real": 1, "imag": 0}
+        # },
+        # {
+        #     "type": "Isotropic Middle-Stack Layer",
+        #     "thickness": 0.0,
+        #     "permittivity": {"real": -150, "imag": 300}
+        # },
         {
-            "type": "Isotropic Middle-Stack Layer",
-            "thickness": 0.1
-        },
-        {
-            "type": "Semi Infinite Anisotropic Layer",
+            "type": "Crystal Layer",
             "material": "Quartz",
             "rotationX": 0,
             "rotationY": 90,
             "rotationZ": 0,
+            "thickness": 5.
+        },
+        {
+            "type": "Semi Infinite Isotropic Layer",
+            "permittivity": 1.
         }
     ],
     })

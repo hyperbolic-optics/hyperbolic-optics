@@ -7,7 +7,7 @@ import functools
 import operator
 import tensorflow as tf
 
-from hyperbolic_optics.material_params import CalciteUpper, Quartz, Sapphire, GalliumOxide
+from hyperbolic_optics.materials import CalciteUpper, Quartz, Sapphire, GalliumOxide
 from hyperbolic_optics.plots import (
     contour_plot_simple_incidence,
     contour_plot_simple_azimuthal,
