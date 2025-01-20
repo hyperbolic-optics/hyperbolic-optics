@@ -729,8 +729,8 @@ def plot_mueller_dispersion(structure: object, param: np.ndarray,
     
     # Set plot limits and aspect ratio
     ax.set_aspect('equal')
-    ax.set_xlim(-max_k * 1.1, max_k * 1.1)
-    ax.set_ylim(-max_k * 1.1, max_k * 1.1)
+    ax.set_xlim(-max_k * 1.05, max_k * 1.05)
+    ax.set_ylim(-max_k * 1.05, max_k * 1.05)
     
     # Set ticks based on max_k
     if max_k < 3:
@@ -739,8 +739,14 @@ def plot_mueller_dispersion(structure: object, param: np.ndarray,
         tick_spacing = 2
     else:
         tick_spacing = 3
-        
-    ticks = np.arange(-int(max_k), int(max_k) + 1, tick_spacing)
+
+    # Generate negative ticks (going backwards from 0)
+    neg_ticks = np.arange(0, -int(max_k) - 1, -tick_spacing)
+    # Generate positive ticks (going forwards from 0)
+    pos_ticks = np.arange(0, int(max_k) + 1, tick_spacing)
+    # Combine them, excluding the duplicate 0
+    ticks = np.concatenate([neg_ticks[1:], pos_ticks])
+
     ax.set_xticks(ticks)
     ax.set_yticks(ticks)
     
@@ -847,7 +853,7 @@ def plot_mueller_dispersion_pair(structure, param1: np.ndarray, param2: np.ndarr
     PlotStyle.initialize()
     
     # Create figure with gridspec for precise layout control
-    fig = plt.figure(figsize=CONFIG['PLOT']['FIGURE_SIZE'])
+    fig = plt.figure(figsize=(10, 5))
     gs = fig.add_gridspec(
         nrows=1,
         ncols=2,
@@ -887,8 +893,8 @@ def plot_mueller_dispersion_pair(structure, param1: np.ndarray, param2: np.ndarr
                                              (ax2, title2, rotation_y2)]):
         # Set plot limits and aspect ratio
         ax.set_aspect('equal')
-        ax.set_xlim(-max_k * 1.1, max_k * 1.1)
-        ax.set_ylim(-max_k * 1.1, max_k * 1.1)
+        ax.set_xlim(-max_k * 1.05, max_k * 1.05)
+        ax.set_ylim(-max_k * 1.05, max_k * 1.05)
         
         # Set ticks based on max_k
         if max_k < 3:
@@ -897,8 +903,14 @@ def plot_mueller_dispersion_pair(structure, param1: np.ndarray, param2: np.ndarr
             tick_spacing = 2
         else:
             tick_spacing = 3
-            
-        ticks = np.arange(-int(max_k), int(max_k) + 1, tick_spacing)
+
+        # Generate negative ticks (going backwards from 0)
+        neg_ticks = np.arange(0, -int(max_k) - 1, -tick_spacing)
+        # Generate positive ticks (going forwards from 0)
+        pos_ticks = np.arange(0, int(max_k) + 1, tick_spacing)
+        # Combine them, excluding the duplicate 0
+        ticks = np.concatenate([neg_ticks[1:], pos_ticks])
+
         ax.set_xticks(ticks)
         ax.set_yticks(ticks)
         
