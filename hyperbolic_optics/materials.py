@@ -28,13 +28,22 @@ class BaseMaterial:
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
         self.name = "Base Material"
+        self.frequency = None  # Will be set when a frequency range is initialized
     
     def _initialize_frequency_range(self, params, freq_min=None, freq_max=None):
-        """Initialize frequency range based on params or defaults."""
+        """Initialize frequency range based on params or defaults.
+        
+        Expects params to have a "frequency_range" entry with "default_min" and "default_max".
+        """
+        # Safeguard: if there is no frequency_range in params, do nothing.
+        if "frequency_range" not in params:
+            return
+        
+        freq_range = params["frequency_range"]
         if freq_min is None:
-            freq_min = params["frequency_range"]["default_min"]
+            freq_min = freq_range["default_min"]
         if freq_max is None:
-            freq_max = params["frequency_range"]["default_max"]
+            freq_max = freq_range["default_max"]
             
         self.frequency = tf.cast(
             tf.linspace(freq_min, freq_max, self.frequency_length),
@@ -123,9 +132,14 @@ class ParameterizedUniaxialMaterial(UniaxialMaterial):
     def __init__(self, material_type, freq_min=None, freq_max=None):
         super().__init__()
         params = load_material_parameters()["uniaxial_materials"][material_type]
-        self.name = params["name"]
+        self.name = params.get("name", "Unnamed Material")
         self.material_type = material_type
-        self._initialize_frequency_range(params, freq_min, freq_max)
+        # Only initialize the frequency range if a "frequency_range" key is present.
+        if "frequency_range" in params:
+            self._initialize_frequency_range(params, freq_min, freq_max)
+        else:
+            # For materials like Calcite, we expect to initialize frequency from variant-specific config.
+            self.frequency = None
 
     @run_on_device
     def permittivity_parameters(self):
@@ -150,35 +164,47 @@ class Sapphire(ParameterizedUniaxialMaterial):
     def __init__(self, freq_min=None, freq_max=None):
         super().__init__("sapphire", freq_min, freq_max)
 
-class Calcite(UniaxialMaterial):
-    """Base class for Calcite variants."""
-    @run_on_device
-    def permittivity_parameters(self):
-        """Get permittivity parameters for Calcite."""
-        params = load_material_parameters()["uniaxial_materials"]["calcite"]["parameters"]
-        return {
-            axis: {
-                key: tf.constant(value, dtype=tf.complex128)
-                for key, value in axis_params.items()
-            }
-            for axis, axis_params in params.items()
-        }
+class Calcite(ParameterizedUniaxialMaterial):
+    """Calcite material implementation."""
+    def __init__(self, freq_min=None, freq_max=None, variant=None):
+        """
+        Initialize Calcite material.
+        
+        Args:
+            freq_min: Minimum frequency (optional)
+            freq_max: Maximum frequency (optional)
+            variant: Either 'lower' or 'upper' to specify frequency range variant (required)
+        """
+        if variant is None:
+            raise ValueError("Calcite material must be instantiated with a variant ('lower' or 'upper')")
+        
+        # Load the full Calcite configuration.
+        calcite_config = load_material_parameters()["uniaxial_materials"]["calcite"]
+        
+        # Call the parent constructor. Note that since the top-level calcite JSON has no
+        # "frequency_range", the base initializer will leave self.frequency as None.
+        super().__init__("calcite", freq_min, freq_max)
+        
+        if variant not in calcite_config["variants"]:
+            raise ValueError("Calcite variant must be either 'lower' or 'upper'")
+                
+        variant_params = calcite_config["variants"][variant]
+        # Override the name using the variant-specific config.
+        self.name = variant_params.get("name", self.name)
+        # Now initialize the frequency range using the variant's frequency_range.
+        self._initialize_frequency_range(variant_params, freq_min, freq_max)
 
+# Convenience classes for specific variants
 class CalciteLower(Calcite):
     """Lower frequency range Calcite implementation."""
     def __init__(self, freq_min=None, freq_max=None):
-        super().__init__()
-        params = load_material_parameters()["uniaxial_materials"]["calcite"]["variants"]["lower"]
-        self.name = params["name"]
-        self._initialize_frequency_range(params, freq_min, freq_max)
+        super().__init__(freq_min, freq_max, variant="lower")
 
 class CalciteUpper(Calcite):
     """Upper frequency range Calcite implementation."""
     def __init__(self, freq_min=None, freq_max=None):
-        super().__init__()
-        params = load_material_parameters()["uniaxial_materials"]["calcite"]["variants"]["upper"]
-        self.name = params["name"]
-        self._initialize_frequency_range(params, freq_min, freq_max)
+        super().__init__(freq_min, freq_max, variant="upper")
+
 
 class MonoclinicMaterial(BaseMaterial):
     """Base class for monoclinic materials with more complex permittivity tensors."""
