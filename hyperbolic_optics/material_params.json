@@ -1,0 +1,137 @@
+{
+    "uniaxial_materials": {
+        "quartz": {
+            "name": "Quartz",
+            "frequency_range": {
+                "default_min": 410.0,
+                "default_max": 600.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 2.356,
+                    "omega_tn": [393.5, 450.0, 695.0, 797.0, 1065.0, 1158.0],
+                    "gamma_tn": [2.1, 4.5, 13.0, 6.9, 7.2, 9.3],
+                    "omega_ln": [403.0, 507.0, 697.6, 810.0, 1226.0, 1155.0],
+                    "gamma_ln": [2.8, 3.5, 13.0, 6.9, 12.5, 9.3]
+                },
+                "extraordinary": {
+                    "high_freq": 2.383,
+                    "omega_tn": [363.5, 487.5, 777.0, 1071.0],
+                    "gamma_tn": [4.8, 4.0, 6.7, 6.8],
+                    "omega_ln": [386.7, 550.0, 790.0, 1229.0],
+                    "gamma_ln": [7.0, 3.2, 6.7, 12.0]
+                }
+            }
+        },
+        "calcite": {
+            "name": "Calcite",
+            "variants": {
+                "lower": {
+                    "name": "Calcite-Lower",
+                    "frequency_range": {
+                        "default_min": 860.0,
+                        "default_max": 920.0
+                    }
+                },
+                "upper": {
+                    "name": "Calcite-Upper",
+                    "frequency_range": {
+                        "default_min": 1300.0,
+                        "default_max": 1600.0
+                    }
+                }
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 2.7,
+                    "omega_tn": [712, 1410.0, 297.0, 223.0, 102.0],
+                    "gamma_tn": [5.0, 10.0, 14.4, 11.4, 5.7],
+                    "omega_ln": [715, 1550.0, 381.0, 239.0, 123.0],
+                    "gamma_ln": [5.0, 10.0, 14.4, 11.4, 5.7]
+                },
+                "extraordinary": {
+                    "high_freq": 2.4,
+                    "omega_tn": [871.0, 303.0, 92.0],
+                    "gamma_tn": [3.0, 9.1, 5.6],
+                    "omega_ln": [890.0, 387.0, 136.0],
+                    "gamma_ln": [3.0, 9.1, 5.6]
+                }
+            }
+        },
+        "sapphire": {
+            "name": "Sapphire",
+            "frequency_range": {
+                "default_min": 210.0,
+                "default_max": 1000.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 3.077,
+                    "omega_tn": [384.99, 439.1, 569.0, 633.63],
+                    "gamma_tn": [3.3, 3.1, 4.7, 5.0],
+                    "omega_ln": [387.60, 481.68, 629.50, 906.6],
+                    "gamma_ln": [3.1, 1.9, 5.9, 14.7]
+                },
+                "extraordinary": {
+                    "high_freq": 3.072,
+                    "omega_tn": [397.52, 582.41],
+                    "gamma_tn": [5.3, 3.0],
+                    "omega_ln": [510.87, 881.1],
+                    "gamma_ln": [1.1, 15.4]
+                }
+            }
+        }
+    },
+    "monoclinic_materials": {
+        "gallium_oxide": {
+            "name": "GalliumOxide",
+            "frequency_range": {
+                "default_min": 350.0,
+                "default_max": 800.0
+            },
+            "parameters": {
+                "Au": {
+                    "high_freq": 3.71,
+                    "amplitude": [544.9, 727.1, 592.1, 78],
+                    "omega_tn": [663.17, 448.66, 296.63, 154.84],
+                    "gamma_tn": [3.2, 10.5, 14.9, 2.4],
+                    "alpha_tn": [0.0, 0.0, 0.0, 0.0],
+                    "omega_ln": [781.3, 562.8, 345.9, 156.3],
+                    "gamma_ln": [0.0, 0.0, 0.0, 0.0],
+                    "alpha_ln": [0.0, 0.0, 0.0, 0.0]
+                },
+                "Bu": {
+                    "high_freq": {
+                        "xx": 3.75,
+                        "yy": 3.21,
+                        "xy": -0.08
+                    },
+                    "amplitude": [266.2, 406.5, 821.9, 795.7, 365.8, 164.2, 485.7, 520.7],
+                    "omega_tn": [743.48, 692.44, 572.52, 432.57, 356.79, 279.15, 262.34, 213.79],
+                    "gamma_tn": [11.0, 6.55, 12.36, 10.13, 3.83, 1.98, 1.75, 1.9],
+                    "alpha_tn": [47.8, 5.1, 106.0, 21.0, 144.0, 4.0, 158.5, 80.9],
+                    "omega_ln": [810.0, 770.0, 709.0, 595.0, 389.0, 305.0, 286.0, 269.0],
+                    "gamma_ln": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    "alpha_ln": [73.0, -30.0, 6.0, 73.0, -31.0, -42.0, 21.0, 27.0]
+                }
+            }
+        }
+    },
+    "arbitrary_materials": {
+        "default": {
+            "eps_xx": 1.0,
+            "eps_yy": 1.0,
+            "eps_zz": 1.0,
+            "eps_xy": 0.0,
+            "eps_xz": 0.0,
+            "eps_yz": 0.0,
+            "mu_r": 1.0
+        }
+    },
+    "isotropic_materials": {
+        "air": {
+            "name": "Air",
+            "permittivity": 1.0
+        }
+    }
+}
