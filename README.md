@@ -1,5 +1,3 @@
-Below is an example of a polished, community-friendly README.md for your project:
-
 ---
 
 # Hyperbolic Optics Simulation Package
