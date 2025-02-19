@@ -3,7 +3,6 @@
 # Hyperbolic Optics Simulation Package
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Build Status](https://img.shields.io/travis/MarkCunningham0410/hyperbolic_optics.svg?branch=main)](https://travis-ci.org/MarkCunningham0410/hyperbolic_optics)
 [![Issues](https://img.shields.io/github/issues/MarkCunningham0410/hyperbolic_optics)](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
 
 This package provides a suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
