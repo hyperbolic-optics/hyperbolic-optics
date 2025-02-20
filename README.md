@@ -189,10 +189,19 @@ If you use this package in your research, please consider citing it as follows:
 
 ## Papers & Further Reading
 
+This repository was used to create the results shown in my first pre-print: https://arxiv.org/abs/2501.18354
+
 For background and further details on the underlying physics and methods, consider these resources:
 
-- **Nikolai Christian Passler’s Work:** An excellent reference for topics related to anisotropic optical materials.
-- *Additional papers and resources will be added as the project evolves.*
+- N. C. Passler and A. Paarmann, ‘Generalized 4 × 4 matrix formalism for light propagation in anisotropic stratified media: study of surface phonon polaritons in polar dielectric heterostructures’, J. Opt. Soc. Am. B, JOSAB, vol. 34, no. 10, pp. 2128–2139, Oct. 2017, doi: 10.1364/JOSAB.34.002128.
+- P. Yeh, ‘Electromagnetic propagation in birefringent layered media’, J. Opt. Soc. Am., JOSA, vol. 69, no. 5, pp. 742–756, May 1979, doi: 10.1364/JOSA.69.000742.
+- N. C. Passler, X. Ni, G. Carini, D. N. Chigrin, A. Alù, and A. Paarmann, ‘Layer-resolved resonance intensity of evanescent polariton modes in anisotropic multilayers’, Phys. Rev. B, vol. 107, no. 23, p. 235426, Jun. 2023, doi: 10.1103/PhysRevB.107.235426.
+- N. C. Passler, M. Jeannin, and A. Paarmann, ‘Layer-resolved absorption of light in arbitrarily anisotropic heterostructures’, Phys. Rev. B, vol. 101, no. 16, p. 165425, Apr. 2020, doi: 10.1103/PhysRevB.101.165425.
+- N. Hale, I. Simonsen, C. Brüne, and M. Kildemo, ‘Use of 4x4 transfer matrix method in the study of surface magnon polaritons via simulated attenuated total reflection measurements on the antiferromagnetic semiconductor MnF2’, Phys. Rev. B, vol. 105, no. 10, p. 104421, Mar. 2022, doi: 10.1103/PhysRevB.105.104421.
+
+
+
+
 
 ---
 
