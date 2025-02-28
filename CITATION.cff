@@ -1,0 +1,14 @@
+abstract: A 4x4 Transfer Matrix Method repository for calculating reflection coefficients of an anisotropic structure.
+authors:
+- family-names: "Cunningham"
+  given-names: "Mark"
+  orcid: "https://orcid.org/0000-0003-0163-3320"
+cff-version: 1.2.0
+date-released: '2025-02-28'
+doi: 10.5281/zenodo.14946556
+license:
+- mit
+repository-code: https://github.com/MarkCunningham0410/hyperbolic_optics/tree/v0.0.1-alpha
+title: 'MarkCunningham0410/hyperbolic_optics: v.0.0.1-alpha'
+type: software
+version: v0.0.1-alpha
