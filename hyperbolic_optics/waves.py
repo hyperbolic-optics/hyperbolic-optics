@@ -265,6 +265,14 @@ class Wave:
         permutation, self.batch_dims = mode_permutations[self.mode]
         self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
 
+    @property
+    def batch_dims(self):
+        """Calculate the number of batch dimensions."""
+        # If your tensor has shape [4, 4], batch_dims should be 0
+        # If your tensor has shape [batch, 4, 4], batch_dims should be 1
+        # And so on
+        return max(0, len(self.berreman_matrix.shape) - 2)
+
     def wave_sorting(self):
         """
         Sort the wavevectors and fields based on the eigenvalues.
@@ -296,10 +304,9 @@ class Wave:
         else:
             indices = sort_vector(wavevectors)
 
-        # Gather the sorted wavevectors and fields
+        # Gather the sorted wavevectors and fie lds
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
-        sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
-
+        sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims) 
         # Split the sorted wavevectors and fields into transmitted and reflected components
         transmitted_wavevectors = tf.stack([sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1)
         reflected_wavevectors = tf.stack([sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1)
