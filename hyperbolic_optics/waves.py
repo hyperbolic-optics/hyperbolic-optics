@@ -303,17 +303,23 @@ class Wave:
         def sort_vector(waves):
             """
             Sort the wavevectors based on their real and imaginary parts.
-
-            Args:
-                waves (tf.Tensor): The wavevectors to be sorted.
-
-            Returns:
-                tf.Tensor: The indices for sorting the wavevectors.
+            Modified to handle magnetic materials better.
             """
-            is_complex = tf.math.abs(tf.math.imag(waves)) > 0
-            idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
-            idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
-            indices = tf.where(is_complex, idx_imag, idx_real)
+            # Check if this is a magnetic material by looking for off-diagonal mu terms
+            is_magnetic = hasattr(self, 'mu_tensor') and tf.reduce_any(
+                tf.abs(self.mu_tensor[..., 0, 2]) > 1e-10
+            )
+            
+            if is_magnetic:
+                # For magnetic materials, always use real part sorting
+                indices = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
+            else:
+                # Original logic for dielectric materials
+                is_complex = tf.math.abs(tf.math.imag(waves)) > 0
+                idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
+                idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
+                indices = tf.where(is_complex, idx_imag, idx_real)
+    
             return indices
 
         # Sort the wavevectors based on their rank

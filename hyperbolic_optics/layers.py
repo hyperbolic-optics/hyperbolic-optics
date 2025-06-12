@@ -14,6 +14,8 @@ from hyperbolic_optics.materials import (
     CalciteLower,
     GalliumOxide,
     ArbitraryMaterial,
+    MnF2,        # NEW
+    FeF2,        # NEW
 )
 from hyperbolic_optics.waves import Wave
 from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
@@ -213,7 +215,7 @@ class Layer(ABC):
         self.material = data.get("material", None)
         self.rotationX = tf.cast(m.radians(data.get("rotationX", 0)), dtype=tf.float64)
         self.rotationY = tf.cast(m.radians(data.get("rotationY", 0)), dtype=tf.float64) + 1e-8
-        self.rotationZ = tf.cast(m.radians(data.get("rotationZ", 0)), dtype=tf.float64)
+        self.rotationZ = tf.cast(m.radians(data.get("rotationZ", 0)), dtype=tf.float64) + 1.e-9
         self.rotationZ_type = data.get("rotationZType", "relative")
         self.kx = kx
         self.k0 = k0
@@ -253,6 +255,10 @@ class Layer(ABC):
             self.material = CalciteLower()
         elif self.material == "GalliumOxide":
             self.material = GalliumOxide()
+        elif self.material == "MnF2":        # NEW
+            self.material = MnF2()           # NEW
+        elif self.material == "FeF2":        # NEW
+            self.material = FeF2()           # NEW
         else:
             raise NotImplementedError(f"Material {self.material} not implemented")
 

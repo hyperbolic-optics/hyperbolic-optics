@@ -7,7 +7,7 @@ import functools
 import operator
 import tensorflow as tf
 
-from hyperbolic_optics.materials import CalciteUpper, Quartz, Sapphire, GalliumOxide
+from hyperbolic_optics.materials import CalciteUpper, Quartz, Sapphire, GalliumOxide, MnF2, FeF2
 
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -55,6 +55,10 @@ class Structure:
             self.frequency = CalciteUpper().frequency
         elif material == "GalliumOxide":
             self.frequency = GalliumOxide().frequency
+        elif material == "MnF2":        # NEW
+            self.frequency = MnF2().frequency     # NEW
+        elif material == "FeF2":        # NEW
+            self.frequency = FeF2().frequency     # NEW
         else:
             raise NotImplementedError("Material not implemented")
 
