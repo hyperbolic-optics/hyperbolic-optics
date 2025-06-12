@@ -1,5 +1,6 @@
 """
 Layers module for constructing individual layers in the device.
+Stage 2 Refactor: Updated to properly handle both eps and mu tensors from materials
 """
 
 from abc import ABC, abstractmethod
@@ -221,7 +222,10 @@ class Layer(ABC):
         self.incident_angle = scenario.incident_angle
         self.azimuthal_angle = scenario.azimuthal_angle
 
-        self.non_magnetic_tensor = Air().construct_tensor_singular()
+        # CHANGED: Remove the default non_magnetic_tensor assignment
+        # We'll get both tensors from materials now
+        self.eps_tensor = None
+        self.mu_tensor = None
 
         self.thickness = data.get("thickness", None)
         if self.thickness:
@@ -267,25 +271,48 @@ class Layer(ABC):
             elif self.rotationZ_type == "static":
                 self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
 
-    def calculate_eps_tensor(self):
-        """Calculate the permittivity tensor for the layer."""
+    def calculate_tensors(self):
+        """Calculate both permittivity and magnetic tensors for the layer."""
         self.material_factory()
+        
         if self.scenario == "Incident" or self.scenario == "Azimuthal":
             self.eps_tensor = tf.cast(self.material.fetch_permittivity_tensor(), dtype=tf.complex128)
-        if self.scenario == "Dispersion":
+            self.mu_tensor = tf.cast(self.material.fetch_magnetic_tensor(), dtype=tf.complex128)
+        elif self.scenario == "Dispersion":
             self.eps_tensor = tf.cast(
                 self.material.fetch_permittivity_tensor_for_freq(self.frequency),
                 dtype=tf.complex128,
             )
+            self.mu_tensor = tf.cast(
+                self.material.fetch_magnetic_tensor_for_freq(self.frequency),
+                dtype=tf.complex128,
+            )
 
-    def rotate_tensor(self):
-        """Rotate the permittivity tensor according to the rotation angles."""
+    def rotate_tensors(self):
+        """Rotate both permittivity and magnetic tensors according to the rotation angles."""
         if self.scenario == "Incident" or self.scenario == "Dispersion":
             rotation_func = anisotropy_rotation_one_value
         elif self.scenario == "Azimuthal":
             rotation_func = anisotropy_rotation_one_axis
 
         self.eps_tensor = rotation_func(self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ)
+        self.mu_tensor = rotation_func(self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ)
+
+    # DEPRECATED: Remove this method in favor of calculate_tensors()
+    def calculate_eps_tensor(self):
+        """Calculate the permittivity tensor for the layer. DEPRECATED - use calculate_tensors()."""
+        import warnings
+        warnings.warn("calculate_eps_tensor() is deprecated. Use calculate_tensors() instead.", 
+                     DeprecationWarning, stacklevel=2)
+        self.calculate_tensors()
+
+    # DEPRECATED: Remove this method in favor of rotate_tensors()
+    def rotate_tensor(self):
+        """Rotate the permittivity tensor according to the rotation angles. DEPRECATED - use rotate_tensors()."""
+        import warnings
+        warnings.warn("rotate_tensor() is deprecated. Use rotate_tensors() instead.", 
+                     DeprecationWarning, stacklevel=2)
+        self.rotate_tensors()
 
     @abstractmethod
     def create(self):
@@ -329,10 +356,26 @@ class AirGapLayer(Layer):
                                    for k, v in perm.items()}
         else:
             self.permittivity = complex(perm, 0)
+        
+        # CHANGED: Handle magnetic permeability input
+        mu = data.get("permeability", 1.0)
+        if isinstance(mu, dict):
+            if "real" in mu or "imag" in mu:
+                self.permeability = complex(mu.get('real', 0), mu.get('imag', 0))
+            else:
+                # Handle nested permeability structure if present
+                self.permeability = {k: complex(v.get('real', 0), v.get('imag', 0)) 
+                                   if isinstance(v, dict) else v 
+                                   for k, v in mu.items()}
+        else:
+            self.permeability = complex(mu, 0)
             
-        # Create the isotropic material tensor
-        self.isotropic_material = Air(permittivity=self.permittivity)
-        self.non_magnetic_tensor = self.isotropic_material.construct_tensor_singular()
+        # CHANGED: Create the isotropic material with both eps and mu
+        self.isotropic_material = Air(permittivity=self.permittivity, permeability=self.permeability)
+        
+        # CHANGED: Get both tensors from the material
+        self.eps_tensor = self.isotropic_material.fetch_permittivity_tensor()
+        self.mu_tensor = self.isotropic_material.fetch_magnetic_tensor()
         
         self.calculate_mode()
         self.create()
@@ -347,10 +390,11 @@ class AirGapLayer(Layer):
             self.mode = "simple_airgap"
 
     def create(self):
+        # CHANGED: Pass both tensors instead of duplicating the eps tensor
         self.profile, self.matrix = Wave(
             self.kx,
-            self.non_magnetic_tensor,
-            self.non_magnetic_tensor,
+            self.eps_tensor,
+            self.mu_tensor,  # Now passing the actual magnetic tensor
             self.mode,
             k_0=self.k0,
             thickness=self.thickness,
@@ -362,16 +406,18 @@ class CrystalLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.calculate_eps_tensor()
+        # CHANGED: Use the new unified tensor calculation methods
+        self.calculate_tensors()  # Get both eps and mu tensors
         self.calculate_z_rotation()
-        self.rotate_tensor()
+        self.rotate_tensors()  # Rotate both tensors
         self.create()
 
     def create(self):
+        # CHANGED: Pass both tensors to Wave
         self.profile, self.matrix = Wave(
             self.kx,
             self.eps_tensor,
-            self.non_magnetic_tensor,
+            self.mu_tensor,  # Now using the actual magnetic tensor from material
             self.scenario,
             k_0=self.k0,
             thickness=self.thickness,
@@ -384,15 +430,17 @@ class SemiInfiniteCrystalLayer(Layer):
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
         self.calculate_z_rotation()
-        self.calculate_eps_tensor()
-        self.rotate_tensor()
+        # CHANGED: Use the new unified tensor calculation methods
+        self.calculate_tensors()  # Get both eps and mu tensors
+        self.rotate_tensors()  # Rotate both tensors
         self.create()
 
     def create(self):
+        # CHANGED: Pass both tensors to Wave
         self.profile, self.matrix = Wave(
             self.kx,
             self.eps_tensor,
-            self.non_magnetic_tensor,
+            self.mu_tensor,  # Now using the actual magnetic tensor from material
             self.scenario,
             semi_infinite=True,
         ).execute()
