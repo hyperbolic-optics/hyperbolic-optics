@@ -1,12 +1,5 @@
 """
-Material Parameters
-
-This module defines material parameters for various anisotropic and isotropic materials.
-Materials are organized into categories (uniaxial, monoclinic, arbitrary, isotropic)
-with shared base functionality within each category.
-
-The module prioritizes code reuse and maintainability while preserving the physics
-calculations for each material type.
+Materials refactor - Stage 1: Add magnetic tensor support to all materials
 """
 
 import tensorflow as tf
@@ -28,14 +21,12 @@ class BaseMaterial:
         self.frequency_length = frequency_length
         self.run_on_device = run_on_device_decorator
         self.name = "Base Material"
-        self.frequency = None  # Will be set when a frequency range is initialized
+        self.frequency = None
+        # NEW: Default magnetic permeability
+        self.mu_r = 1.0
     
     def _initialize_frequency_range(self, params, freq_min=None, freq_max=None):
-        """Initialize frequency range based on params or defaults.
-        
-        Expects params to have a "frequency_range" entry with "default_min" and "default_max".
-        """
-        # Safeguard: if there is no frequency_range in params, do nothing.
+        """Initialize frequency range based on params or defaults."""
         if "frequency_range" not in params:
             return
         
@@ -49,6 +40,38 @@ class BaseMaterial:
             tf.linspace(freq_min, freq_max, self.frequency_length),
             dtype=tf.complex128
         )
+    
+    def _create_isotropic_mu_tensor_like(self, eps_tensor):
+        """Create isotropic magnetic tensor with same shape as eps_tensor."""
+        # Get the shape of eps_tensor without the last two dimensions (which are 3x3)
+        batch_shape = tf.shape(eps_tensor)[:-2]
+        
+        # Create identity matrix
+        identity = tf.eye(3, dtype=tf.complex128)
+        
+        # Broadcast to match eps_tensor shape
+        # Add batch dimensions to identity
+        for _ in range(len(eps_tensor.shape) - 2):
+            identity = tf.expand_dims(identity, 0)
+        
+        # Tile to match batch dimensions
+        tile_multiples = tf.concat([batch_shape, [1, 1]], axis=0)
+        mu_tensor = tf.tile(identity, tile_multiples)
+        
+        return tf.cast(self.mu_r, dtype=tf.complex128) * mu_tensor
+    
+    # NEW: All materials must implement this
+    @run_on_device
+    def fetch_magnetic_tensor(self):
+        """Fetch magnetic permeability tensor. Default is isotropic."""
+        eps_tensor = self.fetch_permittivity_tensor()
+        return self._create_isotropic_mu_tensor_like(eps_tensor)
+    
+    @run_on_device
+    def fetch_magnetic_tensor_for_freq(self, requested_frequency):
+        """Fetch magnetic tensor for specific frequency. Default is isotropic."""
+        eps_tensor = self.fetch_permittivity_tensor_for_freq(requested_frequency)
+        return self._create_isotropic_mu_tensor_like(eps_tensor)
 
 class UniaxialMaterial(BaseMaterial):
     """Base class for anisotropic materials with a single optical axis."""
@@ -129,16 +152,17 @@ class UniaxialMaterial(BaseMaterial):
 class ParameterizedUniaxialMaterial(UniaxialMaterial):
     """Base class for uniaxial materials with parameters from configuration."""
     
-    def __init__(self, material_type, freq_min=None, freq_max=None):
+    def __init__(self, material_type, freq_min=None, freq_max=None, mu_r=1.0):
         super().__init__()
         params = load_material_parameters()["uniaxial_materials"][material_type]
         self.name = params.get("name", "Unnamed Material")
         self.material_type = material_type
-        # Only initialize the frequency range if a "frequency_range" key is present.
+        # NEW: Store magnetic permeability
+        self.mu_r = mu_r
+        
         if "frequency_range" in params:
             self._initialize_frequency_range(params, freq_min, freq_max)
         else:
-            # For materials like Calcite, we expect to initialize frequency from variant-specific config.
             self.frequency = None
 
     @run_on_device
@@ -153,58 +177,42 @@ class ParameterizedUniaxialMaterial(UniaxialMaterial):
             for axis, axis_params in params.items()
         }
 
-# Concrete uniaxial materials
+# Concrete uniaxial materials - now with magnetic support
 class Quartz(ParameterizedUniaxialMaterial):
     """Quartz material implementation."""
-    def __init__(self, freq_min=None, freq_max=None):
-        super().__init__("quartz", freq_min, freq_max)
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0):
+        super().__init__("quartz", freq_min, freq_max, mu_r)
 
 class Sapphire(ParameterizedUniaxialMaterial):
     """Sapphire material implementation."""
-    def __init__(self, freq_min=None, freq_max=None):
-        super().__init__("sapphire", freq_min, freq_max)
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0):
+        super().__init__("sapphire", freq_min, freq_max, mu_r)
 
 class Calcite(ParameterizedUniaxialMaterial):
     """Calcite material implementation."""
-    def __init__(self, freq_min=None, freq_max=None, variant=None):
-        """
-        Initialize Calcite material.
-        
-        Args:
-            freq_min: Minimum frequency (optional)
-            freq_max: Maximum frequency (optional)
-            variant: Either 'lower' or 'upper' to specify frequency range variant (required)
-        """
+    def __init__(self, freq_min=None, freq_max=None, variant=None, mu_r=1.0):
         if variant is None:
             raise ValueError("Calcite material must be instantiated with a variant ('lower' or 'upper')")
         
-        # Load the full Calcite configuration.
         calcite_config = load_material_parameters()["uniaxial_materials"]["calcite"]
-        
-        # Call the parent constructor. Note that since the top-level calcite JSON has no
-        # "frequency_range", the base initializer will leave self.frequency as None.
-        super().__init__("calcite", freq_min, freq_max)
+        super().__init__("calcite", freq_min, freq_max, mu_r)
         
         if variant not in calcite_config["variants"]:
             raise ValueError("Calcite variant must be either 'lower' or 'upper'")
                 
         variant_params = calcite_config["variants"][variant]
-        # Override the name using the variant-specific config.
         self.name = variant_params.get("name", self.name)
-        # Now initialize the frequency range using the variant's frequency_range.
         self._initialize_frequency_range(variant_params, freq_min, freq_max)
 
-# Convenience classes for specific variants
 class CalciteLower(Calcite):
     """Lower frequency range Calcite implementation."""
-    def __init__(self, freq_min=None, freq_max=None):
-        super().__init__(freq_min, freq_max, variant="lower")
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0):
+        super().__init__(freq_min, freq_max, variant="lower", mu_r=mu_r)
 
 class CalciteUpper(Calcite):
     """Upper frequency range Calcite implementation."""
-    def __init__(self, freq_min=None, freq_max=None):
-        super().__init__(freq_min, freq_max, variant="upper")
-
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0):
+        super().__init__(freq_min, freq_max, variant="upper", mu_r=mu_r)
 
 class MonoclinicMaterial(BaseMaterial):
     """Base class for monoclinic materials with more complex permittivity tensors."""
@@ -239,10 +247,11 @@ class MonoclinicMaterial(BaseMaterial):
 class GalliumOxide(MonoclinicMaterial):
     """Gallium Oxide implementation."""
     
-    def __init__(self, freq_min=None, freq_max=None):
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0):
         super().__init__()
         params = load_material_parameters()["monoclinic_materials"]["gallium_oxide"]
         self.name = params["name"]
+        self.mu_r = mu_r  # NEW: Store magnetic permeability
         self._initialize_frequency_range(params, freq_min, freq_max)
 
     @run_on_device
@@ -270,7 +279,6 @@ class GalliumOxide(MonoclinicMaterial):
         eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(parameters, frequency)
         eps_zz_au = self._calculate_au_component(parameters, frequency)
 
-        # Combine with high frequency components
         eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu
         eps_xy = parameters["Bu"]["high_freq"]["xy"] + eps_xy_bu
         eps_yy = parameters["Bu"]["high_freq"]["yy"] + eps_yy_bu
@@ -294,7 +302,6 @@ class GalliumOxide(MonoclinicMaterial):
         eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(parameters, frequency)
         eps_zz_au = self._calculate_au_component(parameters, frequency)
 
-        # Combine with high frequency components
         eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu[0]
         eps_xy = parameters["Bu"]["high_freq"]["xy"] + eps_xy_bu[0]
         eps_yy = parameters["Bu"]["high_freq"]["yy"] + eps_yy_bu[0]
@@ -303,17 +310,15 @@ class GalliumOxide(MonoclinicMaterial):
         return self._create_permittivity_tensor(eps_xx, eps_yy, eps_zz, eps_xy)
 
 class ArbitraryMaterial(BaseMaterial):
-    """Material with arbitrary permittivity tensor components."""
+    """Material with arbitrary permittivity and permeability tensor components."""
     
     def __init__(self, material_data=None, run_on_device_decorator=run_on_device):
         super().__init__(run_on_device_decorator=run_on_device_decorator)
         self.name = "Arbitrary Material"
         
-        # Load default parameters if none provided
         if material_data is None:
             material_data = load_material_parameters()["arbitrary_materials"]["default"]
         
-        # Initialize tensor components
         self._init_tensor_components(material_data)
     
     def _to_complex(self, value):
@@ -331,15 +336,28 @@ class ArbitraryMaterial(BaseMaterial):
     
     def _init_tensor_components(self, material_data):
         """Initialize tensor components from material data."""
-        components = {
+        # Permittivity components
+        eps_components = {
             'eps_xx': 1.0, 'eps_yy': 1.0, 'eps_zz': 1.0,
-            'eps_xy': 0.0, 'eps_xz': 0.0, 'eps_yz': 0.0,
-            'mu_r': 1.0
+            'eps_xy': 0.0, 'eps_xz': 0.0, 'eps_yz': 0.0
         }
         
-        for key, default in components.items():
+        # NEW: Magnetic permeability components
+        mu_components = {
+            'mu_xx': 1.0, 'mu_yy': 1.0, 'mu_zz': 1.0,
+            'mu_xy': 0.0, 'mu_xz': 0.0, 'mu_yz': 0.0
+        }
+        
+        all_components = {**eps_components, **mu_components}
+        
+        for key, default in all_components.items():
             value = material_data.get(key, default)
             setattr(self, key, self._to_complex(value))
+        
+        # Backward compatibility: if only mu_r is specified, use it for diagonal
+        if 'mu_r' in material_data:
+            mu_r_val = self._to_complex(material_data['mu_r'])
+            self.mu_xx = self.mu_yy = self.mu_zz = mu_r_val
     
     @run_on_device
     def fetch_permittivity_tensor(self):
@@ -356,35 +374,33 @@ class ArbitraryMaterial(BaseMaterial):
         """Return frequency-independent permittivity tensor."""
         return self.fetch_permittivity_tensor()
     
-    def construct_magnetic_tensor(self):
-        """Construct scaled magnetic permeability tensor."""
-        base_tensor = Air().construct_tensor_singular()
-        return base_tensor * self.mu_r
+    @run_on_device
+    def fetch_magnetic_tensor(self):
+        """Construct and return the complete magnetic permeability tensor."""
+        tensor_elements = [
+            [self.mu_xx, self.mu_xy, self.mu_xz],
+            [self.mu_xy, self.mu_yy, self.mu_yz],
+            [self.mu_xz, self.mu_yz, self.mu_zz]
+        ]
+        return tf.constant(tensor_elements, dtype=tf.complex128)
+    
+    @run_on_device
+    def fetch_magnetic_tensor_for_freq(self, requested_frequency):
+        """Return frequency-independent magnetic tensor."""
+        return self.fetch_magnetic_tensor()
 
 class IsotropicMaterial(BaseMaterial):
     """Base class for isotropic materials like air."""
     
-    def __init__(self, permittivity=None, run_on_device_decorator=run_on_device):
-        """
-        Initialize with optional custom permittivity.
-        
-        Args:
-            permittivity: Can be None (uses default), a complex number, 
-                         a dict with 'real'/'imag' keys, or a number (treated as real part)
-            run_on_device_decorator: Device execution decorator function
-        """
+    def __init__(self, permittivity=None, permeability=None, run_on_device_decorator=run_on_device):
         super().__init__(run_on_device_decorator=run_on_device_decorator)
         self.permittivity = self._process_permittivity(permittivity)
+        # NEW: Support for magnetic permeability
+        self.permeability = self._process_permittivity(permeability) if permeability is not None else complex(1.0, 0.0)
     
     def _process_permittivity(self, permittivity):
-        """
-        Convert permittivity input to complex number.
-        
-        Handles various input formats flexibly to maintain compatibility
-        with existing code while providing enhanced functionality.
-        """
+        """Convert permittivity input to complex number."""
         if permittivity is None:
-            # Load default from configuration
             return complex(1.0, 0.0)
         
         if isinstance(permittivity, dict):
@@ -405,31 +421,186 @@ class IsotropicMaterial(BaseMaterial):
              [0.0, 0.0, self.permittivity]],
             dtype=tf.complex128
         )
+    
+    # NEW: Override the base class methods for isotropic materials
+    @run_on_device
+    def fetch_permittivity_tensor(self):
+        """Get permittivity tensor for isotropic material."""
+        return self.construct_tensor_singular()
+    
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        """Get permittivity tensor for specific frequency (frequency-independent)."""
+        return self.construct_tensor_singular()
+    
+    @run_on_device
+    def fetch_magnetic_tensor(self):
+        """Get magnetic tensor for isotropic material."""
+        return tf.constant(
+            [[self.permeability, 0.0, 0.0],
+             [0.0, self.permeability, 0.0],
+             [0.0, 0.0, self.permeability]],
+            dtype=tf.complex128
+        )
+    
+    @run_on_device
+    def fetch_magnetic_tensor_for_freq(self, requested_frequency):
+        """Get magnetic tensor for specific frequency (frequency-independent)."""
+        return self.fetch_magnetic_tensor()
 
 class Air(IsotropicMaterial):
-    """
-    Air material implementation.
+    """Air material implementation."""
     
-    This class represents air or an air-like medium with configurable permittivity.
-    It maintains backward compatibility with existing code while providing
-    enhanced functionality through its parent class.
-    """
-    
-    def __init__(self, permittivity=None, run_on_device_decorator=run_on_device):
-        """
-        Initialize Air with optional custom permittivity.
-        
-        Args:
-            permittivity: Optional custom permittivity value. If None, uses default from config
-            run_on_device_decorator: Device execution decorator function
-        """
-        # If no permittivity specified, load from config
+    def __init__(self, permittivity=None, permeability=None, run_on_device_decorator=run_on_device):
         if permittivity is None:
             params = load_material_parameters()["isotropic_materials"]["air"]
             permittivity = params["permittivity"]
+        
+        # NEW: Support for magnetic air (for metamaterials, etc.)
+        if permeability is None:
+            permeability = 1.0
             
         super().__init__(
             permittivity=permittivity,
+            permeability=permeability,
             run_on_device_decorator=run_on_device_decorator
         )
         self.name = "Air"
+
+
+class MagneticMaterial(BaseMaterial):
+    """Base class for magnetic materials with frequency-dependent permeability."""
+    
+    def __init__(self, frequency_length=410, run_on_device_decorator=run_on_device):
+        super().__init__(frequency_length, run_on_device_decorator)
+        self.name = "Magnetic Material"
+
+class AntiferromagnetMaterial(MagneticMaterial):
+    """Base class for antiferromagnetic materials like MnF2, FeF2."""
+    
+    def __init__(self, material_type, freq_min=None, freq_max=None):
+        super().__init__()
+        params = load_material_parameters()["magnetic_materials"][material_type]
+        self.name = params["name"]
+        self.material_type = material_type
+        self._initialize_frequency_range(params, freq_min, freq_max)
+        
+        # Load magnetic parameters
+        mag_params = params["parameters"]
+        self.gamma = tf.cast(mag_params["gamma"], dtype=tf.complex128)
+        self.B0 = tf.cast(mag_params["B0"], dtype=tf.complex128)
+        self.Ba = tf.cast(mag_params["Ba"], dtype=tf.complex128)
+        self.Be = tf.cast(mag_params["Be"], dtype=tf.complex128)
+        self.magnetisation = tf.cast(mag_params["magnetisation"], dtype=tf.complex128)
+        self.damping_multiplier = tf.cast(mag_params["damping_multiplier"], dtype=tf.complex128)
+        
+        # Permittivity parameters
+        perm_params = mag_params["permittivity"]
+        self.permittivity = complex(perm_params["real"], perm_params["imag"])
+        
+        # Calculate derived parameters
+        self.resonant_frequency_squared = self.gamma**2.0 * (
+            2.0 * self.Ba * self.Be + self.Ba**2.0
+        )
+        self.damping_parameter = self.damping_multiplier * tf.sqrt(self.resonant_frequency_squared)
+
+    @run_on_device
+    def _calculate_magnetic_parameters(self, frequency=None):
+        """Calculate magnetic susceptibility parameters for given frequency."""
+        if frequency is None:
+            freq = self.frequency
+        else:
+            freq = tf.cast([frequency], dtype=tf.complex128)
+        
+        # Calculate X and Y parameters
+        X = 1.0 / (
+            self.resonant_frequency_squared
+            - (freq + self.B0 * self.gamma + 1j * self.damping_parameter) ** 2.0
+        )
+        Y = 1.0 / (
+            self.resonant_frequency_squared
+            - (freq - self.B0 * self.gamma + 1j * self.damping_parameter) ** 2.0
+        )
+        
+        # Calculate permeability components
+        # Using mu_0 = 4π × 10^-7 H/m (SI units)
+        # Note: You may need to adjust this constant based on your unit system
+        mu_0 = tf.cast(4.0 * np.pi * 1e-7, dtype=tf.complex128)
+        
+        mu_3 = 1.0 + mu_0 * self.gamma**2.0 * self.Ba * self.magnetisation * (X + Y)
+        mu_t = mu_0 * self.gamma**2.0 * self.Ba * self.magnetisation * (X - Y)
+        
+        return mu_3, mu_t
+
+    @run_on_device
+    def fetch_permittivity_tensor(self):
+        """Get isotropic permittivity tensor."""
+        # Create isotropic permittivity tensor with same shape as frequency array
+        tensor_shape = tf.shape(self.frequency)[0]
+        identity = tf.eye(3, dtype=tf.complex128)
+        
+        # Expand to match frequency dimension: [freq, 3, 3]
+        identity = tf.expand_dims(identity, 0)
+        identity = tf.tile(identity, [tensor_shape, 1, 1])
+        
+        permittivity_tensor = tf.cast(self.permittivity, dtype=tf.complex128) * identity
+        return permittivity_tensor
+
+    @run_on_device
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency):
+        """Get permittivity tensor for specific frequency."""
+        identity = tf.eye(3, dtype=tf.complex128)
+        return tf.cast(self.permittivity, dtype=tf.complex128) * identity
+
+    @run_on_device
+    def fetch_magnetic_tensor(self):
+        """Get frequency-dependent magnetic permeability tensor."""
+        mu_3, mu_t = self._calculate_magnetic_parameters()
+        
+        # Create the magnetic tensor with off-diagonal terms
+        # Tensor structure for antiferromagnet:
+        # [[mu_3,   0,   -i*mu_t],
+        #  [0,      1,    0     ],
+        #  [i*mu_t, 0,    mu_3  ]]
+        
+        zeros = tf.zeros_like(mu_3)
+        ones = tf.ones_like(mu_3)
+        
+        # Build tensor row by row
+        row1 = tf.stack([mu_3, zeros, 1j * mu_t], axis=-1)
+        row2 = tf.stack([zeros, ones, zeros], axis=-1)
+        row3 = tf.stack([-1j * mu_t, zeros, mu_3], axis=-1)
+        
+        # Stack rows to create [freq, 3, 3] tensor
+        permeability_tensor = tf.stack([row1, row2, row3], axis=-2)
+        
+        return permeability_tensor
+
+    @run_on_device
+    def fetch_magnetic_tensor_for_freq(self, requested_frequency):
+        """Get magnetic tensor for specific frequency."""
+        mu_3, mu_t = self._calculate_magnetic_parameters(requested_frequency)
+        
+        # Extract scalar values (remove frequency dimension if present)
+        mu_3_scalar = mu_3[0] if tf.rank(mu_3) > 0 else mu_3
+        mu_t_scalar = mu_t[0] if tf.rank(mu_t) > 0 else mu_t
+        
+        # Create 3x3 tensor for single frequency
+        permeability_tensor = tf.stack([
+            [mu_3_scalar, tf.cast(0.0, dtype=tf.complex128), -1j * mu_t_scalar],
+            [tf.cast(0.0, dtype=tf.complex128), tf.cast(1.0, dtype=tf.complex128), tf.cast(0.0, dtype=tf.complex128)],
+            [1j * mu_t_scalar, tf.cast(0.0, dtype=tf.complex128), mu_3_scalar]
+        ], axis=0)
+        
+        return permeability_tensor
+
+# Concrete antiferromagnetic materials
+class MnF2(AntiferromagnetMaterial):
+    """MnF2 antiferromagnetic material."""
+    def __init__(self, freq_min=None, freq_max=None):
+        super().__init__("mnf2", freq_min, freq_max)
+
+class FeF2(AntiferromagnetMaterial):
+    """FeF2 antiferromagnetic material."""
+    def __init__(self, freq_min=None, freq_max=None):
+        super().__init__("fef2", freq_min, freq_max)

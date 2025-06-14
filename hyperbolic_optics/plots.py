@@ -732,23 +732,24 @@ def plot_mueller_dispersion(structure: object, param: np.ndarray,
     ax.set_xlim(-max_k * 1.1, max_k * 1.1)
     ax.set_ylim(-max_k * 1.1, max_k * 1.1)
 
-    
-    # Determine step size based on the range
+    # Determine step size based on the range (same logic as plot_kx_frequency)
     if max_k < 3:
-        step = 0.5  # Half-integer steps for small ranges
+        step = 1  # Integer steps for small ranges
     elif max_k < 8:
-        step = 2    # Integer steps for medium ranges
+        step = 2    # Steps of 2 for medium ranges
     elif max_k < 15:
         step = 3    # Steps of 3 for larger ranges
     else:
         step = 5    # Steps of 5 for very large ranges
-
-    # Generate negative ticks (going backwards from 0)
-    neg_ticks = np.arange(0, -int(max_k) - 1, -tick_spacing)
-    # Generate positive ticks (going forwards from 0)
-    pos_ticks = np.arange(0, int(max_k) + 1, tick_spacing)
-    # Combine them, excluding the duplicate 0
-    ticks = np.concatenate([neg_ticks[1:], pos_ticks])
+    
+    # Calculate maximum tick value
+    max_tick = (int(max_k) // step) * step
+    
+    # Generate symmetrical ticks around zero
+    positive_ticks = np.arange(0, max_tick + step/2, step)
+    negative_ticks = -np.arange(step, max_tick + step/2, step)
+    ticks = np.concatenate([negative_ticks, positive_ticks])
+    ticks = ticks[np.abs(ticks) <= max_k]
 
     ax.set_xticks(ticks)
     ax.set_yticks(ticks)

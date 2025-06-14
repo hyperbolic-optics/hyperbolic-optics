@@ -9,18 +9,26 @@ def mock_incident_payload():
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 5.5
+            "permittivity": 12.5
         },
         {
             "type": "Isotropic Middle-Stack Layer",
-            "thickness": 1.5
+            "thickness": 23.
+        },
+        {
+            "type": "Crystal Layer",
+            "material": "MnF2",
+            "rotationX": 0,
+            "rotationY": 90,
+            "rotationZ": 180.,
+            "thickness": 30.,
         },
         {
             "type": "Semi Infinite Anisotropic Layer",
-            "material": "Quartz",
+            "material": "MnF2",
             "rotationX": 0,
-            "rotationY": 70,
-            "rotationZ": 45,
+            "rotationY": 90,
+            "rotationZ": 0,
         }
     ],
     })
@@ -31,20 +39,28 @@ def mock_azimuthal_payload():
     payload = json.dumps({
         "ScenarioData": {
         "type": "Azimuthal",
-        "incidentAngle": 50,
+        "incidentAngle": 30,
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 50.5
+            "permittivity": 12.5
         },
         {
             "type": "Isotropic Middle-Stack Layer",
-            "thickness": 0.1
+            "thickness": 23.
+        },
+        {
+            "type": "Crystal Layer",
+            "material": "MnF2",
+            "rotationX": 0,
+            "rotationY": 90,
+            "rotationZ": 180.,
+            "thickness": 30.,
         },
         {
             "type": "Semi Infinite Anisotropic Layer",
-            "material": "Quartz",
+            "material": "MnF2",
             "rotationX": 0,
             "rotationY": 90,
             "rotationZ": 0,
@@ -59,32 +75,28 @@ def mock_dispersion_payload():
     payload = json.dumps({
     "ScenarioData": {
         "type": "Dispersion",
-        "frequency": 460
+        "frequency": 1460
     },
     "Layers": [
         {
             "type": "Ambient Incident Layer",
-            "permittivity": 50.
+            "permittivity": 22.5
         },
         {
-            "type": "Isotropic Middle-Stack Layer",
-            "thickness": 0.1,
-            "permittivity": {"real": 1, "imag": 0}
+        "type": "Semi Infinite Anisotropic Layer",
+        "material": {
+            # Arbitrary dielectric material with custom permittivity tensor
+            "eps_xx": {"real": 2.2652, "imag": 0.00065},
+            "eps_yy": {"real": -4.83671, "imag": 0.75521}, 
+            "eps_zz": {"real": -4.83671, "imag": 0.75521},
         },
-        {
-            "type": "Crystal Layer",
-            "material": "Quartz",
-            "rotationX": 0,
-            "rotationY": 90,
-            "rotationZ": 0,
-            "thickness": 5.
+        "rotationX": 0,
+        "rotationY": 0,
+        "rotationZ": 0.,
         },
-        {
-            "type": "Semi Infinite Isotropic Layer",
-            "permittivity": 1.
-        }
-    ],
+        ],
     })
+
 
     return payload
 

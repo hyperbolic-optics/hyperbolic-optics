@@ -42,8 +42,8 @@ class ScenarioSetup(ABC):
         Creates the incident scenario
         """
         self.incident_angle = tf.linspace(
-            tf.constant(-m.pi/2., dtype=tf.float64),
-            tf.constant(m.pi/2., dtype=tf.float64),
+            tf.constant(-m.pi/2. + 1.e-9, dtype=tf.float64),
+            tf.constant(m.pi/2. - 1.e-9, dtype=tf.float64),
             360)
 
 
@@ -54,7 +54,7 @@ class ScenarioSetup(ABC):
         self.incident_angle = tf.cast(m.radians((self.incident_angle)), dtype = tf.float64)
         self.azimuthal_angle = tf.linspace(
             tf.constant(0. + 1.e-15, dtype=tf.float64),
-            tf.constant(2. * m.pi, dtype=tf.float64),
+            tf.constant(2. * m.pi - 1.e-15, dtype=tf.float64),
             360)
 
 
@@ -63,13 +63,13 @@ class ScenarioSetup(ABC):
         Creates the dispersion scenario
         """
         self.incident_angle = tf.linspace(
-            tf.constant(0. + 1.e-5, dtype=tf.float64),
-            tf.constant(m.pi/2., dtype=tf.float64),
+            tf.constant(0. + 1.e-8, dtype=tf.float64),
+            tf.constant(m.pi/2. - 1.e-8, dtype=tf.float64),
             180)
 
         self.azimuthal_angle = tf.linspace(
             tf.constant(1.e-5, dtype=tf.float64),
-            tf.constant(2. * m.pi, dtype=tf.float64),
+            tf.constant(2. * m.pi - 1.e-5, dtype=tf.float64),
             480)
 
         self.frequency = float(self.frequency)
