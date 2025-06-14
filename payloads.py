@@ -75,7 +75,7 @@ def mock_dispersion_payload():
     payload = json.dumps({
     "ScenarioData": {
         "type": "Dispersion",
-        "frequency": 53
+        "frequency": 1460
     },
     "Layers": [
         {
@@ -83,36 +83,17 @@ def mock_dispersion_payload():
             "permittivity": 22.5
         },
         {
-            "type": "Isotropic Middle-Stack Layer",
-            "thickness": 10.
+        "type": "Semi Infinite Anisotropic Layer",
+        "material": {
+            # Arbitrary dielectric material with custom permittivity tensor
+            "eps_xx": {"real": 2.2652, "imag": 0.00065},
+            "eps_yy": {"real": -4.83671, "imag": 0.75521}, 
+            "eps_zz": {"real": -4.83671, "imag": 0.75521},
         },
-        {
-                "type": "Crystal Layer",
-                "material": {
-                    # Arbitrary dielectric material with custom permittivity tensor
-                    "eps_xx": {"real": 2.2652, "imag": 0.00065},
-                    "eps_yy": {"real": -4.83671, "imag": 0.75521}, 
-                    "eps_zz": {"real": -4.83671, "imag": 0.75521},
-                    # Magnetic permeability (optional, defaults to identity)
-                    "mu_xx": 1.0,
-                    "mu_yy": 1.0,
-                    "mu_zz": 1.0,
-                    "mu_xy": 0.0,
-                    "mu_xz": 0.0,
-                    "mu_yz": 0.0
-                },
-                "rotationX": 0,
-                "rotationY": 0,
-                "rotationZ": 0.,
-                "thickness": 15.5,
-            },
-            {
-                "type": "Semi Infinite Anisotropic Layer",
-                "material": "MnF2",
-                "rotationX": 0,
-                "rotationY": 90,
-                "rotationZ": 0,
-            }
+        "rotationX": 0,
+        "rotationY": 0,
+        "rotationZ": 0.,
+        },
         ],
     })
 
