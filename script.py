@@ -40,13 +40,13 @@ def main():
     structure = Structure()
     structure.execute(payload)
     
-    # For simple scenario, the results will be scalar values
-    print(f"Scenario type: {structure.scenario.type}")
-    print(f"Incident angle: {structure.incident_angle} radians")
-    print(f"Azimuthal angle: {structure.azimuthal_angle} radians") 
-    print(f"Frequency: {structure.frequency} cm^-1")
-    print(f"k_x: {structure.k_x}")
-    print(f"k_0: {structure.k_0}")
+    # # For simple scenario, the results will be scalar values
+    # print(f"Scenario type: {structure.scenario.type}")
+    # print(f"Incident angle: {structure.incident_angle} radians")
+    # print(f"Azimuthal angle: {structure.azimuthal_angle} radians") 
+    # print(f"Frequency: {structure.frequency} cm^-1")
+    # print(f"k_x: {structure.k_x}")
+    # print(f"k_0: {structure.k_0}")
     
     # # Print reflection coefficients (these should be scalars for Simple mode)
     # print(f"r_pp: {structure.r_pp}")
@@ -60,15 +60,15 @@ def main():
     R_ps = tf.abs(structure.r_ps)**2
     R_sp = tf.abs(structure.r_sp)**2
     
-    print(f"R_pp: {R_pp}")
-    print(f"R_ss: {R_ss}")
-    print(f"R_ps: {R_ps}")
-    print(f"R_sp: {R_sp}")
+    # print(f"R_pp: {R_pp}")
+    # print(f"R_ss: {R_ss}")
+    # print(f"R_ps: {R_ps}")
+    # print(f"R_sp: {R_sp}")
     
-    # Mueller matrix analysis for simple scenario
-    mueller = Mueller(structure)
-    mueller.set_incident_polarization('linear', **{"angle": 0})
-    mueller.add_optical_component('anisotropic_sample')
+    # # Mueller matrix analysis for simple scenario
+    # mueller = Mueller(structure)
+    # mueller.set_incident_polarization('linear', **{"angle": 0})
+    # mueller.add_optical_component('anisotropic_sample')
     
     # For Simple scenario, Stokes parameters will be scalars
     # stokes_params = mueller.get_all_parameters()

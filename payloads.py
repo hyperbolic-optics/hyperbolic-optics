@@ -157,21 +157,21 @@ def mock_dispersion_payload():
     },
     "Layers": [
         {
-            "type": "Ambient Incident Layer",
-            "permittivity": 22.5
-        },
-        {
-        "type": "Semi Infinite Anisotropic Layer",
-        "material": {
-            # Arbitrary dielectric material with custom permittivity tensor
-            "eps_xx": {"real": 2.2652, "imag": 0.00065},
-            "eps_yy": {"real": -4.83671, "imag": 0.75521}, 
-            "eps_zz": {"real": -4.83671, "imag": 0.75521},
-        },
-        "rotationX": 0,
-        "rotationY": 0,
-        "rotationZ": 0.,
-        },
+                "type": "Ambient Incident Layer",
+                "permittivity": 50.
+            },
+            {
+                "type": "Isotropic Middle-Stack Layer",
+                "thickness": 0.5,
+                "permittivity": 1.0
+            },
+            {
+                "type": "Semi Infinite Anisotropic Layer",
+                "material": "Calcite",
+                "rotationX": 0,
+                "rotationY": 90,
+                "rotationZ": 0
+            },
         ],
     })
 

@@ -256,9 +256,6 @@ class Wave:
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-    # REMOVED: The old complex _get_mode_shapes method is completely replaced
-    # by the three specific methods above
-
     def mode_reshaping(self):
         """Reshape the k_x, eps_tensor, and mu_tensor based on the mode."""
         return self._get_tensor_shapes_for_mode()
@@ -268,14 +265,6 @@ class Wave:
         Construct the 4x4 Berreman transfer matrix.
         """
         k_x, eps_tensor, mu_tensor = self.mode_reshaping()
-
-        # DEBUG: Print shapes for Simple mode
-        if self.mode == "Simple":
-            print(f"\n=== DELTA_MATRIX_CALC DEBUG ===")
-            print(f"Mode: {self.mode}")
-            print(f"k_x: {k_x}, shape: {k_x.shape}, rank: {tf.rank(k_x)}")
-            print(f"eps_tensor shape: {eps_tensor.shape}, rank: {tf.rank(eps_tensor)}")
-            print(f"mu_tensor shape: {mu_tensor.shape}, rank: {tf.rank(mu_tensor)}")
 
         # Extract relevant tensor components
         eps_20, eps_21, eps_22 = eps_tensor[..., 2, 0], eps_tensor[..., 2, 1], eps_tensor[..., 2, 2]
@@ -287,23 +276,11 @@ class Wave:
         mu_02 = mu_tensor[..., 0, 2]
         mu_00, mu_01 = mu_tensor[..., 0, 0], mu_tensor[..., 0, 1]
 
-        # DEBUG: Print some element shapes for Simple mode
-        if self.mode == "Simple":
-            print(f"Sample tensor elements:")
-            print(f"  eps_22: {eps_22}, shape: {eps_22.shape}")
-            print(f"  mu_22: {mu_22}, shape: {mu_22.shape}")
-
         # Precompute common terms
         k_x_sq = k_x ** 2
         eps_22_inv = 1.0 / eps_22
         mu_22_inv = 1.0 / mu_22
         ones_like_k_x = tf.ones_like(k_x)
-
-        # DEBUG: Print computed terms for Simple mode
-        if self.mode == "Simple":
-            print(f"Computed terms:")
-            print(f"  k_x_sq: {k_x_sq}, shape: {k_x_sq.shape}")
-            print(f"  ones_like_k_x: {ones_like_k_x}, shape: {ones_like_k_x.shape}")
 
         # Construct the matrix elements
         m00 = -k_x * eps_20 * eps_22_inv
@@ -326,13 +303,6 @@ class Wave:
         m32 = tf.zeros_like(m00)
         m33 = -k_x * eps_02 * eps_22_inv
 
-        # DEBUG: Print matrix element shapes for Simple mode
-        if self.mode == "Simple":
-            print(f"Matrix elements:")
-            print(f"  m00: {m00}, shape: {m00.shape}")
-            print(f"  m01: {m01}, shape: {m01.shape}")
-            print(f"  m11: {m11}, shape: {m11.shape}")
-
         # Stack the matrix elements into a 4x4 matrix
         if self.mode == "Simple":
             # For Simple mode, create matrix directly from scalars
@@ -342,10 +312,6 @@ class Wave:
                 [m20, m21, m22, m23],
                 [m30, m31, m32, m33]
             ], dtype=tf.complex128)
-            print(f"Berreman matrix created:")
-            print(f"  Shape: {self.berreman_matrix.shape}")
-            print(f"  Rank: {tf.rank(self.berreman_matrix)}")
-            print(f"  Matrix:\n{self.berreman_matrix}")
         else:
             # For other modes, use the original stacking method
             self.berreman_matrix = tf.stack([
@@ -357,23 +323,16 @@ class Wave:
 
     def delta_permutations(self):
         """Perform permutations on the Berreman matrix based on the mode."""
-        # DEBUG: Print before permutations for Simple mode
-        if self.mode == "Simple":
-            print(f"\n=== DELTA_PERMUTATIONS DEBUG ===")
-            print(f"Before permutations:")
-            print(f"  Matrix shape: {self.berreman_matrix.shape}")
-            print(f"  Matrix rank: {tf.rank(self.berreman_matrix)}")
-            print(f"  Matrix:\n{self.berreman_matrix}")
 
         mode_permutations = {
             "Incident": ([2, 1, 3, 0], 2),
             "Azimuthal": ([1, 2, 3, 0], 2),
             "Dispersion": ([1, 2, 3, 0], 2),
-            "Simple": (None, 0),  # Identity permutation for [4,4] matrix - NO transpose
+            "Simple": ([0, 1], 0),  # Identity permutation for [4,4] matrix - NO transpose
             "airgap": ([1, 2, 0], 1),
             "simple_airgap": ([1, 2, 0], 1),
             "azimuthal_airgap": ([1, 0], 0),
-            "simple_scalar_airgap": (None, 0),
+            "simple_scalar_airgap": ([1,0], 0),
         }
 
         if self.mode not in mode_permutations:
@@ -381,62 +340,23 @@ class Wave:
 
         permutation, self.batch_dims = mode_permutations[self.mode]
         
-        # DEBUG: Print permutation info for Simple mode
-        if self.mode == "Simple":
-            print(f"Permutation: {permutation}")
-            print(f"Batch dims: {self.batch_dims}")
-        
         if permutation is not None:
             self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
-        
-        # DEBUG: Print after permutations for Simple mode
-        if self.mode == "Simple":
-            print(f"After permutations:")
-            print(f"  Matrix shape: {self.berreman_matrix.shape}")
-            print(f"  Matrix rank: {tf.rank(self.berreman_matrix)}")
-            print(f"  Matrix:\n{self.berreman_matrix}")
-            print(f"=== END PERMUTATIONS DEBUG ===\n")
 
     def wave_sorting(self):
         """
         Sort the wavevectors and fields based on the eigenvalues.
         """
-        # DEBUG: Print before eigendecomposition for Simple mode
-        if self.mode == "Simple":
-            print(f"\n=== WAVE_SORTING DEBUG ===")
-            print(f"Berreman matrix for eigendecomposition:")
-            print(f"  Shape: {self.berreman_matrix.shape}")
-            print(f"  Matrix:\n{self.berreman_matrix}")
 
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
 
-        # DEBUG: Print eigenvalues and eigenvectors for Simple mode
-        if self.mode == "Simple":
-            print(f"Eigendecomposition results:")
-            print(f"  Wavevectors shape: {wavevectors.shape}")
-            print(f"  Wavevectors: {wavevectors}")
-            print(f"  Fields shape: {fields.shape}")
-            print(f"  Fields:\n{fields}")
-
         def sort_vector(waves):
             """Sort the wavevectors based on their real and imaginary parts."""
-            # DEBUG: Print sorting info for Simple mode
-            if self.mode == "Simple":
-                print(f"  Sorting waves: {waves}")
-                print(f"  Real parts: {tf.math.real(waves)}")
-                print(f"  Imag parts: {tf.math.imag(waves)}")
-            
+
             is_complex = tf.math.abs(tf.math.imag(waves)) > 0
             idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
             idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
             indices = tf.where(is_complex, idx_imag, idx_real)
-            
-            # DEBUG: Print sorting indices for Simple mode
-            if self.mode == "Simple":
-                print(f"  is_complex: {is_complex}")
-                print(f"  idx_real: {idx_real}")
-                print(f"  idx_imag: {idx_imag}")
-                print(f"  final indices: {indices}")
     
             return indices
 
@@ -449,35 +369,15 @@ class Wave:
         else:
             indices = sort_vector(wavevectors)
 
-        # DEBUG: Print sorting results for Simple mode
-        if self.mode == "Simple":
-            print(f"Final sorting indices: {indices}")
-            print(f"Batch dims for gather: {self.batch_dims}")
-
         # Gather the sorted wavevectors and fields
         sorted_waves = tf.gather(wavevectors, indices, axis=-1, batch_dims=self.batch_dims)
         sorted_fields = tf.gather(fields, indices, axis=-1, batch_dims=self.batch_dims)
-
-        # DEBUG: Print gathered results for Simple mode
-        if self.mode == "Simple":
-            print(f"Sorted waves: {sorted_waves}")
-            print(f"Sorted fields shape: {sorted_fields.shape}")
-            print(f"Sorted fields:\n{sorted_fields}")
 
         # Split the sorted wavevectors and fields into transmitted and reflected components
         transmitted_wavevectors = tf.stack([sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1)
         reflected_wavevectors = tf.stack([sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1)
         transmitted_fields = tf.stack([sorted_fields[..., 0], sorted_fields[..., 1]], axis=-1)
         reflected_fields = tf.stack([sorted_fields[..., 2], sorted_fields[..., 3]], axis=-1)
-
-        # DEBUG: Print final results for Simple mode
-        if self.mode == "Simple":
-            print(f"Final results:")
-            print(f"  Transmitted wavevectors: {transmitted_wavevectors}")
-            print(f"  Reflected wavevectors: {reflected_wavevectors}")
-            print(f"  Transmitted fields shape: {transmitted_fields.shape}")
-            print(f"  Reflected fields shape: {reflected_fields.shape}")
-            print(f"=== END WAVE_SORTING DEBUG ===\n")
 
         return transmitted_wavevectors, reflected_wavevectors, transmitted_fields, reflected_fields
 
