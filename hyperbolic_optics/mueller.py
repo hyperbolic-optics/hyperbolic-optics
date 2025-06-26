@@ -208,16 +208,30 @@ class Mueller:
             ],
         ], dtype=tf.complex128)
 
-        f_matrix = tf.transpose(f_matrix, perm=[2, 3, 0, 1])
+        # Handle different scenario types
+        if self.structure.scenario.type == "Simple":
+            # For Simple scenario, f_matrix is just [4, 4], no need to transpose
+            pass
+        else:
+            # For other scenarios, transpose as before
+            f_matrix = tf.transpose(f_matrix, perm=[2, 3, 0, 1])
 
         a_matrix = tf.convert_to_tensor([
             [1, 0, 0, 1],
             [1, 0, 0, -1],
             [0, 1, 1, 0],
             [0, 1j, -1j, 0]
-        ], dtype=tf.complex128)[tf.newaxis, tf.newaxis, ...]
+        ], dtype=tf.complex128)
 
-        self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
+        # Add batch dimensions if needed
+        if self.structure.scenario.type == "Simple":
+            # For Simple scenario, just compute matrix multiplication directly
+            self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
+        else:
+            # For other scenarios, add batch dimensions
+            a_matrix = a_matrix[tf.newaxis, tf.newaxis, ...]
+            self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
+        
         self._debug_print("Calculated Mueller matrix for anisotropic sample:")
         self._debug_print(self._summarize_array(self.mueller_matrix, "Mueller matrix"))
 
@@ -252,15 +266,33 @@ class Mueller:
         Returns:
             Stokes parameters of the system (tf.Tensor).
         """
-        stokes_vector = tf.reshape(self.incident_stokes, [1, 1, 4, 1])
+        if self.structure.scenario.type == "Simple":
+            # For Simple scenario, start with just the incident vector [4,]
+            stokes_vector = tf.reshape(self.incident_stokes, [4, 1])
+        else:
+            # For other scenarios, add batch dimensions
+            stokes_vector = tf.reshape(self.incident_stokes, [1, 1, 4, 1])
+        
         self._debug_print(f"Initial Stokes vector: {stokes_vector.numpy().flatten()}")
 
         for i, component in enumerate(self.optical_components):
-            stokes_vector = tf.matmul(component, stokes_vector)
+            if self.structure.scenario.type == "Simple":
+                # For Simple scenario, component should be [4, 4]
+                stokes_vector = tf.matmul(component, stokes_vector)
+            else:
+                # For other scenarios, component has batch dimensions
+                stokes_vector = tf.matmul(component, stokes_vector)
+            
             self._debug_print(f"After component {i}:")
             self._debug_print(self._summarize_array(stokes_vector, f"Stokes vector"))
 
-        self.stokes_parameters = stokes_vector[..., 0]
+        if self.structure.scenario.type == "Simple":
+            # For Simple scenario, remove the last dimension [4, 1] -> [4]
+            self.stokes_parameters = stokes_vector[:, 0]
+        else:
+            # For other scenarios, remove the last dimension [..., 4, 1] -> [..., 4]
+            self.stokes_parameters = stokes_vector[..., 0]
+        
         self._debug_print("Final Stokes parameters:")
         self._debug_print(self._summarize_array(self.stokes_parameters, "Stokes parameters"))
         return self.stokes_parameters

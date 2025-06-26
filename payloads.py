@@ -1,5 +1,83 @@
 import json
 
+def mock_simple_payload():
+    """
+    Create a simple scenario payload for testing.
+    This scenario uses:
+    - Single incident angle (30 degrees)
+    - Single azimuthal angle (45 degrees) 
+    - Single frequency (1460 cm^-1)
+    - Single layer orientation
+    """
+    payload = json.dumps({
+        "ScenarioData": {
+            "type": "Simple",
+            "incidentAngle": 45.0,        # degrees
+            "azimuthal_angle": 90.0,      # degrees (optional, defaults to 0)
+            "frequency": 460           # cm^-1
+        },
+        "Layers": [
+            {
+                "type": "Ambient Incident Layer",
+                "permittivity": 50.
+            },
+            {
+                "type": "Isotropic Middle-Stack Layer",
+                "thickness": 0.1,
+                "permittivity": 1.0
+            },
+            # {
+            #     "type": "Crystal Layer",
+            #     "material": "Calcite",
+            #     "rotationX": 0,
+            #     "rotationY": 90,
+            #     "rotationZ": 0.0,
+            #     "thickness": 3.0
+            # },
+            {
+                "type": "Semi Infinite Anisotropic Layer",
+                "material": "Quartz",
+                "rotationX": 0,
+                "rotationY": 90,
+                "rotationZ": 0
+            }
+        ]
+    })
+    return payload
+
+def mock_simple_dielectric_payload():
+    """
+    Create a simple scenario payload using arbitrary dielectric material.
+    """
+    payload = json.dumps({
+        "ScenarioData": {
+            "type": "Simple",
+            "incidentAngle": 45.0,
+            "azimuthal_angle": 0.0,
+            "frequency": 1460.0
+        },
+        "Layers": [
+            {
+                "type": "Ambient Incident Layer",
+                "permittivity": 22.5
+            },
+            {
+                "type": "Semi Infinite Anisotropic Layer",
+                "material": {
+                    "eps_xx": {"real": 2.2652, "imag": 0.00065},
+                    "eps_yy": {"real": -4.83671, "imag": 0.75521}, 
+                    "eps_zz": {"real": -4.83671, "imag": 0.75521},
+                    "eps_xy": {"real": 0.0, "imag": 0.0},
+                    "eps_xz": {"real": 0.0, "imag": 0.0},
+                    "eps_yz": {"real": 0.0, "imag": 0.0}
+                },
+                "rotationX": 0,
+                "rotationY": 0,
+                "rotationZ": 0.0
+            }
+        ]
+    })
+    return payload
 
 def mock_incident_payload():
     payload = json.dumps({

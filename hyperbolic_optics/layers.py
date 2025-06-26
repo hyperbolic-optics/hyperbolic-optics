@@ -266,25 +266,29 @@ class Layer(ABC):
         """
         Calculate the rotation of the layer in the z direction.
 
-        If the scenario is dispersion or azimuthal, the rotation is relative to
+        If the scenario is dispersion, azimuthal, or simple, the rotation is relative to
         the azimuthal angle, but can be defined to be static while all other
         layers are rotated. If it's relative, the rotation is added to the
         azimuthal angle as it has been 'shifted'.
         """
-        if self.scenario == "Dispersion" or self.scenario == "Azimuthal":
+        if self.scenario in ["Dispersion", "Azimuthal", "Simple"]:
             if self.rotationZ_type == "relative":
                 self.rotationZ = self.azimuthal_angle + self.rotationZ
             elif self.rotationZ_type == "static":
-                self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
+                if self.scenario == "Simple":
+                    # For simple scenario, keep as scalar
+                    self.rotationZ = self.rotationZ
+                else:
+                    self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
 
     def calculate_tensors(self):
         """Calculate both permittivity and magnetic tensors for the layer."""
         self.material_factory()
         
-        if self.scenario == "Incident" or self.scenario == "Azimuthal":
+        if self.scenario in ["Incident", "Azimuthal"]:
             self.eps_tensor = tf.cast(self.material.fetch_permittivity_tensor(), dtype=tf.complex128)
             self.mu_tensor = tf.cast(self.material.fetch_magnetic_tensor(), dtype=tf.complex128)
-        elif self.scenario == "Dispersion":
+        elif self.scenario in ["Dispersion", "Simple"]:
             self.eps_tensor = tf.cast(
                 self.material.fetch_permittivity_tensor_for_freq(self.frequency),
                 dtype=tf.complex128,
@@ -296,10 +300,12 @@ class Layer(ABC):
 
     def rotate_tensors(self):
         """Rotate both permittivity and magnetic tensors according to the rotation angles."""
-        if self.scenario == "Incident" or self.scenario == "Dispersion":
+        if self.scenario in ["Incident", "Dispersion"]:
             rotation_func = anisotropy_rotation_one_value
         elif self.scenario == "Azimuthal":
             rotation_func = anisotropy_rotation_one_axis
+        elif self.scenario == "Simple":
+            rotation_func = anisotropy_rotation_one_value
 
         self.eps_tensor = rotation_func(self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ)
         self.mu_tensor = rotation_func(self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ)
@@ -342,6 +348,8 @@ class PrismLayer(Layer):
             self.matrix = prism.construct_tensor_singular()[tf.newaxis, tf.newaxis, ...]
         elif self.scenario == "Dispersion":
             self.matrix = prism.construct_tensor()[:, tf.newaxis, ...]
+        elif self.scenario == "Simple":
+            self.matrix = prism.construct_tensor_singular()
 
 
 class AirGapLayer(Layer):
@@ -394,6 +402,8 @@ class AirGapLayer(Layer):
             self.mode = "azimuthal_airgap"
         elif self.scenario == "Dispersion":
             self.mode = "simple_airgap"
+        elif self.scenario == "Simple":
+            self.mode = "simple_scalar_airgap"
 
     def create(self):
         # CHANGED: Pass both tensors instead of duplicating the eps tensor
@@ -474,6 +484,9 @@ class IsotropicSemiInfiniteLayer(Layer):
             self.matrix = exit_medium.construct_tensor()[tf.newaxis, tf.newaxis, ...]
         elif self.scenario == "Dispersion":
             self.matrix = exit_medium.construct_tensor()[:, tf.newaxis, ...]
+        elif self.scenario == "Simple":
+            # For simple scenario, just get the scalar tensor without additional dimensions
+            self.matrix = exit_medium.construct_tensor_singular()
 
 
 class LayerFactory:

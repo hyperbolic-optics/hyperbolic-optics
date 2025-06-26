@@ -1,10 +1,11 @@
 """
 Scenario module
-Used for construction of three scenarios:
+Used for construction of four scenarios:
 
 1. Frequency vs. Incident Angle
 2. Frequency vs. Azimuthal Rotation
 3. Dispersion at a given frequency
+4. Simple - Single incident angle, orientation, and frequency
 """
 
 from abc import ABC
@@ -33,9 +34,10 @@ class ScenarioSetup(ABC):
             self.create_azimuthal_scenario()
         elif self.type == 'Dispersion':
             self.create_dispersion_scenario()
+        elif self.type == 'Simple':
+            self.create_simple_scenario()
         else:
             raise NotImplementedError(f"Scenario type {self.type} not implemented")
-
 
     def create_incident_scenario(self):
         """
@@ -46,7 +48,6 @@ class ScenarioSetup(ABC):
             tf.constant(m.pi/2. - 1.e-9, dtype=tf.float64),
             360)
 
-
     def create_azimuthal_scenario(self):
         """
         Creates the azimuthal scenario
@@ -56,7 +57,6 @@ class ScenarioSetup(ABC):
             tf.constant(0. + 1.e-15, dtype=tf.float64),
             tf.constant(2. * m.pi - 1.e-15, dtype=tf.float64),
             360)
-
 
     def create_dispersion_scenario(self):
         """
@@ -72,4 +72,13 @@ class ScenarioSetup(ABC):
             tf.constant(2. * m.pi - 1.e-5, dtype=tf.float64),
             480)
 
+        self.frequency = float(self.frequency)
+
+    def create_simple_scenario(self):
+        """
+        Creates the simple scenario - single values for all parameters
+        """
+        # Convert to scalar tensors for consistency
+        self.incident_angle = tf.cast(m.radians(self.incident_angle) + 1.e-15, dtype=tf.float64)
+        self.azimuthal_angle = tf.cast(m.radians(self.azimuthal_angle) + 1.e-15, dtype=tf.float64)
         self.frequency = float(self.frequency)
