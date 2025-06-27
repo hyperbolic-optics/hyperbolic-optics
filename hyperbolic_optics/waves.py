@@ -77,22 +77,34 @@ class Wave:
             self.batch_dims = 1
         elif self.mode == "azimuthal_airgap":
             self.batch_dims = 0
+        elif self.mode == "simple_scalar_airgap":
+            self.batch_dims = 0  # No batch dimensions for simple scalar
+        elif self.mode == "Simple":
+            self.batch_dims = 0  # No batch dimensions for simple scenario
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-        # Validate tensor shapes match
-        eps_shape = tf.shape(self.eps_tensor)
-        mu_shape = tf.shape(self.mu_tensor)
+        # For Simple mode, ensure tensors are just [3, 3] without batch dimensions
+        if self.mode == "Simple":
+            if len(self.eps_tensor.shape) > 2:
+                # If tensors have extra dimensions, squeeze them out
+                self.eps_tensor = tf.squeeze(self.eps_tensor, axis=list(range(len(self.eps_tensor.shape) - 2)))
+                self.mu_tensor = tf.squeeze(self.mu_tensor, axis=list(range(len(self.mu_tensor.shape) - 2)))
         
-        # Check that last two dimensions are 3x3 for both tensors
-        tf.debugging.assert_equal(eps_shape[-2:], [3, 3], 
-                                message="eps_tensor must have shape [..., 3, 3]")
-        tf.debugging.assert_equal(mu_shape[-2:], [3, 3], 
-                                message="mu_tensor must have shape [..., 3, 3]")
-        
-        # Check that batch dimensions match
-        tf.debugging.assert_equal(eps_shape[:-2], mu_shape[:-2], 
-                                message="eps_tensor and mu_tensor must have matching batch dimensions")
+        # Validate tensor shapes match (skip for Simple mode which has different validation)
+        if self.mode != "Simple":
+            eps_shape = tf.shape(self.eps_tensor)
+            mu_shape = tf.shape(self.mu_tensor)
+            
+            # Check that last two dimensions are 3x3 for both tensors
+            tf.debugging.assert_equal(eps_shape[-2:], [3, 3], 
+                                    message="eps_tensor must have shape [..., 3, 3]")
+            tf.debugging.assert_equal(mu_shape[-2:], [3, 3], 
+                                    message="mu_tensor must have shape [..., 3, 3]")
+            
+            # Check that batch dimensions match
+            tf.debugging.assert_equal(eps_shape[:-2], mu_shape[:-2], 
+                                    message="eps_tensor and mu_tensor must have matching batch dimensions")
 
     def _get_tensor_shapes_for_mode(self):
         """Get properly shaped tensors for the current mode.
@@ -100,9 +112,6 @@ class Wave:
         Returns:
             tuple: (k_x, eps_tensor, mu_tensor) with proper shapes for the mode
         """
-        # The tensors should already be properly shaped from the materials
-        # We just need to ensure k_x has the right shape for broadcasting
-        
         if self.mode == "Incident":
             # k_x: [180] -> [180, 1] for broadcasting with tensors [1, 3, 3]
             k_x = self.k_x[:, tf.newaxis] if len(self.k_x.shape) == 1 else self.k_x
@@ -118,6 +127,11 @@ class Wave:
             k_x = self.k_x[:, tf.newaxis] if len(self.k_x.shape) == 1 else self.k_x
             return k_x, self.eps_tensor, self.mu_tensor
             
+        elif self.mode == "Simple":
+            # For simple mode, everything should be scalar/simple shapes
+            # k_x: scalar, tensors: [3, 3]
+            return self.k_x, self.eps_tensor, self.mu_tensor
+            
         elif self.mode == "airgap":
             # For airgap modes, tensors should already match k_x shape
             return self.k_x, self.eps_tensor, self.mu_tensor
@@ -128,6 +142,10 @@ class Wave:
             
         elif self.mode == "azimuthal_airgap":
             # Different broadcasting pattern
+            return self.k_x, self.eps_tensor, self.mu_tensor
+            
+        elif self.mode == "simple_scalar_airgap":
+            # Simple scalar airgap - no batch dimensions
             return self.k_x, self.eps_tensor, self.mu_tensor
             
         else:
@@ -163,6 +181,20 @@ class Wave:
             eps_tensor = self.eps_tensor[tf.newaxis, ...]
             mu_tensor = self.mu_tensor[tf.newaxis, ...]
             return self.k_x, eps_tensor, mu_tensor
+            
+        elif self.mode == "simple_scalar_airgap":
+            # For simple scalar airgap, add minimal dimensions for consistency
+            k_x = self.k_x[tf.newaxis] if tf.rank(self.k_x) == 0 else self.k_x
+            eps_tensor = self.eps_tensor[tf.newaxis, ...]
+            mu_tensor = self.mu_tensor[tf.newaxis, ...]
+            return k_x, eps_tensor, mu_tensor
+            
+        elif self.mode == "Simple":
+            # For simple mode, add minimal dimensions for Poynting calculation
+            k_x = self.k_x[tf.newaxis] if tf.rank(self.k_x) == 0 else self.k_x
+            eps_tensor = self.eps_tensor[tf.newaxis, ...]
+            mu_tensor = self.mu_tensor[tf.newaxis, ...]
+            return k_x, eps_tensor, mu_tensor
             
         elif self.mode == "Dispersion":
             k_x = self.k_x[:, tf.newaxis, tf.newaxis]
@@ -210,14 +242,19 @@ class Wave:
             eigenvectors = eigenvectors[tf.newaxis, tf.newaxis, ...]
             return k_0, eigenvalues_diag, eigenvectors
             
+        elif self.mode == "simple_scalar_airgap":
+            # For simple scalar airgap, k_0 is scalar, no extra dimensions needed
+            return self.k_0, eigenvalues_diag, eigenvectors
+
+        elif self.mode == "Simple":
+            # For simple mode, k_0 is scalar, eigenvalues/vectors are [4, 4]
+            return self.k_0, eigenvalues_diag, eigenvectors
+            
         elif self.mode == "Dispersion":
             return self.k_0, eigenvalues_diag, eigenvectors
             
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
-
-    # REMOVED: The old complex _get_mode_shapes method is completely replaced
-    # by the three specific methods above
 
     def mode_reshaping(self):
         """Reshape the k_x, eps_tensor, and mu_tensor based on the mode."""
@@ -267,54 +304,55 @@ class Wave:
         m33 = -k_x * eps_02 * eps_22_inv
 
         # Stack the matrix elements into a 4x4 matrix
-        self.berreman_matrix = tf.stack([
-            [m00, m01, m02, m03],
-            [m10, m11, m12, m13],
-            [m20, m21, m22, m23],
-            [m30, m31, m32, m33]
-        ], axis=-1)
+        if self.mode == "Simple":
+            # For Simple mode, create matrix directly from scalars
+            self.berreman_matrix = tf.convert_to_tensor([
+                [m00, m01, m02, m03],
+                [m10, m11, m12, m13],
+                [m20, m21, m22, m23],
+                [m30, m31, m32, m33]
+            ], dtype=tf.complex128)
+        else:
+            # For other modes, use the original stacking method
+            self.berreman_matrix = tf.stack([
+                [m00, m01, m02, m03],
+                [m10, m11, m12, m13],
+                [m20, m21, m22, m23],
+                [m30, m31, m32, m33]
+            ], axis=-1)
 
     def delta_permutations(self):
         """Perform permutations on the Berreman matrix based on the mode."""
+
         mode_permutations = {
             "Incident": ([2, 1, 3, 0], 2),
             "Azimuthal": ([1, 2, 3, 0], 2),
             "Dispersion": ([1, 2, 3, 0], 2),
+            "Simple": ([0, 1], 0),  # Identity permutation for [4,4] matrix - NO transpose
             "airgap": ([1, 2, 0], 1),
             "simple_airgap": ([1, 2, 0], 1),
             "azimuthal_airgap": ([1, 0], 0),
+            "simple_scalar_airgap": ([1,0], 0),
         }
 
         if self.mode not in mode_permutations:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
         permutation, self.batch_dims = mode_permutations[self.mode]
-        self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
+        
+        if permutation is not None:
+            self.berreman_matrix = tf.transpose(self.berreman_matrix, perm=permutation)
 
     def wave_sorting(self):
         """
         Sort the wavevectors and fields based on the eigenvalues.
-
-        Returns:
-            tuple: A tuple containing the sorted transmitted and reflected wavevectors and fields.
         """
+
         wavevectors, fields = tf.linalg.eig(self.berreman_matrix)
 
         def sort_vector(waves):
-            """
-            Sort the wavevectors based on their real and imaginary parts.
-            Modified to handle magnetic materials better.
-            """
-            # Check if this is a magnetic material by looking for off-diagonal mu terms
-            is_magnetic = hasattr(self, 'mu_tensor') and tf.reduce_any(
-                tf.abs(self.mu_tensor[..., 0, 2]) > 1e-10
-            )
-            
-            # if is_magnetic:
-            #     # For magnetic materials, always use real part sorting
-            #     indices = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
-            # else:
-            # Original logic for dielectric materials
+            """Sort the wavevectors based on their real and imaginary parts."""
+
             is_complex = tf.math.abs(tf.math.imag(waves)) > 0
             idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
             idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
@@ -323,7 +361,10 @@ class Wave:
             return indices
 
         # Sort the wavevectors based on their rank
-        if tf.rank(wavevectors) > 1:
+        if self.mode == "Simple":
+            # For simple mode, no mapping needed, just direct sorting
+            indices = sort_vector(wavevectors)
+        elif tf.rank(wavevectors) > 1:
             indices = tf.map_fn(sort_vector, wavevectors, dtype=tf.int32)
         else:
             indices = sort_vector(wavevectors)
