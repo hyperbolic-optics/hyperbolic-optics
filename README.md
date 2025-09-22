@@ -200,15 +200,16 @@ If you use this package in your research, please cite:
   year={2025},
   version={0.1.2},
   doi={10.5281/zenodo.14946556},
-  url={https://github.com/MarkCunningham0410/hyperbolic_optics},
-  note={Available on PyPI as hyperbolic-optics}
+  url={https://pypi.org/project/hyperbolic-optics/},
+  howpublished={PyPI},
+  note={Python package for 4×4 transfer matrix method simulations}
 }
 ```
 
 ### Related Publications
 This package was used to generate results in:
 
-**M. Cunningham**, "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research*, vol. 13, no. 8, pp. 2291-2305 (2025). DOI: [10.1364/PRJ.558334](https://doi.org/10.1364/PRJ.558334)
+**M. Cunningham et al.**, "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research*, vol. 13, no. 8, pp. 2291-2305 (2025). DOI: [10.1364/PRJ.558334](https://doi.org/10.1364/PRJ.558334)
 
 ---
 
@@ -230,7 +231,7 @@ For background on the physics and mathematical methods, see:
 - N. C. Passler and A. Paarmann, "Generalized 4 × 4 matrix formalism for light propagation in anisotropic stratified media," *J. Opt. Soc. Am. B* **34**, 2128-2139 (2017)
 - P. Yeh, "Electromagnetic propagation in birefringent layered media," *J. Opt. Soc. Am.* **69**, 742-756 (1979)
 - N. C. Passler et al., "Layer-resolved resonance intensity of evanescent polariton modes in anisotropic multilayers," *Phys. Rev. B* **107**, 235426 (2023)
-- M. Cunningham, "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research* **13**, 2291-2305 (2025)
+- M. Cunningham et al., "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research* **13**, 2291-2305 (2025)
 
 ---
 
