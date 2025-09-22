@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hyperbolic-optics"
-version = "0.0.1"
+version = "0.1.1"
 authors = [
     {name = "Mark Cunningham", email = "m.cunningham.2@research.gla.ac.uk"},
 ]
