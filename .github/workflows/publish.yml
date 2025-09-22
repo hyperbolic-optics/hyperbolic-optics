@@ -86,7 +86,7 @@ jobs:
     - name: Publish to PyPI (trusted publishing)
       run: |
         echo "Publishing to PyPI using trusted publishing..."
-        uv publish --trusted-publishing
+        uv publish --trusted-publishing automatic
         echo "🎉 Successfully published to PyPI!"
       
     - name: Update Zenodo (if configured)
