@@ -1,4 +1,4 @@
-name: Publish to PyPI with uv
+name: Publish to PyPI
 
 on:
   release:
@@ -7,13 +7,64 @@ on:
 jobs:
   publish-pypi:
     runs-on: ubuntu-latest
-    environment: release
+    environment: release  # This must match what you enter on PyPI
     permissions:
-      id-token: write  # For trusted publishing
+      id-token: write      # REQUIRED for trusted publishing
+      contents: write      # REQUIRED to commit version updates back to repo
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Fetch all history for proper git operations
+      
+    - name: Update version references automatically
+      run: |
+        # Extract version from pyproject.toml
+        VERSION=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
+        DATE=$(date +%Y-%m-%d)
+        YEAR=$(date +%Y)
+        
+        echo "Updating all version references to $VERSION"
+        
+        # Update CITATION.cff if it exists
+        if [ -f "CITATION.cff" ]; then
+          sed -i "s/version: \".*\"/version: \"$VERSION\"/" CITATION.cff
+          sed -i "s/date-released: \".*\"/date-released: \"$DATE\"/" CITATION.cff
+          echo "✅ Updated CITATION.cff"
+        fi
+        
+        # Update README citation if it exists
+        if [ -f "README.md" ]; then
+          sed -i "s/version={.*}/version={$VERSION}/" README.md
+          sed -i "s/year={.*}/year={$YEAR}/" README.md
+          echo "✅ Updated README.md citation"
+        fi
+        
+        # Update __init__.py version if it exists
+        if [ -f "hyperbolic_optics/__init__.py" ]; then
+          if grep -q "__version__" hyperbolic_optics/__init__.py; then
+            sed -i "s/__version__ = [\"'].*[\"']/__version__ = \"$VERSION\"/" hyperbolic_optics/__init__.py
+          else
+            sed -i "1i__version__ = \"$VERSION\"" hyperbolic_optics/__init__.py
+          fi
+          echo "✅ Updated __init__.py version"
+        fi
+        
+        # Commit version updates back to the repository
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        
+        # Only commit if there are changes
+        if ! git diff --staged --quiet; then
+          git commit -m "Auto-update version references to $VERSION [skip ci]"
+          git push origin HEAD:main
+          echo "✅ Committed version updates"
+        else
+          echo "ℹ️ No version updates needed"
+        fi
       
     - name: Install uv
       uses: astral-sh/setup-uv@v4
@@ -23,8 +74,21 @@ jobs:
     - name: Set up Python
       run: uv python install 3.11
       
-    - name: Build package with uv
-      run: uv build
+    - name: Build package
+      run: |
+        echo "Building package..."
+        uv build
+        echo "✅ Package built successfully"
+        
+        # Show what was built
+        ls -la dist/
       
-    - name: Publish to PyPI
-      run: uv publish --trusted-publishing
+    - name: Publish to PyPI (trusted publishing)
+      run: |
+        echo "Publishing to PyPI using trusted publishing..."
+        uv publish --trusted-publishing
+        echo "🎉 Successfully published to PyPI!"
+      
+    - name: Update Zenodo (if configured)
+      run: |
+        echo "ℹ️ Zenodo will automatically create a new version from this GitHub release"

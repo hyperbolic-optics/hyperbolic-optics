@@ -1,11 +1,11 @@
----
-
 # Hyperbolic Optics Simulation Package
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI version](https://badge.fury.io/py/hyperbolic-optics.svg)](https://badge.fury.io/py/hyperbolic-optics)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Issues](https://img.shields.io/github/issues/MarkCunningham0410/hyperbolic_optics)](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
 
-This package provides a suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
+This package provides a comprehensive suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
 
 ---
 
@@ -13,7 +13,9 @@ This package provides a suite of tools to study the reflective properties of hyp
 
 - [Features](#features)
 - [Installation](#installation)
-- [Usage](#usage)
+- [Quick Start](#quick-start)
+- [Usage Examples](#usage-examples)
+- [Advanced Features](#advanced-features)
 - [Contributing](#contributing)
 - [Citation](#citation)
 - [Known Issues / Limitations](#known-issues--limitations)
@@ -25,183 +27,210 @@ This package provides a suite of tools to study the reflective properties of hyp
 
 ## Features
 
-- **Simulation of Reflective Properties:** Analyze how hyperbolic materials and anisotropic structures reflect light.
-- **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties.
-- **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately.
-- **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions.
-- **Visualization:** Basic plotting functionality for results analysis.
-- **Extensible Architecture:** Modular design that allows for future extensions (e.g., additional optical components, improved incident polarization handling).
+- **Simulation of Reflective Properties:** Analyze how hyperbolic materials and anisotropic structures reflect light
+- **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
+- **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
+- **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
+- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide, and magnetic materials (MnF₂, FeF₂)
+- **Arbitrary Material Support:** Define custom materials with arbitrary permittivity and permeability tensors
+- **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
+- **Visualization:** Publication-quality plotting functionality for results analysis
+- **Extensible Architecture:** Modular design for easy extension with new materials and optical components
 
 ---
 
 ## Installation
 
-Currently, this package is open-sourced on GitHub. While it’s not available on PyPI yet, you can install it directly from the repository.
+The package is now available on PyPI and can be installed using pip or uv:
 
-### Cloning the Repository
+### Using pip
+
+```bash
+pip install hyperbolic-optics
+```
+
+### Using uv (recommended for modern Python development)
+
+```bash
+uv add hyperbolic-optics
+```
+
+### Development Installation
+
+For development or to get the latest features:
 
 ```bash
 git clone https://github.com/MarkCunningham0410/hyperbolic_optics.git
 cd hyperbolic_optics
-```
-
-### Local Installation
-
-Create a virtual environment and install the package in editable mode:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-pip install --upgrade pip
 pip install -e .
 ```
 
-*TODO: In the future, instructions for installing via pip (e.g., from PyPI) will be provided.*
-
 ---
 
-## Usage
+## Quick Start
 
-Below is a brief example to get you started with the simulation package.
-
-### 1. Create a Payload
-
-Create a JSON payload that describes your multilayer structure:
-
-```python
-import json
-
-def mock_incident_payload():
-    payload = json.dumps({
-        "ScenarioData": {
-            "type": "Incident",
-        },
-        "Layers": [
-            {
-                "type": "Ambient Incident Layer",
-                "permittivity": 5.5
-            },
-            {
-                "type": "Isotropic Middle-Stack Layer",
-                "thickness": 1.5
-            },
-            {
-                "type": "Semi Infinite Anisotropic Layer",
-                "material": "Quartz",
-                "rotationX": 0,
-                "rotationY": 70,
-                "rotationZ": 45,
-            }
-        ],
-    })
-    return payload
-```
-
-### 2. Execute a Simulation
-
-In your main script, import the modules and run a simulation:
+Here's a simple example to get you started:
 
 ```python
 import json
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.mueller import Mueller
-from payloads import mock_incident_payload
-from hyperbolic_optics.plots import contour_plot_mueller_incidence
 
-def main():
-    payload = json.loads(mock_incident_payload())
-    
-    # Create the simulation structure
-    structure = Structure()
-    structure.execute(payload)
-    
-    # Process optical components using Mueller matrices
-    mueller = Mueller(structure)
-    mueller.set_incident_polarization('linear', angle=0)
-    mueller.add_optical_component(
-        'anisotropic_sample',
-        structure.r_pp,
-        structure.r_ps,
-        structure.r_sp,
-        structure.r_ss
-    )
-    
-    parameters = mueller.get_all_parameters()
-    reflectivity = mueller.get_stokes_parameters()['S0']
-    
-    # Plot the results (optional)
-    contour_plot_mueller_incidence(mueller)
-    
-if __name__ == "__main__":
-    main()
+# Define a simple multilayer structure
+payload = {
+    "ScenarioData": {
+        "type": "Simple",
+        "incidentAngle": 45.0,  # degrees
+        "azimuthal_angle": 0.0,  # degrees
+        "frequency": 1460.0      # cm^-1
+    },
+    "Layers": [
+        {
+            "type": "Ambient Incident Layer",
+            "permittivity": 50.0
+        },
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
+            "rotationX": 0,
+            "rotationY": 90,
+            "rotationZ": 0
+        }
+    ]
+}
+
+# Create and execute the simulation
+structure = Structure()
+structure.execute(payload)
+
+# Calculate reflectivities
+R_pp = abs(structure.r_pp)**2
+R_ss = abs(structure.r_ss)**2
+print(f"p-polarized reflectivity: {R_pp}")
+print(f"s-polarized reflectivity: {R_ss}")
+
+# Perform Mueller matrix analysis
+mueller = Mueller(structure)
+mueller.set_incident_polarization('linear', angle=45)
+mueller.add_optical_component('anisotropic_sample')
+
+# Get Stokes parameters and polarization properties
+all_params = mueller.get_all_parameters()
+print(f"Reflectance (S0): {all_params['S0']}")
+print(f"Degree of polarization: {all_params['DOP']}")
 ```
 
-*For more detailed examples and documentation, please refer to the [docs folder](docs/) (coming soon!).*
+---
+
+## Usage Examples
+
+The `examples/` folder contains simple scripts demonstrating various capabilities:
+
+- **`basic_calcite_example.py`** - Basic reflection calculation with Calcite
+- **`dispersion_plot_example.py`** - Generate k-space dispersion plots 
+- **`azimuthal_analysis_example.py`** - Azimuthal rotation analysis with custom materials
+- **`mueller_matrix_example.py`** - Complete Mueller matrix analysis workflow
+- **`arbitrary_material_example.py`** - Using custom materials with arbitrary tensor elements
+
+Run any example with:
+```bash
+python examples/basic_calcite_example.py
+```
+
+---
+
+## Advanced Features
+
+### Custom Materials
+
+Define materials with arbitrary permittivity and permeability tensors:
+
+```python
+custom_material = {
+    "eps_xx": {"real": 2.27, "imag": 0.001},
+    "eps_yy": {"real": -4.84, "imag": 0.755}, 
+    "eps_zz": {"real": -4.84, "imag": 0.755},
+    "eps_xy": {"real": 0.0, "imag": 0.0},
+    "eps_xz": {"real": 0.0, "imag": 0.0},
+    "eps_yz": {"real": 0.0, "imag": 0.0},
+    "mu_xx": {"real": 1.0, "imag": 0.0},  # Optional magnetic properties
+    "mu_yy": {"real": 1.0, "imag": 0.0},
+    "mu_zz": {"real": 1.0, "imag": 0.0}
+}
+```
+
+### Multiple Scenario Types
+
+- **Incident:** Frequency vs incident angle analysis
+- **Azimuthal:** Frequency vs azimuthal rotation analysis  
+- **Dispersion:** k-space dispersion at fixed frequency
+- **Simple:** Single-point calculation for specific conditions
+
+### Built-in Visualization
+
+```python
+from hyperbolic_optics.plots import plot_mueller_dispersion, plot_kx_frequency
+
+# Generate publication-quality plots
+plot_kx_frequency(structure, reflectivity, save_name="my_plot")
+```
 
 ---
 
 ## Contributing
 
-We welcome contributions to make this package even better. If you’d like to contribute, please follow these guidelines:
+We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for details on:
 
-1. **Fork the Repository:**  
-   Create your own fork and clone it locally.
-
-2. **Create a Feature Branch:**  
-   ```bash
-   git checkout -b feature/my-new-feature
-   ```
-
-3. **Commit Your Changes:**  
-   Follow best practices and include clear commit messages.
-
-4. **Submit a Pull Request:**  
-   Open a pull request on GitHub describing your changes and the motivation behind them.
-
-*For more details, see our [CONTRIBUTING.md](CONTRIBUTING.md) file (to be added).*
+- Reporting bugs and requesting features
+- Setting up a development environment
+- Code style and testing requirements
+- Submitting pull requests
 
 ---
 
 ## Citation
 
-If you use this package in your research, please consider citing it as follows:
+If you use this package in your research, please cite:
 
+### Software Citation
 ```bibtex
-@misc{cunningham2025hyperbolic,
+@software{cunningham2025hyperbolic,
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
   year={2025},
-  howpublished={\url{https://github.com/MarkCunningham0410/hyperbolic_optics}},
+  version={0.1.2},
+  doi={10.5281/zenodo.14946556},
+  url={https://github.com/MarkCunningham0410/hyperbolic_optics},
+  note={Available on PyPI as hyperbolic-optics}
 }
 ```
+
+### Related Publications
+This package was used to generate results in:
+
+**M. Cunningham**, "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research*, vol. 13, no. 8, pp. 2291-2305 (2025). DOI: [10.1364/PRJ.558334](https://doi.org/10.1364/PRJ.558334)
 
 ---
 
 ## Known Issues / Limitations
 
-- **Transmission Coefficients:** Currently, transmission coefficients are not fully supported.
-- **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn’t yet implemented.
-- **Testing:** Unit tests and further best practices are still in development.
+- **Transmission Coefficients:** Currently, transmission coefficients are not fully supported
+- **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn't yet implemented
+- **Testing:** Unit tests and further best practices are still in development
 
-*Please feel free to open an issue if you encounter any bugs or have suggestions for improvements.*
+*Please open an [issue](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) if you encounter any bugs or have suggestions for improvements.*
 
 ---
 
 ## Papers & Further Reading
 
-This repository was used to create the results shown in my first pre-print: https://arxiv.org/abs/2501.18354
+For background on the physics and mathematical methods, see:
 
-For background and further details on the underlying physics and methods, consider these resources:
-
-- N. C. Passler and A. Paarmann, ‘Generalized 4 × 4 matrix formalism for light propagation in anisotropic stratified media: study of surface phonon polaritons in polar dielectric heterostructures’, J. Opt. Soc. Am. B, JOSAB, vol. 34, no. 10, pp. 2128–2139, Oct. 2017, doi: 10.1364/JOSAB.34.002128.
-- P. Yeh, ‘Electromagnetic propagation in birefringent layered media’, J. Opt. Soc. Am., JOSA, vol. 69, no. 5, pp. 742–756, May 1979, doi: 10.1364/JOSA.69.000742.
-- N. C. Passler, X. Ni, G. Carini, D. N. Chigrin, A. Alù, and A. Paarmann, ‘Layer-resolved resonance intensity of evanescent polariton modes in anisotropic multilayers’, Phys. Rev. B, vol. 107, no. 23, p. 235426, Jun. 2023, doi: 10.1103/PhysRevB.107.235426.
-- N. C. Passler, M. Jeannin, and A. Paarmann, ‘Layer-resolved absorption of light in arbitrarily anisotropic heterostructures’, Phys. Rev. B, vol. 101, no. 16, p. 165425, Apr. 2020, doi: 10.1103/PhysRevB.101.165425.
-- N. Hale, I. Simonsen, C. Brüne, and M. Kildemo, ‘Use of 4x4 transfer matrix method in the study of surface magnon polaritons via simulated attenuated total reflection measurements on the antiferromagnetic semiconductor MnF2’, Phys. Rev. B, vol. 105, no. 10, p. 104421, Mar. 2022, doi: 10.1103/PhysRevB.105.104421.
-
-
-
-
+**Key References:**
+- N. C. Passler and A. Paarmann, "Generalized 4 × 4 matrix formalism for light propagation in anisotropic stratified media," *J. Opt. Soc. Am. B* **34**, 2128-2139 (2017)
+- P. Yeh, "Electromagnetic propagation in birefringent layered media," *J. Opt. Soc. Am.* **69**, 742-756 (1979)
+- N. C. Passler et al., "Layer-resolved resonance intensity of evanescent polariton modes in anisotropic multilayers," *Phys. Rev. B* **107**, 235426 (2023)
+- M. Cunningham, "Optical footprint of ghost and leaky hyperbolic polaritons," *Photonics Research* **13**, 2291-2305 (2025)
 
 ---
 
@@ -213,12 +242,12 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 ## Getting Help
 
-If you have any questions or need help, please open an issue in the [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) section or contact the maintainers.
+- **Documentation:** Check the [examples/](examples/) folder and docstrings
+- **Issues:** Report bugs or request features via [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+- **Discussions:** Start a discussion for usage questions or feature ideas
 
 ---
 
-Thank you for your interest in the Hyperbolic Optics Simulation Package. Contributions, suggestions, and feedback are always welcome!
+**Thank you for your interest in the Hyperbolic Optics Simulation Package!** 
 
----
-
-*Happy simulating!*
+*Happy simulating! 🔬✨*
