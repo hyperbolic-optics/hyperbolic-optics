@@ -6,9 +6,7 @@ This script demonstrates how to generate k-space dispersion plots (kx vs ky)
 showing the reflectivity in momentum space for a Calcite crystal.
 """
 
-import json
 import numpy as np
-import os
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.plots import plot_mueller_dispersion
 
@@ -36,7 +34,7 @@ def main():
                 "type": "Semi Infinite Anisotropic Layer",
                 "material": "Calcite",
                 "rotationX": 0,
-                "rotationY": 90,  # Optical axis tilt
+                "rotationY": 70,  # Optical axis tilt
                 "rotationZ": 0
             }
         ]
@@ -50,12 +48,12 @@ def main():
     R_total = abs(structure.r_pp)**2 + abs(structure.r_ps)**2
     
     # Generate the plot using your existing plotting function
-    print("Generating k-space plot...")
+
     plot_mueller_dispersion(
         structure, 
         R_total,
-        title="Calcite k-space Reflectivity",
-        rotation_y=90,
+        title="The Hyperbolic Ghost Polariton",
+        rotation_y=70,
     )
 
 if __name__ == "__main__": 

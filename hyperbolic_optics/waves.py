@@ -353,7 +353,7 @@ class Wave:
         def sort_vector(waves):
             """Sort the wavevectors based on their real and imaginary parts."""
 
-            is_complex = tf.math.abs(tf.math.imag(waves)) > 0
+            is_complex = tf.math.abs(tf.math.imag(waves)) > 1e-9
             idx_real = tf.argsort(tf.math.real(waves), axis=-1, direction="DESCENDING")
             idx_imag = tf.argsort(tf.math.imag(waves), axis=-1, direction="DESCENDING")
             indices = tf.where(is_complex, idx_imag, idx_real)

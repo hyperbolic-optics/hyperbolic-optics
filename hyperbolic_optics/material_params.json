@@ -117,6 +117,27 @@
             }
         }
     },
+    "magnetic_materials": {
+        "fef2": {
+            "name": "FeF2",
+            "frequency_range": {
+                "default_min": 52.0,
+                "default_max": 54.0
+            },
+            "parameters": {
+                "gamma": 1.05,
+                "B0": 0.3,
+                "Ba": 19.745,
+                "Be": 53.313,
+                "magnetisation": 445633.84,
+                "damping_multiplier": 1.0e-4,
+                "permittivity": {
+                    "real": 5.5,
+                    "imag": 0.0
+                }
+            }
+        }
+    },  
     "arbitrary_materials": {
         "default": {
             "eps_xx": 1.0,
