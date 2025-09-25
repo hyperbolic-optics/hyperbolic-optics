@@ -18,8 +18,8 @@ keywords:
   - "hyperbolic"
   - "mueller matrix"
 license: MIT
-version: "0.1.4"  # This will be auto-updated by GitHub Action
-date-released: "2025-09-22"
+version: "0.1.6"  # This will be auto-updated by GitHub Action
+date-released: "2025-09-25"
 doi: "10.5281/zenodo.14946556"
 preferred-citation:
   type: article
