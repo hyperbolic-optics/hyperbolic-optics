@@ -31,7 +31,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 - **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
 - **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
 - **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
-- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide, and magnetic materials (MnF₂, FeF₂)
+- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide
 - **Arbitrary Material Support:** Define custom materials with arbitrary permittivity and permeability tensors
 - **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
 - **Visualization:** Publication-quality plotting functionality for results analysis
@@ -124,13 +124,7 @@ print(f"Degree of polarization: {all_params['DOP']}")
 
 ## Usage Examples
 
-The `examples/` folder contains simple scripts demonstrating various capabilities:
-
-- **`basic_calcite_example.py`** - Basic reflection calculation with Calcite
-- **`dispersion_plot_example.py`** - Generate k-space dispersion plots 
-- **`azimuthal_analysis_example.py`** - Azimuthal rotation analysis with custom materials
-- **`mueller_matrix_example.py`** - Complete Mueller matrix analysis workflow
-- **`arbitrary_material_example.py`** - Using custom materials with arbitrary tensor elements
+The `examples/` folder contains simple scripts demonstrating various capabilities.
 
 Run any example with:
 ```bash
@@ -153,9 +147,6 @@ custom_material = {
     "eps_xy": {"real": 0.0, "imag": 0.0},
     "eps_xz": {"real": 0.0, "imag": 0.0},
     "eps_yz": {"real": 0.0, "imag": 0.0},
-    "mu_xx": {"real": 1.0, "imag": 0.0},  # Optional magnetic properties
-    "mu_yy": {"real": 1.0, "imag": 0.0},
-    "mu_zz": {"real": 1.0, "imag": 0.0}
 }
 ```
 
