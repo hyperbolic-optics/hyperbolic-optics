@@ -14,8 +14,6 @@ from hyperbolic_optics.materials import (
     CalciteLower,
     GalliumOxide,
     ArbitraryMaterial,
-    MnF2,        # NEW
-    FeF2,        # NEW
 )
 from hyperbolic_optics.waves import Wave
 from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
@@ -255,10 +253,6 @@ class Layer(ABC):
             self.material = CalciteLower()
         elif self.material == "GalliumOxide":
             self.material = GalliumOxide()
-        elif self.material == "MnF2":        # NEW
-            self.material = MnF2()           # NEW
-        elif self.material == "FeF2":        # NEW
-            self.material = FeF2()           # NEW
         else:
             raise NotImplementedError(f"Material {self.material} not implemented")
 
