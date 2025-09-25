@@ -32,7 +32,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 - **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
 - **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
 - **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide
-- **Arbitrary Material Support:** Define custom materials with arbitrary permittivity and permeability tensors
+- **Arbitrary Material Support:** Define custom materials with arbitrary permittivity tensor
 - **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
 - **Visualization:** Publication-quality plotting functionality for results analysis
 - **Extensible Architecture:** Modular design for easy extension with new materials and optical components
