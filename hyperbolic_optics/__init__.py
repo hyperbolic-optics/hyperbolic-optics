@@ -22,4 +22,4 @@ try:
 except ImportError:
     pass  # TensorFlow not installed
 
-__version__ = "0.1.6"
+__version__ = "0.1.8"
