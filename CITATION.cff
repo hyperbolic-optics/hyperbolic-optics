@@ -20,18 +20,18 @@ keywords:
 license: MIT
 version: "0.1.8"  # This will be auto-updated by GitHub Action
 date-released: "2025-09-25"
-doi: "10.5281/zenodo.14946556"
-preferred-citation:
-  type: article
-  title: "Optical footprint of ghost and leaky hyperbolic polaritons"
-  authors:
-    - family-names: "Cunningham"
-      given-names: "Mark"
-      orcid: "https://orcid.org/0000-0003-0163-3320"
-  journal: "Photonics Research"
-  volume: 13
-  issue: 8
-  start: 2291
-  end: 2305
-  year: 2025
-  doi: "10.1364/PRJ.558334"
+doi: "10.5281/zenodo.14946555"
+references:
+  - type: article
+    title: "Optical footprint of ghost and leaky hyperbolic polaritons"
+    authors:
+      - family-names: "Cunningham"
+        given-names: "Mark"
+        orcid: "https://orcid.org/0000-0003-0163-3320"
+    journal: "Photonics Research"
+    volume: 13
+    issue: 8
+    start: 2291
+    end: 2305
+    year: 2025
+    doi: "10.1364/PRJ.558334"
