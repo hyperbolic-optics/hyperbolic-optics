@@ -1,9 +1,6 @@
 import tensorflow as tf
 
-from hyperbolic_optics.device_config import run_on_device
 
-
-@run_on_device
 def anisotropy_rotation_one_value(matrix, theta, phi, beta):
 
     cos_theta = tf.math.cos(theta)
@@ -52,7 +49,6 @@ def anisotropy_rotation_one_value(matrix, theta, phi, beta):
     return result
 
 
-@run_on_device
 def anisotropy_rotation_one_axis(matrix, theta, phi, beta):
     cos_theta = tf.math.cos(theta)
     sin_theta = tf.math.sin(theta)
