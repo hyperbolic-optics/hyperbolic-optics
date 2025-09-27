@@ -1,0 +1,39 @@
+name: workflow.yml
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  testing-suite:
+    name: test, lint, type check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-verion }}
+      - name: set up environment
+        run: >-
+          pip install -e .[dev]
+      - name: Test with pytest
+        run: >-
+          pytest --cov
+      - name: Run black check
+        run: >-
+          black --check --diff .
+      - name: Run flake8 check
+        run: >-
+          flake8 .
+      - name: Type check with mypy
+        run: >-
+          mypy hyperbolic_optics/
