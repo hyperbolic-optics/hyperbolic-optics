@@ -4,7 +4,7 @@ This module provides material classes for various crystal types:
 
 Uniaxial materials (single optical axis):
 - Quartz (α-SiO₂)
-- Sapphire (α-Al₂O₃)  
+- Sapphire (α-Al₂O₃)
 - Calcite (CaCO₃) - upper and lower reststrahlen bands
 
 Monoclinic materials (non-zero off-diagonal components):
@@ -22,18 +22,18 @@ oscillator models with parameters loaded from material_params.json.
 
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-from typing import Any
 
 
 def load_material_parameters() -> dict[str, Any]:
     """Load material parameters from JSON configuration file.
-    
+
     Returns:
         Dictionary containing all material parameters organized by material type
         (uniaxial, monoclinic, arbitrary, isotropic)
-        
+
     Note:
         The configuration file is located at hyperbolic_optics/material_params.json
     """
@@ -47,7 +47,7 @@ class BaseMaterial:
 
     def __init__(self, frequency_length: int = 410) -> None:
         """Initialize base material with frequency array length.
-        
+
         Args:
             frequency_length: Number of frequency points for dispersion calculations
         """
@@ -57,18 +57,15 @@ class BaseMaterial:
         self.mu_r = 1.0  # Default magnetic permeability
 
     def _initialize_frequency_range(
-        self, 
-        params: dict[str, Any], 
-        freq_min: float | None = None, 
-        freq_max: float | None = None
+        self, params: dict[str, Any], freq_min: float | None = None, freq_max: float | None = None
     ) -> None:
         """Initialize frequency range from parameters or defaults.
-        
+
         Args:
             params: Material parameters dictionary containing frequency_range
             freq_min: Override minimum frequency in cm⁻¹
             freq_max: Override maximum frequency in cm⁻¹
-            
+
         Note:
             If freq_min/freq_max are not provided, uses default values from
             the material parameters.
@@ -86,13 +83,13 @@ class BaseMaterial:
 
     def _create_isotropic_mu_tensor_like(self, eps_tensor: np.ndarray) -> np.ndarray:
         """Create isotropic magnetic permeability tensor matching ε tensor shape.
-        
+
         Args:
             eps_tensor: Permittivity tensor to match shape
-            
+
         Returns:
             Magnetic permeability tensor with μ = μᵣ·I where I is identity matrix
-            
+
         Note:
             Default behavior is non-magnetic (μᵣ = 1), but can be overridden
             by setting self.mu_r in subclasses.
@@ -117,10 +114,10 @@ class BaseMaterial:
 
     def fetch_magnetic_tensor(self) -> np.ndarray:
         """Fetch magnetic permeability tensor for full frequency range.
-        
+
         Returns:
             Complex magnetic permeability tensor with shape matching permittivity
-            
+
         Note:
             Default implementation returns isotropic tensor. Override in subclasses
             for magnetic materials.
@@ -130,10 +127,10 @@ class BaseMaterial:
 
     def fetch_magnetic_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Fetch magnetic permeability tensor for specific frequency.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹
-            
+
         Returns:
             Complex magnetic permeability tensor at the requested frequency
         """
@@ -151,10 +148,10 @@ class UniaxialMaterial(BaseMaterial):
         omega_tn: np.ndarray,
         gamma_tn: np.ndarray,
         omega_ln: np.ndarray,
-        gamma_ln: np.ndarray
+        gamma_ln: np.ndarray,
     ) -> complex:
         """Calculate permittivity at a single frequency using Lorentz oscillator model.
-        
+
         Args:
             frequency: Frequency in cm⁻¹
             high_freq: High-frequency dielectric constant (ε∞)
@@ -162,10 +159,10 @@ class UniaxialMaterial(BaseMaterial):
             gamma_tn: Transverse phonon damping constants
             omega_ln: Longitudinal optical phonon frequencies
             gamma_ln: Longitudinal phonon damping constants
-            
+
         Returns:
             Complex permittivity at the specified frequency
-            
+
         Note:
             Uses the factorized form: ε(ω) = ε∞ ∏ᵢ (ωₗᵢ² - ω² - iωγₗᵢ)/(ωₜᵢ² - ω² - iωγₜᵢ)
         """
@@ -195,17 +192,17 @@ class UniaxialMaterial(BaseMaterial):
         omega_tn: np.ndarray,
         gamma_tn: np.ndarray,
         omega_ln: np.ndarray,
-        gamma_ln: np.ndarray
+        gamma_ln: np.ndarray,
     ) -> np.ndarray:
         """Calculate permittivity over full frequency range.
-        
+
         Args:
             high_freq: High-frequency dielectric constant
             omega_tn: Transverse optical phonon frequencies
             gamma_tn: Transverse phonon damping constants
             omega_ln: Longitudinal optical phonon frequencies
             gamma_ln: Longitudinal phonon damping constants
-            
+
         Returns:
             Complex permittivity array over all frequencies
         """
@@ -229,19 +226,17 @@ class UniaxialMaterial(BaseMaterial):
         return high_freq * np.prod(result, axis=0)
 
     def _create_permittivity_tensor(
-        self, 
-        eps_ext: complex | np.ndarray, 
-        eps_ord: complex | np.ndarray
+        self, eps_ext: complex | np.ndarray, eps_ord: complex | np.ndarray
     ) -> np.ndarray:
         """Create diagonal permittivity tensor from extraordinary and ordinary values.
-        
+
         Args:
             eps_ext: Extraordinary (parallel to optical axis) permittivity
             eps_ord: Ordinary (perpendicular to optical axis) permittivity
-            
+
         Returns:
             Diagonal tensor with [eps_ord, eps_ord, eps_ext] on diagonal
-            
+
         Note:
             For uniaxial materials, two components are equal (ordinary) and one
             is different (extraordinary).
@@ -260,7 +255,7 @@ class UniaxialMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor(self) -> np.ndarray:
         """Fetch full permittivity tensor for all frequencies.
-        
+
         Returns:
             Permittivity tensor with shape [N, 3, 3] where N is number of frequencies
         """
@@ -269,10 +264,10 @@ class UniaxialMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Fetch permittivity tensor at specific frequency.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹
-            
+
         Returns:
             Permittivity tensor with shape [3, 3]
         """
@@ -283,7 +278,7 @@ class UniaxialMaterial(BaseMaterial):
 
     def permittivity_fetch(self) -> tuple[np.ndarray, np.ndarray]:
         """Fetch extraordinary and ordinary permittivity values.
-        
+
         Returns:
             Tuple of (eps_extraordinary, eps_ordinary) arrays
         """
@@ -297,14 +292,14 @@ class ParameterizedUniaxialMaterial(UniaxialMaterial):
     """Base class for uniaxial materials with parameters from configuration."""
 
     def __init__(
-        self, 
-        material_type: str, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self,
+        material_type: str,
+        freq_min: float | None = None,
+        freq_max: float | None = None,
+        mu_r: float = 1.0,
     ) -> None:
         """Initialize uniaxial material from parameter configuration.
-        
+
         Args:
             material_type: Material identifier in configuration ('quartz', 'sapphire', etc.)
             freq_min: Override minimum frequency in cm⁻¹
@@ -324,7 +319,7 @@ class ParameterizedUniaxialMaterial(UniaxialMaterial):
 
     def permittivity_parameters(self) -> dict[str, dict[str, np.ndarray]]:
         """Get permittivity parameters from JSON configuration.
-        
+
         Returns:
             Dictionary containing ordinary and extraordinary axis parameters
         """
@@ -341,18 +336,15 @@ class Quartz(ParameterizedUniaxialMaterial):
 
     # Quartz
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         """Initialize Quartz (α-SiO₂) material.
-        
+
         Args:
             freq_min: Override minimum frequency (default: 410 cm⁻¹)
             freq_max: Override maximum frequency (default: 600 cm⁻¹)
             mu_r: Relative magnetic permeability (default: 1.0)
-            
+
         Note:
             Quartz is a uniaxial positive crystal supporting hyperbolic phonon
             polaritons in the far-infrared.
@@ -364,18 +356,15 @@ class Sapphire(ParameterizedUniaxialMaterial):
     """Sapphire material implementation."""
 
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         """Initialize Sapphire (α-Al₂O₃) material.
-        
+
         Args:
             freq_min: Override minimum frequency (default: 210 cm⁻¹)
             freq_max: Override maximum frequency (default: 1000 cm⁻¹)
             mu_r: Relative magnetic permeability (default: 1.0)
-            
+
         Note:
             Sapphire is a uniaxial crystal with hyperbolic
             dispersion.
@@ -387,23 +376,23 @@ class Calcite(ParameterizedUniaxialMaterial):
     """Calcite material implementation."""
 
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        variant: str | None = None, 
-        mu_r: float = 1.0
+        self,
+        freq_min: float | None = None,
+        freq_max: float | None = None,
+        variant: str | None = None,
+        mu_r: float = 1.0,
     ) -> None:
         """Initialize Calcite (CaCO₃) material with specified reststrahlen band.
-        
+
         Args:
             freq_min: Override minimum frequency
             freq_max: Override maximum frequency
             variant: 'lower' for 860-920 cm⁻¹ or 'upper' for 1300-1600 cm⁻¹
             mu_r: Relative magnetic permeability (default: 1.0)
-            
+
         Raises:
             ValueError: If variant is not 'lower' or 'upper'
-            
+
         Note:
             Calcite must be instantiated through CalciteLower or CalciteUpper
             subclasses rather than directly.
@@ -428,13 +417,10 @@ class CalciteLower(Calcite):
     """Lower frequency range Calcite implementation."""
 
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         """Initialize Calcite lower reststrahlen band (860-920 cm⁻¹).
-        
+
         Args:
             freq_min: Override minimum frequency
             freq_max: Override maximum frequency
@@ -447,18 +433,15 @@ class CalciteUpper(Calcite):
     """Upper frequency range Calcite implementation."""
 
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         """Initialize Calcite upper reststrahlen band (1300-1600 cm⁻¹).
-        
+
         Args:
             freq_min: Override minimum frequency
             freq_max: Override maximum frequency
             mu_r: Relative magnetic permeability (default: 1.0)
-            
+
         Note:
             The upper band exhibits type-II hyperbolic dispersion (ε_∥ < 0, ε_⊥ > 0).
         """
@@ -469,19 +452,17 @@ class MonoclinicMaterial(BaseMaterial):
     """Base class for monoclinic materials with more complex permittivity tensors."""
 
     def _calculate_bu_components(
-        self, 
-        parameters: dict[str, Any], 
-        frequency: np.ndarray
+        self, parameters: dict[str, Any], frequency: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate Bu symmetry mode contributions to permittivity.
-        
+
         Args:
             parameters: Material parameters including Bu mode data
             frequency: Frequency array in cm⁻¹
-            
+
         Returns:
             Tuple of (eps_xx_bu, eps_xy_bu, eps_yy_bu) contributions
-            
+
         Note:
             Bu modes couple x and y components, creating off-diagonal permittivity
             elements characteristic of monoclinic crystals.
@@ -503,19 +484,17 @@ class MonoclinicMaterial(BaseMaterial):
         return eps_xx_bu, eps_xy_bu, eps_yy_bu
 
     def _calculate_au_component(
-        self, 
-        parameters: dict[str, Any], 
-        frequency: np.ndarray
+        self, parameters: dict[str, Any], frequency: np.ndarray
     ) -> np.ndarray:
         """Calculate Au symmetry mode contribution to zz permittivity component.
-        
+
         Args:
             parameters: Material parameters including Au mode data
             frequency: Frequency array in cm⁻¹
-            
+
         Returns:
             eps_zz contribution from Au modes
-            
+
         Note:
             Au modes affect only the zz component and are decoupled from
             in-plane components.
@@ -532,18 +511,15 @@ class GalliumOxide(MonoclinicMaterial):
     """Gallium Oxide implementation."""
 
     def __init__(
-        self, 
-        freq_min: float | None = None, 
-        freq_max: float | None = None, 
-        mu_r: float = 1.0
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         """Initialize β-Ga₂O₃ (monoclinic) material.
-        
+
         Args:
             freq_min: Override minimum frequency (default: 350 cm⁻¹)
             freq_max: Override maximum frequency (default: 800 cm⁻¹)
             mu_r: Relative magnetic permeability (default: 1.0)
-            
+
         Note:
             Gallium oxide is a monoclinic crystal with non-zero ε_xy coupling,
             supporting hyperbolic polaritons with in-plane anisotropy.
@@ -556,7 +532,7 @@ class GalliumOxide(MonoclinicMaterial):
 
     def permittivity_parameters(self) -> dict[str, dict[str, Any]]:
         """Get Gallium Oxide symmetry mode parameters.
-        
+
         Returns:
             Dictionary with 'Au' and 'Bu' mode parameters including oscillator
             strengths, frequencies, dampings, and orientation angles
@@ -576,23 +552,19 @@ class GalliumOxide(MonoclinicMaterial):
         return result
 
     def _create_permittivity_tensor(
-        self, 
-        eps_xx: np.ndarray, 
-        eps_yy: np.ndarray, 
-        eps_zz: np.ndarray, 
-        eps_xy: np.ndarray
+        self, eps_xx: np.ndarray, eps_yy: np.ndarray, eps_zz: np.ndarray, eps_xy: np.ndarray
     ) -> np.ndarray:
         """Create full permittivity tensor with off-diagonal coupling.
-        
+
         Args:
             eps_xx: xx component
             eps_yy: yy component
             eps_zz: zz component
             eps_xy: xy coupling component
-            
+
         Returns:
             Full 3×3 permittivity tensor with monoclinic symmetry
-            
+
         Note:
             The tensor has the form:
             [eps_xx  eps_xy    0   ]
@@ -613,7 +585,7 @@ class GalliumOxide(MonoclinicMaterial):
 
     def permittivity_calc(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Calculate all permittivity tensor components over frequency range.
-        
+
         Returns:
             Tuple of (eps_xx, eps_yy, eps_zz, eps_xy) arrays
         """
@@ -632,7 +604,7 @@ class GalliumOxide(MonoclinicMaterial):
 
     def fetch_permittivity_tensor(self) -> np.ndarray:
         """Fetch full permittivity tensor for all frequencies.
-        
+
         Returns:
             Permittivity tensor with shape [N, 3, 3]
         """
@@ -641,10 +613,10 @@ class GalliumOxide(MonoclinicMaterial):
 
     def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Fetch permittivity tensor at specific frequency.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹
-            
+
         Returns:
             Permittivity tensor with shape [3, 3]
         """
@@ -667,11 +639,11 @@ class ArbitraryMaterial(BaseMaterial):
 
     def __init__(self, material_data: dict[str, Any] | None = None) -> None:
         """Initialize material with arbitrary permittivity and permeability tensors.
-        
+
         Args:
             material_data: Dictionary with tensor components (eps_xx, eps_yy, etc.)
                         If None, uses default identity-like values
-            
+
         Example:
             >>> mat_data = {
             ...     "eps_xx": {"real": 2.5, "imag": 0.1},
@@ -691,13 +663,13 @@ class ArbitraryMaterial(BaseMaterial):
 
     def _to_complex(self, value: Any) -> complex:
         """Convert various input formats to complex numbers.
-        
+
         Args:
             value: Input value (dict, string, number, or None)
-            
+
         Returns:
             Complex number representation
-            
+
         Note:
             Handles dict with 'real'/'imag' keys, string representations,
             and numeric values.
@@ -715,10 +687,10 @@ class ArbitraryMaterial(BaseMaterial):
 
     def _init_tensor_components(self, material_data: dict[str, Any]) -> None:
         """Initialize permittivity and permeability tensor components.
-        
+
         Args:
             material_data: Dictionary with component values
-            
+
         Note:
             Sets attributes for eps_xx, eps_yy, eps_zz, eps_xy, eps_xz, eps_yz
             and corresponding mu components. Missing values default to
@@ -757,7 +729,7 @@ class ArbitraryMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor(self) -> np.ndarray:
         """Construct full permittivity tensor from components.
-        
+
         Returns:
             3×3 complex permittivity tensor
         """
@@ -770,13 +742,13 @@ class ArbitraryMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Return frequency-independent permittivity tensor.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹ (ignored)
-            
+
         Returns:
             3×3 complex permittivity tensor
-            
+
         Note:
             Arbitrary materials are frequency-independent by definition.
         """
@@ -784,7 +756,7 @@ class ArbitraryMaterial(BaseMaterial):
 
     def fetch_magnetic_tensor(self) -> np.ndarray:
         """Construct full magnetic permeability tensor from components.
-        
+
         Returns:
             3×3 complex permeability tensor
         """
@@ -797,13 +769,13 @@ class ArbitraryMaterial(BaseMaterial):
 
     def fetch_magnetic_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Return frequency-independent magnetic tensor.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹ (ignored)
-            
+
         Returns:
             3×3 complex permeability tensor
-            
+
         Note:
             Arbitrary materials are frequency-independent by definition.
         """
@@ -814,16 +786,16 @@ class IsotropicMaterial(BaseMaterial):
     """Base class for isotropic materials like air."""
 
     def __init__(
-        self, 
+        self,
         permittivity: float | complex | dict[str, float] | None = None,
-        permeability: float | complex | dict[str, float] | None = None
+        permeability: float | complex | dict[str, float] | None = None,
     ) -> None:
         """Initialize isotropic material with scalar permittivity and permeability.
-        
+
         Args:
             permittivity: Relative permittivity (scalar or dict with 'real'/'imag')
             permeability: Relative permeability (scalar or dict with 'real'/'imag')
-            
+
         Note:
             For isotropic materials, all diagonal tensor components are equal
             and off-diagonal components are zero.
@@ -837,17 +809,16 @@ class IsotropicMaterial(BaseMaterial):
         )
 
     def _process_permittivity(
-        self, 
-        permittivity: float | complex | dict[str, float] | None
+        self, permittivity: float | complex | dict[str, float] | None
     ) -> complex:
         """Convert permittivity input to complex number.
-        
+
         Args:
             permittivity: Input in various formats
-            
+
         Returns:
             Complex permittivity value
-            
+
         Note:
             Handles None (defaults to 1.0), scalars, and dicts with 'real'/'imag'.
         """
@@ -862,7 +833,7 @@ class IsotropicMaterial(BaseMaterial):
 
     def construct_tensor_singular(self) -> np.ndarray:
         """Create diagonal tensor with scalar permittivity value.
-        
+
         Returns:
             3×3 diagonal tensor with permittivity on diagonal
         """
@@ -877,7 +848,7 @@ class IsotropicMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor(self) -> np.ndarray:
         """Get permittivity tensor for isotropic material.
-        
+
         Returns:
             3×3 diagonal permittivity tensor
         """
@@ -885,10 +856,10 @@ class IsotropicMaterial(BaseMaterial):
 
     def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Get frequency-independent permittivity tensor.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹ (ignored)
-            
+
         Returns:
             3×3 diagonal permittivity tensor
         """
@@ -896,7 +867,7 @@ class IsotropicMaterial(BaseMaterial):
 
     def fetch_magnetic_tensor(self) -> np.ndarray:
         """Get magnetic permeability tensor for isotropic material.
-        
+
         Returns:
             3×3 diagonal permeability tensor
         """
@@ -911,10 +882,10 @@ class IsotropicMaterial(BaseMaterial):
 
     def fetch_magnetic_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
         """Get frequency-independent magnetic tensor.
-        
+
         Args:
             requested_frequency: Frequency in cm⁻¹ (ignored)
-            
+
         Returns:
             3×3 diagonal permeability tensor
         """
@@ -927,14 +898,14 @@ class Air(IsotropicMaterial):
     def __init__(
         self,
         permittivity: float | complex | dict[str, float] | None = None,
-        permeability: float | complex | dict[str, float] | None = None
+        permeability: float | complex | dict[str, float] | None = None,
     ) -> None:
         """Initialize Air material (vacuum approximation).
-        
+
         Args:
             permittivity: Relative permittivity (default: 1.0 from config)
             permeability: Relative permeability (default: 1.0)
-            
+
         Note:
             Air is treated as an isotropic, non-dispersive material with
             ε ≈ 1.0 and μ ≈ 1.0 across all frequencies.

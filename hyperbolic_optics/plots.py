@@ -12,14 +12,11 @@ All plots use consistent styling for publication-ready figures with
 proper axis labels, colorbars, and typography.
 """
 
-
 import warnings
 from pathlib import Path
-from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from materials import BaseMaterial
 from structure import Structure
 
@@ -46,7 +43,7 @@ class PlotStyle:
     @staticmethod
     def initialize() -> None:
         """Initialize global matplotlib parameters for consistent plotting style.
-        
+
         Sets font family, sizes, tick parameters, and math text rendering
         for publication-quality plots.
         """
@@ -68,11 +65,11 @@ class PlotStyle:
     @staticmethod
     def style_axis(ax: plt.Axes, show_labels: bool = True) -> None:
         """Apply consistent styling to matplotlib axis.
-        
+
         Args:
             ax: Matplotlib axes object to style
             show_labels: Whether to show axis labels
-            
+
         Note:
             Sets tick width, length, direction, and padding.
         """
@@ -85,19 +82,16 @@ class PlotStyle:
 
 
 def plot_permittivity(
-    material: BaseMaterial,
-    eps_ext: np.ndarray,
-    eps_ord: np.ndarray,
-    save_name: str | None = None
+    material: BaseMaterial, eps_ext: np.ndarray, eps_ord: np.ndarray, save_name: str | None = None
 ) -> None:
     """Plot real and imaginary parts of permittivity spectra.
-    
+
     Args:
         material: Material object containing frequency array
         eps_ext: Extraordinary permittivity (parallel to optical axis)
         eps_ord: Ordinary permittivity (perpendicular to optical axis)
         save_name: Optional filename for saving (without extension)
-        
+
     Note:
         Creates two-panel plot with Re(ε) and Im(ε) vs frequency.
     """
@@ -156,17 +150,17 @@ def plot_mueller_azimuthal(
     param: np.ndarray,
     title: str | None = None,
     save_name: str | None = None,
-    label: str = "a"
+    label: str = "a",
 ) -> None:
     """Plot frequency vs azimuthal angle with publication styling.
-    
+
     Args:
         structure: Structure object with azimuthal_angle and frequency arrays
         param: 2D parameter array to plot (typically reflectivity) [410, 360]
         title: Optional plot title
         save_name: Optional filename for saving (without extension)
         label: Subplot label (e.g., 'a', 'b')
-        
+
     Note:
         Creates color plot with frequency on y-axis and azimuthal angle
         (β) on x-axis, suitable for studying rotational anisotropy.
@@ -266,10 +260,10 @@ def plot_mueller_azimuthal_pair(
     param2: np.ndarray,
     title1: str | None = None,
     title2: str | None = None,
-    save_name: str | None = None
+    save_name: str | None = None,
 ) -> None:
     """Plot two azimuthal plots side-by-side for comparison.
-    
+
     Args:
         structure: Structure object with angle and frequency data
         param1: First parameter array [410, 360]
@@ -277,7 +271,7 @@ def plot_mueller_azimuthal_pair(
         title1: Title for left panel
         title2: Title for right panel
         save_name: Optional filename for saving
-        
+
     Note:
         Useful for comparing different polarizations or materials.
     """
@@ -384,16 +378,16 @@ def plot_stokes_parameters(
     structure: Structure,
     params: dict[str, np.ndarray],
     plot_type: str = "incidence",
-    save_name: str | None = None
+    save_name: str | None = None,
 ) -> None:
     """Plot all Stokes parameters and DOP in 2×3 grid.
-    
+
     Args:
         structure: Structure object with angle and frequency arrays
         params: Dictionary with S0, S1, S2, S3, DOP, Ellipticity keys
         plot_type: 'incidence' or 'azimuthal' to determine x-axis
         save_name: Optional filename for saving
-        
+
     Note:
         Creates comprehensive visualization of complete polarization state
         across parameter space.
@@ -448,10 +442,10 @@ def plot_kx_frequency(
     title: str | None = None,
     rotation_y: float | None = None,
     save_name: str | None = None,
-    label: str = "a"
+    label: str = "a",
 ) -> None:
     """Plot frequency vs parallel wavevector (kx) dispersion diagram.
-    
+
     Args:
         structure: Structure object with incident_angle, frequency, eps_prism
         param: 2D parameter array [410, 360]
@@ -459,7 +453,7 @@ def plot_kx_frequency(
         rotation_y: Optional rotation angle to display in plot
         save_name: Optional filename for saving
         label: Subplot label
-        
+
     Note:
         Shows polariton dispersion with kx/k0 on x-axis and frequency on
         y-axis. Useful for identifying resonance branches.
@@ -597,10 +591,10 @@ def plot_kx_frequency_pair(
     rotation_y2: float | None = None,
     title1: str | None = None,
     title2: str | None = None,
-    save_name: str | None = None
+    save_name: str | None = None,
 ) -> None:
     """Plot two kx-frequency diagrams side-by-side.
-    
+
     Args:
         structure: Structure object with dispersion data
         param1: First parameter array
@@ -755,10 +749,10 @@ def plot_mueller_dispersion(
     title: str | None = None,
     rotation_y: float | None = None,
     save_name: str | None = None,
-    label: str = "a"
+    label: str = "a",
 ) -> None:
     """Plot k-space dispersion in kx-ky coordinates at fixed frequency.
-    
+
     Args:
         structure: Structure object with incident_angle, azimuthal_angle arrays
         param: 2D parameter array [180, 480]
@@ -766,7 +760,7 @@ def plot_mueller_dispersion(
         rotation_y: Optional rotation angle to display
         save_name: Optional filename for saving
         label: Subplot label
-        
+
     Note:
         Shows isofrequency contours in momentum space. The unit circle
         indicates the light cone (k = k0). Features outside indicate
@@ -912,10 +906,10 @@ def plot_mueller_dispersion_pair(
     rotation_y2: float | None = None,
     title1: str | None = None,
     title2: str | None = None,
-    save_name: str | None = None
+    save_name: str | None = None,
 ) -> None:
     """Plot two k-space dispersion diagrams side-by-side.
-    
+
     Args:
         structure: Structure object with dispersion data
         param1: First parameter array [180, 480]
@@ -925,7 +919,7 @@ def plot_mueller_dispersion_pair(
         title1: Title for left panel
         title2: Title for right panel
         save_name: Optional filename for saving
-        
+
     Note:
         Both plots share colorbar and have unit circles indicating
         light cone boundaries.

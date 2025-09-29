@@ -18,19 +18,21 @@ Key relationships:
 Reference: Chipman, Lam & Young, "Polarized Light and Optical Systems" (2018)
 """
 
-import numpy as np
-from .structure import Structure
 from typing import Any
+
+import numpy as np
+
+from .structure import Structure
 
 
 class Mueller:
     """Mueller matrix analyzer for polarization calculations.
-    
+
     ...existing docstring...
-    
+
     Examples:
         Analyzing p-polarized reflection:
-        
+
         >>> structure = Structure()
         >>> structure.execute(payload)
         >>> mueller = Mueller(structure)
@@ -39,18 +41,18 @@ class Mueller:
         >>> params = mueller.get_all_parameters()
         >>> print(f"Reflectance: {params['S0']:.4f}")
         >>> print(f"DOP: {params['DOP']:.4f}")
-        
+
         Crossed polarizer configuration:
-        
+
         >>> mueller = Mueller(structure)
         >>> mueller.set_incident_polarization('linear', angle=0)
         >>> mueller.add_optical_component('linear_polarizer', 0)
         >>> mueller.add_optical_component('anisotropic_sample')
         >>> mueller.add_optical_component('linear_polarizer', 90)
         >>> extinction_ratio = mueller.get_reflectivity()
-        
+
         Converting linear to circular polarization:
-        
+
         >>> mueller = Mueller(structure)
         >>> mueller.set_incident_polarization('linear', angle=45)
         >>> mueller.add_optical_component('quarter_wave_plate', 45)
@@ -59,13 +61,14 @@ class Mueller:
         >>> circularity = abs(stokes['S3'] / stokes['S0'])
         >>> print(f"Circular component: {circularity:.2%}")
     """
+
     def __init__(self, structure: Structure, debug: bool = False) -> None:
         """Initialize Mueller matrix analyzer for polarization calculations.
-        
+
         Args:
             structure: The Structure object containing reflection coefficients
             debug: Enable detailed debug output for troubleshooting
-            
+
         Example:
             >>> structure = Structure()
             >>> structure.execute(payload)
@@ -82,13 +85,9 @@ class Mueller:
         self.optical_components = []
         self.anisotropic_sample_added = False
 
-    def set_incident_polarization(
-        self, 
-        polarization_type: str, 
-        **kwargs: Any
-    ) -> None:
+    def set_incident_polarization(self, polarization_type: str, **kwargs: Any) -> None:
         """Set the incident polarization state using Stokes parameters.
-        
+
         Args:
             polarization_type: Type of polarization ('linear', 'circular', 'elliptical')
             **kwargs: Additional arguments depending on type:
@@ -96,10 +95,10 @@ class Mueller:
                 - circular: handedness (str) - 'right' or 'left'
                 - elliptical: alpha (float) - azimuth in degrees,
                             ellipticity (float) - ellipticity angle in degrees
-        
+
         Raises:
             ValueError: If polarization_type is not recognized
-            
+
         Example:
             >>> mueller.set_incident_polarization('linear', angle=0)  # p-polarized
             >>> mueller.set_incident_polarization('circular', handedness='right')
@@ -120,13 +119,13 @@ class Mueller:
 
     def _linear_polarization(self, angle: float) -> np.ndarray:
         """Create Stokes vector for linear polarization at specified angle.
-        
+
         Args:
             angle: Polarization angle in degrees (0° = p-pol, 90° = s-pol)
-            
+
         Returns:
             Stokes vector [S0, S1, S2, S3] = [1, cos(2θ), sin(2θ), 0]
-            
+
         Note:
             Linear polarization has S3 = 0 (no circular component).
         """
@@ -135,13 +134,13 @@ class Mueller:
 
     def _circular_polarization(self, handedness: str) -> np.ndarray:
         """Create Stokes vector for circular polarization.
-        
+
         Args:
             handedness: 'right' for right-handed or 'left' for left-handed
-            
+
         Returns:
             Stokes vector [S0, S1, S2, S3] = [1, 0, 0, ±1]
-            
+
         Note:
             Circular polarization has S1 = S2 = 0 and S3 = ±1.
         """
@@ -150,14 +149,14 @@ class Mueller:
 
     def _elliptical_polarization(self, alpha: float, ellipticity: float) -> np.ndarray:
         """Create Stokes vector for elliptical polarization.
-        
+
         Args:
             alpha: Azimuth angle of ellipse major axis in degrees
             ellipticity: Ellipticity angle in degrees (-45° to 45°)
-            
+
         Returns:
             Stokes vector [S0, S1, S2, S3]
-            
+
         Note:
             Ellipticity = 0° gives linear, ±45° gives circular polarization.
         """
@@ -175,13 +174,13 @@ class Mueller:
 
     def linear_polarizer(self, angle: float) -> np.ndarray:
         """Create Mueller matrix for ideal linear polarizer.
-        
+
         Args:
             angle: Polarizer transmission axis angle in degrees
-            
+
         Returns:
             4×4 Mueller matrix for linear polarizer
-            
+
         Note:
             Ideal polarizer fully transmits light along transmission axis
             and fully blocks light perpendicular to it.
@@ -203,13 +202,13 @@ class Mueller:
 
     def quarter_wave_plate(self, angle: float) -> np.ndarray:
         """Create Mueller matrix for quarter-wave plate (QWP).
-        
+
         Args:
             angle: Fast axis orientation angle in degrees
-            
+
         Returns:
             4×4 Mueller matrix for QWP
-            
+
         Note:
             QWP introduces π/2 phase shift between fast and slow axes.
             Can convert linear to circular polarization and vice versa.
@@ -230,13 +229,13 @@ class Mueller:
 
     def half_wave_plate(self, angle: float) -> np.ndarray:
         """Create Mueller matrix for half-wave plate (HWP).
-        
+
         Args:
             angle: Fast axis orientation angle in degrees
-            
+
         Returns:
             4×4 Mueller matrix for HWP
-            
+
         Note:
             HWP introduces π phase shift, effectively rotating linear
             polarization by 2θ where θ is the plate angle.
@@ -257,11 +256,11 @@ class Mueller:
 
     def calculate_mueller_matrix(self) -> None:
         """Calculate Mueller matrix from reflection coefficients.
-        
+
         Converts the complex 2×2 Jones matrix to a real 4×4 Mueller matrix
         using the transformation: M = A·F·A⁻¹ where F is formed from
         r_pp, r_ss, r_ps, r_sp.
-        
+
         Note:
             The Mueller matrix fully describes how the sample transforms
             arbitrary incident polarization states to reflected states.
@@ -323,23 +322,19 @@ class Mueller:
             a_matrix = a_matrix[np.newaxis, np.newaxis, ...]
             self.mueller_matrix = (a_matrix @ f_matrix @ np.linalg.inv(a_matrix)).astype(np.float64)
 
-    def add_optical_component(
-        self, 
-        component_type: str, 
-        *args: Any
-    ) -> None:
+    def add_optical_component(self, component_type: str, *args: Any) -> None:
         """Add optical component to the propagation path.
-        
+
         Args:
-            component_type: Type of component ('anisotropic_sample', 
-                        'linear_polarizer', 'quarter_wave_plate', 
+            component_type: Type of component ('anisotropic_sample',
+                        'linear_polarizer', 'quarter_wave_plate',
                         'half_wave_plate')
             *args: Component-specific parameters (e.g., angle for polarizers)
-            
+
         Raises:
             ValueError: If component type is not recognized or anisotropic
                     sample is added more than once
-            
+
         Example:
             >>> mueller.add_optical_component('linear_polarizer', 0)
             >>> mueller.add_optical_component('anisotropic_sample')
@@ -362,13 +357,13 @@ class Mueller:
 
     def calculate_stokes_parameters(self) -> np.ndarray:
         """Calculate output Stokes parameters after all optical components.
-        
+
         Propagates the incident Stokes vector through all added optical
         components by sequential Mueller matrix multiplication.
-        
+
         Returns:
             Output Stokes vector [S0, S1, S2, S3] with shape matching scenario
-            
+
         Note:
             S0 = total intensity (reflectance)
             S1 = horizontal vs vertical linear polarization
@@ -401,10 +396,10 @@ class Mueller:
 
     def get_reflectivity(self) -> np.ndarray:
         """Get total reflectance (S0 Stokes parameter).
-        
+
         Returns:
             Reflectance array with shape matching scenario type
-            
+
         Note:
             Automatically calculates Stokes parameters if not already computed.
         """
@@ -415,10 +410,10 @@ class Mueller:
 
     def get_degree_of_polarisation(self) -> np.ndarray:
         """Calculate degree of polarization (DOP).
-        
+
         Returns:
             DOP array with values clipped to [0, 1]
-            
+
         Note:
             DOP = √(S1² + S2² + S3²) / S0
             DOP = 1: fully polarized
@@ -446,10 +441,10 @@ class Mueller:
 
     def get_ellipticity(self) -> np.ndarray:
         """Calculate ellipticity angle of polarization ellipse.
-        
+
         Returns:
             Ellipticity angle in radians (-π/4 to π/4)
-            
+
         Note:
             Ellipticity = 0: linear polarization
             Ellipticity = ±π/4: circular polarization
@@ -466,10 +461,10 @@ class Mueller:
 
     def get_azimuth(self) -> np.ndarray:
         """Calculate azimuth angle of polarization ellipse major axis.
-        
+
         Returns:
             Azimuth angle in radians
-            
+
         Note:
             Defines orientation of the polarization ellipse in the plane
             perpendicular to propagation direction.
@@ -484,10 +479,10 @@ class Mueller:
 
     def get_stokes_parameters(self) -> dict[str, np.ndarray]:
         """Get all four Stokes parameters.
-        
+
         Returns:
             Dictionary with keys 'S0', 'S1', 'S2', 'S3' containing parameter arrays
-            
+
         Note:
             Automatically calculates if not already computed.
         """
@@ -503,7 +498,7 @@ class Mueller:
 
     def get_polarisation_parameters(self) -> dict[str, np.ndarray]:
         """Get derived polarization properties.
-        
+
         Returns:
             Dictionary with 'DOP', 'Ellipticity', 'Azimuth' arrays
         """
@@ -515,10 +510,10 @@ class Mueller:
 
     def get_all_parameters(self) -> dict[str, np.ndarray]:
         """Get comprehensive set of all Stokes and polarization parameters.
-        
+
         Returns:
             Dictionary containing S0, S1, S2, S3, DOP, Ellipticity, Azimuth
-            
+
         Example:
             >>> params = mueller.get_all_parameters()
             >>> print(f"Reflectance: {params['S0'].mean():.3f}")
@@ -532,10 +527,10 @@ class Mueller:
 
     def reset(self) -> None:
         """Reset Mueller object to initial state.
-        
+
         Clears all calculated matrices, Stokes parameters, optical components,
         and resets incident polarization to unpolarized state.
-        
+
         Note:
             Call this before setting up a new calculation sequence.
         """

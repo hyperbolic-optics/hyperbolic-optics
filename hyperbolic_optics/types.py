@@ -142,18 +142,18 @@ ScenarioConfig: TypeAlias = dict[str, str | float]
 
 Keys depend on scenario type:
     - type (str): 'Simple', 'Incident', 'Azimuthal', or 'Dispersion'
-    
+
 For 'Simple':
     - incidentAngle (float): Incident angle in degrees
     - azimuthal_angle (float): Azimuthal angle in degrees
     - frequency (float): Frequency in cm⁻¹
-    
+
 For 'Azimuthal':
     - incidentAngle (float): Fixed incident angle in degrees
-    
+
 For 'Dispersion':
     - frequency (float): Fixed frequency in cm⁻¹
-    
+
 For 'Incident':
     - No additional parameters needed
 

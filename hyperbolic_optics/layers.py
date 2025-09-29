@@ -20,7 +20,6 @@ from hyperbolic_optics.anisotropy_utils import (
     anisotropy_rotation_one_axis,
     anisotropy_rotation_one_value,
 )
-from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.materials import (
     Air,
     ArbitraryMaterial,
@@ -30,6 +29,7 @@ from hyperbolic_optics.materials import (
     Quartz,
     Sapphire,
 )
+from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.waves import Wave
 
 
@@ -48,7 +48,7 @@ class AmbientIncidentMedium(AmbientMedium):
 
     def __init__(self, permittivity: float, kx: np.ndarray) -> None:
         """Initialize the ambient incident medium (prism).
-        
+
         Args:
             permittivity: Relative permittivity of the incident medium
             kx: x-component of the wavevector (parallel to interface)
@@ -59,15 +59,15 @@ class AmbientIncidentMedium(AmbientMedium):
 
     def construct_tensor(self) -> np.ndarray:
         """Construct the transfer matrix for the ambient incident medium.
-        
+
         Builds the 4×4 transfer matrix relating incident and reflected field
         components in the incident medium. The matrix accounts for both s and p
         polarizations.
-        
+
         Returns:
             Transfer matrix with shape [180, 4, 4] for incident scenario or
             [1, 1, 4, 4] for azimuthal scenario
-            
+
         Note:
             This implements the boundary condition matrix for a semi-infinite
             incident medium (prism) as described in the 4×4 formalism.
@@ -120,10 +120,10 @@ class AmbientIncidentMedium(AmbientMedium):
 
     def construct_tensor_singular(self) -> np.ndarray:
         """Construct transfer matrix for single-point (simple) scenarios.
-        
+
         Returns:
             Transfer matrix with shape [4, 4] for scalar incident angle
-            
+
         Note:
             This is a specialized version of construct_tensor for cases where
             only a single incident angle is calculated.
@@ -149,13 +149,10 @@ class AmbientExitMedium(AmbientMedium):
     """
 
     def __init__(
-        self, 
-        incident_angle: float, 
-        permittivity_incident: float, 
-        permittivity_exit: float
+        self, incident_angle: float, permittivity_incident: float, permittivity_exit: float
     ) -> None:
         """Initialize the ambient exit medium.
-        
+
         Args:
             incident_angle: Incident angle at the first interface in radians
             permittivity_incident: Permittivity of the incident medium
@@ -168,13 +165,13 @@ class AmbientExitMedium(AmbientMedium):
 
     def construct_tensor(self) -> np.ndarray:
         """Construct the transfer matrix for the ambient exit medium.
-        
+
         Builds the 4×4 transfer matrix for the semi-infinite exit layer,
         accounting for refraction at the final interface.
-        
+
         Returns:
             Transfer matrix accounting for transmitted waves only
-            
+
         Note:
             The exit medium has no reflected waves (semi-infinite), so only
             forward-propagating modes are included.
@@ -232,7 +229,7 @@ class AmbientExitMedium(AmbientMedium):
 
     def construct_tensor_singular(self) -> np.ndarray:
         """Construct transfer matrix for single-point exit medium.
-        
+
         Returns:
             Transfer matrix with shape [4, 4] for scalar case
         """
@@ -256,20 +253,16 @@ class Layer(ABC):
     """Abstract base class for a layer in the device."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize a generic layer.
-        
+
         Args:
             data: Dictionary containing layer parameters (type, material, rotations, etc.)
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber (2π/λ)
-            
+
         Note:
             This is an abstract base class. Use specific layer types like
             PrismLayer, AirGapLayer, or CrystalLayer instead.
@@ -298,13 +291,13 @@ class Layer(ABC):
 
     def material_factory(self) -> None:
         """Create the material object based on material name or specifications.
-        
+
         Instantiates the appropriate material class (Quartz, Calcite, etc.) or
         creates an ArbitraryMaterial from custom parameters.
-        
+
         Raises:
             NotImplementedError: If the material name is not recognized
-            
+
         Note:
             For arbitrary materials, expects a dictionary with permittivity
             and optionally permeability tensor components.
@@ -327,11 +320,11 @@ class Layer(ABC):
 
     def calculate_z_rotation(self) -> None:
         """Calculate the z-axis rotation based on scenario type and rotation mode.
-        
+
         Determines whether the z-rotation is relative to the azimuthal angle or
         static (fixed in space). For dispersion and azimuthal scenarios, adds
         the azimuthal angle to relative rotations.
-        
+
         Note:
             The rotationZType attribute controls whether rotation is 'relative'
             (rotates with sample) or 'static' (fixed in lab frame).
@@ -348,10 +341,10 @@ class Layer(ABC):
 
     def calculate_tensors(self) -> None:
         """Calculate both permittivity and permeability tensors for the layer.
-        
+
         Fetches the material's permittivity (ε) and permeability (μ) tensors
         for the appropriate frequency or frequency range based on scenario type.
-        
+
         Note:
             For Incident/Azimuthal scenarios, tensors span the full frequency
             range. For Dispersion/Simple scenarios, tensors are calculated for
@@ -372,10 +365,10 @@ class Layer(ABC):
 
     def rotate_tensors(self) -> None:
         """Apply Euler angle rotations to permittivity and permeability tensors.
-        
+
         Rotates both ε and μ tensors according to the specified Euler angles
         (rotationX, rotationY, rotationZ) to account for crystal orientation.
-        
+
         Note:
             The rotation function used depends on the scenario type to handle
             proper broadcasting across angle arrays.
@@ -397,10 +390,10 @@ class Layer(ABC):
     @abstractmethod
     def create(self) -> None:
         """Create the layer's transfer matrix and wave profile.
-        
+
         This method must be implemented by concrete layer classes to construct
         the layer-specific transfer matrix.
-        
+
         Raises:
             NotImplementedError: Must be implemented by subclasses
         """
@@ -411,14 +404,10 @@ class PrismLayer(Layer):
     """The incident coupling prism layer."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize the incident coupling prism layer.
-        
+
         Args:
             data: Dictionary containing 'permittivity' key for prism permittivity
             scenario: The simulation scenario configuration
@@ -431,7 +420,7 @@ class PrismLayer(Layer):
 
     def create(self) -> None:
         """Create the prism transfer matrix.
-        
+
         Constructs the appropriate transfer matrix based on scenario type,
         handling different array shapes for Simple, Incident, Azimuthal, and
         Dispersion scenarios.
@@ -452,20 +441,16 @@ class AirGapLayer(Layer):
     """The airgap/isotropic middle layer."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize an isotropic middle-stack layer (air gap or dielectric).
-        
+
         Args:
             data: Dictionary with 'thickness', 'permittivity', and optionally 'permeability'
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber
-            
+
         Note:
             Permittivity and permeability can be specified as scalars or as
             dictionaries with 'real' and 'imag' components.
@@ -514,7 +499,7 @@ class AirGapLayer(Layer):
 
     def calculate_mode(self) -> None:
         """Determine the calculation mode based on scenario type.
-        
+
         Sets the internal mode string used by the Wave class to determine
         appropriate tensor shapes and broadcasting patterns.
         """
@@ -529,7 +514,7 @@ class AirGapLayer(Layer):
 
     def create(self) -> None:
         """Create the air gap layer transfer matrix and wave profile.
-        
+
         Constructs the transfer matrix by solving the wave equation for the
         isotropic layer with specified thickness.
         """
@@ -547,20 +532,16 @@ class CrystalLayer(Layer):
     """Anisotropic crystal of arbitrary orientation and thickness."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize an anisotropic crystal layer with finite thickness.
-        
+
         Args:
             data: Dictionary with 'material', 'thickness', and rotation angles
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber
-            
+
         Note:
             The crystal can be rotated using rotationX, rotationY, and rotationZ
             Euler angles specified in degrees.
@@ -573,7 +554,7 @@ class CrystalLayer(Layer):
 
     def create(self) -> None:
         """Create the crystal layer transfer matrix and wave profile.
-        
+
         Solves for the wave modes in the anisotropic layer and constructs the
         transfer matrix accounting for phase accumulation through the layer.
         """
@@ -591,20 +572,16 @@ class SemiInfiniteCrystalLayer(Layer):
     """Anisotropic semi-infinite crystal layer."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize a semi-infinite anisotropic crystal layer.
-        
+
         Args:
             data: Dictionary with 'material' and rotation angles
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber
-            
+
         Note:
             Semi-infinite layers have no thickness parameter as they extend
             infinitely in the +z direction. Only forward-propagating modes exist.
@@ -618,7 +595,7 @@ class SemiInfiniteCrystalLayer(Layer):
 
     def create(self) -> None:
         """Create the semi-infinite crystal transfer matrix.
-        
+
         Constructs a transfer matrix that includes only the eigenvectors
         without phase propagation (no thickness dependence).
         """
@@ -635,20 +612,16 @@ class IsotropicSemiInfiniteLayer(Layer):
     """Isotropic semi-infinite layer with a given permittivity."""
 
     def __init__(
-        self, 
-        data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> None:
         """Initialize a semi-infinite isotropic exit layer.
-        
+
         Args:
             data: Dictionary with 'permittivity' for exit medium
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber
-            
+
         Raises:
             ValueError: If exit permittivity is not provided
         """
@@ -663,7 +636,7 @@ class IsotropicSemiInfiniteLayer(Layer):
 
     def create(self) -> None:
         """Create the isotropic exit layer transfer matrix.
-        
+
         Constructs the transfer matrix for the semi-infinite isotropic exit
         medium, accounting for refraction at the final interface.
         """
@@ -685,7 +658,7 @@ class LayerFactory:
 
     def __init__(self) -> None:
         """Initialize the layer factory with available layer types.
-        
+
         Registers all available layer classes for creation based on type string.
         """
         self.layer_classes = {
@@ -697,26 +670,22 @@ class LayerFactory:
         }
 
     def create_layer(
-        self, 
-        layer_data: dict[str, Any], 
-        scenario: ScenarioSetup, 
-        kx: np.ndarray, 
-        k0: np.ndarray
+        self, layer_data: dict[str, Any], scenario: ScenarioSetup, kx: np.ndarray, k0: np.ndarray
     ) -> Layer:
         """Create a layer instance from configuration data.
-        
+
         Args:
             layer_data: Dictionary containing layer type and parameters
             scenario: The simulation scenario configuration
             kx: x-component of wavevector
             k0: Free-space wavenumber
-            
+
         Returns:
             An instance of the appropriate Layer subclass
-            
+
         Raises:
             ValueError: If layer type is not recognized
-            
+
         Example:
             >>> factory = LayerFactory()
             >>> layer_data = {"type": "Ambient Incident Layer", "permittivity": 50.0}

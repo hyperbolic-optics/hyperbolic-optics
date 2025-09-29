@@ -12,29 +12,26 @@ import numpy as np
 
 
 def anisotropy_rotation_one_value(
-    matrix: np.ndarray, 
-    theta: float | np.ndarray,  
-    phi: float | np.ndarray, 
-    beta: float | np.ndarray
+    matrix: np.ndarray, theta: float | np.ndarray, phi: float | np.ndarray, beta: float | np.ndarray
 ) -> np.ndarray:
     """Apply Euler angle rotations to a tensor for scalar angle values.
-    
+
     Performs a sequence of rotations (Rz · Ry · Rx) on a 3×3 tensor using
     Euler angles. This is used for rotating permittivity and permeability
     tensors to account for crystal orientation.
-    
+
     Args:
         matrix: The 3×3 tensor to rotate (permittivity or permeability)
         theta: Rotation angle around x-axis in radians
         phi: Rotation angle around y-axis in radians
         beta: Rotation angle around z-axis in radians
-        
+
     Returns:
         The rotated 3×3 tensor with shape matching the input matrix
-        
+
     Note:
         The rotation is performed as: R · matrix · R^T where R = Rz · Ry · Rx
-        
+
     Example:
         >>> eps = np.diag([2.5, 2.5, 4.0])
         >>> rotated = anisotropy_rotation_one_value(eps, 0, np.pi/4, 0)
@@ -83,25 +80,22 @@ def anisotropy_rotation_one_value(
 
 
 def anisotropy_rotation_one_axis(
-    matrix: np.ndarray,
-    theta: np.ndarray,
-    phi: np.ndarray,
-    beta: np.ndarray
+    matrix: np.ndarray, theta: np.ndarray, phi: np.ndarray, beta: np.ndarray
 ) -> np.ndarray:
     """Apply Euler angle rotations with broadcasting along one axis.
-    
+
     Similar to anisotropy_rotation_one_value but handles rotation arrays
     along a single axis, typically used for azimuthal rotation scenarios.
-    
+
     Args:
         matrix: The 3×3 tensor to rotate with shape [N, 3, 3]
         theta: Rotation angles around x-axis in radians, shape [M]
         phi: Rotation angles around y-axis in radians, shape [M]
         beta: Rotation angles around z-axis in radians, shape [M]
-        
+
     Returns:
         Rotated tensor with shape [M, N, 3, 3] after broadcasting
-        
+
     Note:
         This function adds a new axis to the matrix and broadcasts the
         rotation across it, enabling efficient batch processing.
@@ -153,25 +147,22 @@ def anisotropy_rotation_one_axis(
 
 
 def anisotropy_rotation_all_axes(
-    matrix: np.ndarray,
-    theta: np.ndarray,
-    phi: np.ndarray,
-    beta: np.ndarray
+    matrix: np.ndarray, theta: np.ndarray, phi: np.ndarray, beta: np.ndarray
 ) -> np.ndarray:
     """Apply Euler angle rotations with broadcasting along all axes.
-    
+
     Performs rotation with full broadcasting support for dispersion scenarios
     where both incident angle and azimuthal angle vary independently.
-    
+
     Args:
         matrix: The 3×3 tensor to rotate with shape [N, 3, 3]
         theta: Rotation angles around x-axis in radians, shape [I]
         phi: Rotation angles around y-axis in radians, shape [J]
         beta: Rotation angles around z-axis in radians, shape [K]
-        
+
     Returns:
         Rotated tensor with shape [I, J, K, N, 3, 3] after full broadcasting
-        
+
     Note:
         This is the most general rotation function, supporting independent
         variation of all three Euler angles simultaneously.

@@ -25,15 +25,15 @@ class ScenarioSetup(ABC):
 
     def __init__(self, data: dict[str, Any]) -> None:
         """Initialize scenario configuration for simulation.
-        
+
         Args:
             data: Dictionary with 'type' and scenario-specific parameters
-            
+
         Raises:
             NotImplementedError: If scenario type is not recognized
-            
+
         Example:
-            >>> data = {"type": "Simple", "incidentAngle": 45.0, 
+            >>> data = {"type": "Simple", "incidentAngle": 45.0,
             ...         "azimuthal_angle": 0.0, "frequency": 1460.0}
             >>> scenario = ScenarioSetup(data)
         """
@@ -45,9 +45,9 @@ class ScenarioSetup(ABC):
 
     def create_scenario(self) -> None:
         """Create scenario-specific angle and frequency arrays.
-        
+
         Dispatches to appropriate scenario creation method based on type.
-        
+
         Raises:
             NotImplementedError: If scenario type is not implemented
         """
@@ -64,10 +64,10 @@ class ScenarioSetup(ABC):
 
     def create_incident_scenario(self) -> None:
         """Create incident angle sweep scenario.
-        
+
         Sets up 360 incident angles from -π/2 to π/2 for analyzing angle-dependent
         reflectivity across the material's frequency range.
-        
+
         Note:
             Frequency range is determined by the material in the final layer.
             Creates arrays suitable for generating kx vs frequency plots.
@@ -79,10 +79,10 @@ class ScenarioSetup(ABC):
 
     def create_azimuthal_scenario(self) -> None:
         """Create azimuthal rotation scenario at fixed incident angle.
-        
+
         Rotates the sample through 360 azimuthal angles (0 to 2π) while
         maintaining constant incident angle.
-        
+
         Note:
             Useful for studying in-plane anisotropy and rotational symmetry.
             incidentAngle must be provided in input data.
@@ -94,10 +94,10 @@ class ScenarioSetup(ABC):
 
     def create_dispersion_scenario(self) -> None:
         """Create k-space dispersion scenario at fixed frequency.
-        
+
         Sets up grid of incident angles (180 points) and azimuthal angles
         (480 points) for mapping isofrequency contours in kx-ky space.
-        
+
         Note:
             Requires 'frequency' to be specified in input data.
             Generates data for kx vs ky momentum-space plots.
@@ -110,10 +110,10 @@ class ScenarioSetup(ABC):
 
     def create_simple_scenario(self) -> None:
         """Create single-point scenario with scalar values.
-        
+
         Converts incident angle, azimuthal angle, and frequency to scalar
         values for quick single-point calculations.
-        
+
         Note:
             All three parameters (incidentAngle, azimuthal_angle, frequency)
             must be provided in input data.
