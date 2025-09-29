@@ -2,14 +2,15 @@
 Structure class for the optical system
 """
 
-import math as m
 import functools
+import math as m
 import operator
-import tensorflow as tf
 
-from hyperbolic_optics.materials import CalciteUpper, Quartz, Sapphire, GalliumOxide
+import numpy as np
 
 from hyperbolic_optics.layers import LayerFactory
+from hyperbolic_optics.materials import (CalciteUpper, GalliumOxide, Quartz,
+                                         Sapphire)
 from hyperbolic_optics.scenario import ScenarioSetup
 
 
@@ -60,11 +61,10 @@ class Structure:
 
     def calculate_kx_k0(self):
         """Calculate the k_x and k_0 values for the structure."""
-        self.k_x = tf.cast(
-            tf.sqrt(tf.cast(self.eps_prism, dtype=tf.float64))
-            * tf.sin(tf.cast(self.incident_angle, dtype=tf.float64)),
-            dtype=tf.float64,
-        )
+        self.k_x = (
+            np.sqrt(np.float64(self.eps_prism))
+            * np.sin(self.incident_angle.astype(np.float64))
+        ).astype(np.float64)
         self.k_0 = self.frequency * 2.0 * m.pi
 
     def get_layers(self, layer_data_list):
@@ -139,14 +139,11 @@ class Structure:
         self.t_sp = (-self.transfer_matrix[..., 2, 0]) / bottom_line
         self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
 
-
     def display_layer_info(self):
         """Display the information for each layer in the structure."""
         for layer in self.layers:
             print(layer)
             print(layer)
-
-        
 
     def execute(self, payload):
         """

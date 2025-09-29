@@ -1,35 +1,27 @@
 """
 Layers module for constructing individual layers in the device.
-Stage 2 Refactor: Updated to properly handle both eps and mu tensors from materials
+NumPy implementation - Stage 2 Refactor: Updated to properly handle both eps and mu tensors from materials
 """
 
-from abc import ABC, abstractmethod
 import math as m
-import tensorflow as tf
-from hyperbolic_optics.materials import (
-    Air,
-    CalciteUpper,
-    Quartz,
-    Sapphire,
-    CalciteLower,
-    GalliumOxide,
-    ArbitraryMaterial,
-)
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+from hyperbolic_optics.anisotropy_utils import (anisotropy_rotation_one_axis,
+                                                anisotropy_rotation_one_value)
+from hyperbolic_optics.materials import (Air, ArbitraryMaterial, CalciteLower,
+                                         CalciteUpper, GalliumOxide, Quartz,
+                                         Sapphire)
 from hyperbolic_optics.waves import Wave
-from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_one_axis, anisotropy_rotation_one_value
 
 
 class AmbientMedium:
     """Base class for ambient mediums (incident and exit)."""
-    
-    def __init__(self, run_on_device_decorator=None):
-        """
-        Initialize the ambient medium.
-        
-        Args:
-            run_on_device_decorator (function, optional): Decorator function for device execution.
-        """
-        self.run_on_device = run_on_device_decorator
+
+    def __init__(self):
+        """Initialize the ambient medium."""
+        pass
 
 
 class AmbientIncidentMedium(AmbientMedium):
@@ -38,99 +30,94 @@ class AmbientIncidentMedium(AmbientMedium):
     Moved from material_params.py to better organize layer-related functionality.
     """
 
-    def __init__(self, permittivity, kx, run_on_device_decorator=None):
+    def __init__(self, permittivity, kx):
         """
         Initialize the AmbientIncidentMedium class.
 
         Args:
             permittivity (float): The permittivity of the ambient incident medium.
             kx (float): The x-component of the wavevector.
-            run_on_device_decorator (function, optional): Decorator function for device execution.
         """
-        super().__init__(run_on_device_decorator)
+        super().__init__()
         self.permittivity = permittivity
-        self.theta = tf.cast(tf.math.asin(kx / (permittivity**0.5)), dtype=tf.float64)
+        self.theta = np.arcsin(kx / np.sqrt(permittivity)).astype(np.float64)
 
     def construct_tensor(self):
         """
         Construct the tensor for the ambient incident medium.
 
         Returns:
-            tf.Tensor: The constructed tensor.
+            np.ndarray: The constructed tensor.
         """
-        if self.run_on_device:
-            return self.run_on_device(self._construct_tensor)()
         return self._construct_tensor()
 
     def _construct_tensor(self):
-        n = tf.sqrt(self.permittivity)
-        cos_theta = tf.cos(self.theta)
+        n = np.sqrt(self.permittivity)
+        cos_theta = np.cos(self.theta)
         n_cos_theta = n * cos_theta
 
         # Combine updates into a single tensor with shape [180, 4, 4]
-        element1 = tf.stack(
+        element1 = np.stack(
             [
-                tf.zeros_like(self.theta),
-                tf.ones_like(self.theta),
+                np.zeros_like(self.theta),
+                np.ones_like(self.theta),
                 -1.0 / n_cos_theta,
-                tf.zeros_like(self.theta),
+                np.zeros_like(self.theta),
             ],
             axis=-1,
         )
-        element2 = tf.stack(
+        element2 = np.stack(
             [
-                tf.zeros_like(self.theta),
-                tf.ones_like(self.theta),
+                np.zeros_like(self.theta),
+                np.ones_like(self.theta),
                 1.0 / n_cos_theta,
-                tf.zeros_like(self.theta),
+                np.zeros_like(self.theta),
             ],
             axis=-1,
         )
-        element3 = tf.stack(
+        element3 = np.stack(
             [
                 1.0 / cos_theta,
-                tf.zeros_like(self.theta),
-                tf.zeros_like(self.theta),
-                1.0 / n * tf.ones_like(self.theta),
+                np.zeros_like(self.theta),
+                np.zeros_like(self.theta),
+                1.0 / n * np.ones_like(self.theta),
             ],
             axis=-1,
         )
-        element4 = tf.stack(
+        element4 = np.stack(
             [
                 -1.0 / cos_theta,
-                tf.zeros_like(self.theta),
-                tf.zeros_like(self.theta),
-                1.0 / n * tf.ones_like(self.theta),
+                np.zeros_like(self.theta),
+                np.zeros_like(self.theta),
+                1.0 / n * np.ones_like(self.theta),
             ],
             axis=-1,
         )
 
-        matrix = tf.stack([element1, element2, element3, element4], axis=1)
-        return 0.5 * tf.cast(matrix, dtype=tf.complex128)
+        matrix = np.stack([element1, element2, element3, element4], axis=1)
+        return 0.5 * matrix.astype(np.complex128)
 
     def construct_tensor_singular(self):
         """
         Construct the singular tensor for the ambient incident medium.
 
         Returns:
-            tf.Tensor: The constructed singular tensor.
+            np.ndarray: The constructed singular tensor.
         """
-        if self.run_on_device:
-            return self.run_on_device(self._construct_tensor_singular)()
         return self._construct_tensor_singular()
 
     def _construct_tensor_singular(self):
-        n = tf.sqrt(self.permittivity)
-        cos_theta = tf.cos(self.theta)
+        n = np.sqrt(self.permittivity)
+        cos_theta = np.cos(self.theta)
         n_cos_theta = n * cos_theta
 
-        element1 = tf.stack([0.0, 1.0, -1.0 / n_cos_theta, 0.0])
-        element2 = tf.stack([0.0, 1.0, 1.0 / n_cos_theta, 0.0])
-        element3 = tf.stack([1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
-        element4 = tf.stack([-1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
+        element1 = np.stack([0.0, 1.0, -1.0 / n_cos_theta, 0.0])
+        element2 = np.stack([0.0, 1.0, 1.0 / n_cos_theta, 0.0])
+        element3 = np.stack([1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
+        element4 = np.stack([-1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
 
-        matrix = tf.stack([element1, element2, element3, element4], axis=0)
-        return 0.5 * tf.cast(matrix, dtype=tf.complex128)
+        matrix = np.stack([element1, element2, element3, element4], axis=0)
+        return 0.5 * matrix.astype(np.complex128)
 
 
 class AmbientExitMedium(AmbientMedium):
@@ -139,7 +126,7 @@ class AmbientExitMedium(AmbientMedium):
     Moved from material_params.py to better organize layer-related functionality.
     """
 
-    def __init__(self, incident_angle, permittivity_incident, permittivity_exit, run_on_device_decorator=None):
+    def __init__(self, incident_angle, permittivity_incident, permittivity_exit):
         """
         Initialize the AmbientExitMedium class.
 
@@ -147,62 +134,100 @@ class AmbientExitMedium(AmbientMedium):
             incident_angle (float): The incident angle.
             permittivity_incident (float): The permittivity of the incident medium.
             permittivity_exit (float): The permittivity of the exit medium.
-            run_on_device_decorator (function, optional): Decorator function for device execution.
         """
-        super().__init__(run_on_device_decorator)
+        super().__init__()
         self.theta_incident = incident_angle
-        self.N_exit = tf.sqrt(permittivity_exit)
-        self.N_incident = tf.sqrt(permittivity_incident)
+        self.N_exit = np.sqrt(permittivity_exit)
+        self.N_incident = np.sqrt(permittivity_incident)
 
     def construct_tensor(self):
         """
         Construct the tensor for the ambient exit medium.
 
         Returns:
-            tf.Tensor: The constructed tensor.
+            np.ndarray: The constructed tensor.
         """
-        if self.run_on_device:
-            return self.run_on_device(self._construct_tensor)()
         return self._construct_tensor()
 
     def _construct_tensor(self):
-        sin_theta_incident = tf.sin(self.theta_incident)
-        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
-        expr_inside_sqrt_complex = tf.cast(expr_inside_sqrt, dtype=tf.complex128)
-        cos_theta_f = tf.sqrt(expr_inside_sqrt_complex)
-        N_exit = tf.cast(self.N_exit, dtype=tf.complex128)
+        sin_theta_incident = np.sin(self.theta_incident)
+        expr_inside_sqrt = (
+            1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
+        )
+        expr_inside_sqrt_complex = expr_inside_sqrt.astype(np.complex128)
+        cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
+        N_exit = self.N_exit.astype(np.complex128)
         Nf_cos_theta_f = N_exit * cos_theta_f
 
-        element1 = tf.stack([
-            tf.zeros_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f),
-            cos_theta_f,
-            -cos_theta_f],
-            axis=-1)
+        element1 = np.stack(
+            [
+                np.zeros_like(cos_theta_f),
+                np.zeros_like(cos_theta_f),
+                cos_theta_f,
+                -cos_theta_f,
+            ],
+            axis=-1,
+        )
 
-        element2 = tf.stack([
-            tf.ones_like(cos_theta_f),
-            tf.ones_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f)],
-            axis=-1)
+        element2 = np.stack(
+            [
+                np.ones_like(cos_theta_f),
+                np.ones_like(cos_theta_f),
+                np.zeros_like(cos_theta_f),
+                np.zeros_like(cos_theta_f),
+            ],
+            axis=-1,
+        )
 
-        element3 = tf.stack([
-            -Nf_cos_theta_f,
-            Nf_cos_theta_f,
-            tf.zeros_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f)],
-            axis=-1)
+        element3 = np.stack(
+            [
+                -Nf_cos_theta_f,
+                Nf_cos_theta_f,
+                np.zeros_like(cos_theta_f),
+                np.zeros_like(cos_theta_f),
+            ],
+            axis=-1,
+        )
 
-        element4 = tf.stack([
-            tf.zeros_like(cos_theta_f),
-            tf.zeros_like(cos_theta_f),
-            N_exit * tf.ones_like(cos_theta_f),
-            N_exit * tf.ones_like(cos_theta_f)],
-            axis=-1)
+        element4 = np.stack(
+            [
+                np.zeros_like(cos_theta_f),
+                np.zeros_like(cos_theta_f),
+                N_exit * np.ones_like(cos_theta_f),
+                N_exit * np.ones_like(cos_theta_f),
+            ],
+            axis=-1,
+        )
 
-        matrix = tf.stack([element1, element2, element3, element4], axis=1)
-        return tf.cast(matrix, dtype=tf.complex128)
+        matrix = np.stack([element1, element2, element3, element4], axis=1)
+        return matrix.astype(np.complex128)
+
+    def construct_tensor_singular(self):
+        """
+        Construct the singular tensor for the ambient exit medium.
+
+        Returns:
+            np.ndarray: The constructed singular tensor.
+        """
+        return self._construct_tensor_singular()
+
+    def _construct_tensor_singular(self):
+        sin_theta_incident = np.sin(self.theta_incident)
+        expr_inside_sqrt = (
+            1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
+        )
+        expr_inside_sqrt_complex = np.complex128(expr_inside_sqrt)
+        cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
+        N_exit = np.complex128(self.N_exit)
+        Nf_cos_theta_f = N_exit * cos_theta_f
+
+        element1 = np.array([0.0, 0.0, cos_theta_f, -cos_theta_f])
+        element2 = np.array([1.0, 1.0, 0.0, 0.0])
+        element3 = np.array([-Nf_cos_theta_f, Nf_cos_theta_f, 0.0, 0.0])
+        element4 = np.array([0.0, 0.0, N_exit, N_exit])
+
+        matrix = np.stack([element1, element2, element3, element4], axis=0)
+        return matrix.astype(np.complex128)
 
 
 class Layer(ABC):
@@ -211,9 +236,9 @@ class Layer(ABC):
     def __init__(self, data, scenario, kx, k0):
         self.type = data.get("type")
         self.material = data.get("material", None)
-        self.rotationX = tf.cast(m.radians(data.get("rotationX", 0)), dtype=tf.float64)
-        self.rotationY = tf.cast(m.radians(data.get("rotationY", 0)), dtype=tf.float64) + 1e-8
-        self.rotationZ = tf.cast(m.radians(data.get("rotationZ", 0)), dtype=tf.float64) + 1.e-9
+        self.rotationX = np.float64(m.radians(data.get("rotationX", 0)))
+        self.rotationY = np.float64(m.radians(data.get("rotationY", 0))) + 1e-8
+        self.rotationZ = np.float64(m.radians(data.get("rotationZ", 0))) + 1.0e-9
         self.rotationZ_type = data.get("rotationZType", "relative")
         self.kx = kx
         self.k0 = k0
@@ -233,10 +258,10 @@ class Layer(ABC):
 
     def material_factory(self):
         """Create the material object based on the material name or specifications.
-        
+
         This method handles both predefined materials (like Quartz, Sapphire) and
         arbitrary materials specified via a dictionary of parameters.
-        
+
         Returns:
             Material object: An instance of a material class with the specified properties
         """
@@ -273,24 +298,24 @@ class Layer(ABC):
                     # For simple scenario, keep as scalar
                     self.rotationZ = self.rotationZ
                 else:
-                    self.rotationZ = self.rotationZ * tf.ones_like(self.azimuthal_angle)
+                    self.rotationZ = self.rotationZ * np.ones_like(self.azimuthal_angle)
 
     def calculate_tensors(self):
         """Calculate both permittivity and magnetic tensors for the layer."""
         self.material_factory()
-        
+
         if self.scenario in ["Incident", "Azimuthal"]:
-            self.eps_tensor = tf.cast(self.material.fetch_permittivity_tensor(), dtype=tf.complex128)
-            self.mu_tensor = tf.cast(self.material.fetch_magnetic_tensor(), dtype=tf.complex128)
+            self.eps_tensor = self.material.fetch_permittivity_tensor().astype(
+                np.complex128
+            )
+            self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
         elif self.scenario in ["Dispersion", "Simple"]:
-            self.eps_tensor = tf.cast(
-                self.material.fetch_permittivity_tensor_for_freq(self.frequency),
-                dtype=tf.complex128,
-            )
-            self.mu_tensor = tf.cast(
-                self.material.fetch_magnetic_tensor_for_freq(self.frequency),
-                dtype=tf.complex128,
-            )
+            self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(
+                self.frequency
+            ).astype(np.complex128)
+            self.mu_tensor = self.material.fetch_magnetic_tensor_for_freq(
+                self.frequency
+            ).astype(np.complex128)
 
     def rotate_tensors(self):
         """Rotate both permittivity and magnetic tensors according to the rotation angles."""
@@ -301,23 +326,35 @@ class Layer(ABC):
         elif self.scenario == "Simple":
             rotation_func = anisotropy_rotation_one_value
 
-        self.eps_tensor = rotation_func(self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ)
-        self.mu_tensor = rotation_func(self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ)
+        self.eps_tensor = rotation_func(
+            self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ
+        )
+        self.mu_tensor = rotation_func(
+            self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ
+        )
 
     # DEPRECATED: Remove this method in favor of calculate_tensors()
     def calculate_eps_tensor(self):
         """Calculate the permittivity tensor for the layer. DEPRECATED - use calculate_tensors()."""
         import warnings
-        warnings.warn("calculate_eps_tensor() is deprecated. Use calculate_tensors() instead.", 
-                     DeprecationWarning, stacklevel=2)
+
+        warnings.warn(
+            "calculate_eps_tensor() is deprecated. Use calculate_tensors() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.calculate_tensors()
 
     # DEPRECATED: Remove this method in favor of rotate_tensors()
     def rotate_tensor(self):
         """Rotate the permittivity tensor according to the rotation angles. DEPRECATED - use rotate_tensors()."""
         import warnings
-        warnings.warn("rotate_tensor() is deprecated. Use rotate_tensors() instead.", 
-                     DeprecationWarning, stacklevel=2)
+
+        warnings.warn(
+            "rotate_tensor() is deprecated. Use rotate_tensors() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.rotate_tensors()
 
     @abstractmethod
@@ -330,7 +367,7 @@ class PrismLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.eps_prism = tf.cast(data.get("permittivity", 5.5), dtype=tf.float64)
+        self.eps_prism = np.float64(data.get("permittivity", 5.5))
         self.create()
 
     def create(self):
@@ -339,9 +376,9 @@ class PrismLayer(Layer):
         if self.scenario == "Incident":
             self.matrix = prism.construct_tensor()
         elif self.scenario == "Azimuthal":
-            self.matrix = prism.construct_tensor_singular()[tf.newaxis, tf.newaxis, ...]
+            self.matrix = prism.construct_tensor_singular()[np.newaxis, np.newaxis, ...]
         elif self.scenario == "Dispersion":
-            self.matrix = prism.construct_tensor()[:, tf.newaxis, ...]
+            self.matrix = prism.construct_tensor()[:, np.newaxis, ...]
         elif self.scenario == "Simple":
             self.matrix = prism.construct_tensor_singular()
 
@@ -351,40 +388,52 @@ class AirGapLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        
+
         # Handle complex permittivity input
         perm = data.get("permittivity", 1.0)
         if isinstance(perm, dict):
             if "real" in perm or "imag" in perm:
-                self.permittivity = complex(perm.get('real', 0), perm.get('imag', 0))
+                self.permittivity = complex(perm.get("real", 0), perm.get("imag", 0))
             else:
                 # Handle nested permittivity structure if present
-                self.permittivity = {k: complex(v.get('real', 0), v.get('imag', 0)) 
-                                   if isinstance(v, dict) else v 
-                                   for k, v in perm.items()}
+                self.permittivity = {
+                    k: (
+                        complex(v.get("real", 0), v.get("imag", 0))
+                        if isinstance(v, dict)
+                        else v
+                    )
+                    for k, v in perm.items()
+                }
         else:
             self.permittivity = complex(perm, 0)
-        
+
         # CHANGED: Handle magnetic permeability input
         mu = data.get("permeability", 1.0)
         if isinstance(mu, dict):
             if "real" in mu or "imag" in mu:
-                self.permeability = complex(mu.get('real', 0), mu.get('imag', 0))
+                self.permeability = complex(mu.get("real", 0), mu.get("imag", 0))
             else:
                 # Handle nested permeability structure if present
-                self.permeability = {k: complex(v.get('real', 0), v.get('imag', 0)) 
-                                   if isinstance(v, dict) else v 
-                                   for k, v in mu.items()}
+                self.permeability = {
+                    k: (
+                        complex(v.get("real", 0), v.get("imag", 0))
+                        if isinstance(v, dict)
+                        else v
+                    )
+                    for k, v in mu.items()
+                }
         else:
             self.permeability = complex(mu, 0)
-            
+
         # CHANGED: Create the isotropic material with both eps and mu
-        self.isotropic_material = Air(permittivity=self.permittivity, permeability=self.permeability)
-        
+        self.isotropic_material = Air(
+            permittivity=self.permittivity, permeability=self.permeability
+        )
+
         # CHANGED: Get both tensors from the material
         self.eps_tensor = self.isotropic_material.fetch_permittivity_tensor()
         self.mu_tensor = self.isotropic_material.fetch_magnetic_tensor()
-        
+
         self.calculate_mode()
         self.create()
 
@@ -461,23 +510,27 @@ class IsotropicSemiInfiniteLayer(Layer):
 
     def __init__(self, data, scenario, kx, k0):
         super().__init__(data, scenario, kx, k0)
-        self.eps_incident = (tf.cast(kx, dtype=tf.float64) / tf.sin(self.incident_angle)) ** 2
-        self.eps_exit = tf.cast(data.get("permittivity"), dtype=tf.float64)
+        self.eps_incident = (kx.astype(np.float64) / np.sin(self.incident_angle)) ** 2
+        self.eps_exit = np.float64(data.get("permittivity"))
 
-        if not self.eps_exit:
-            raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
+        if self.eps_exit is None:
+            raise ValueError(
+                "No exit permittivity provided for isotropic semi-infinite layer"
+            )
 
         self.create()
 
     def create(self):
-        exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
+        exit_medium = AmbientExitMedium(
+            self.incident_angle, self.eps_incident, self.eps_exit
+        )
 
         if self.scenario == "Incident":
             self.matrix = exit_medium.construct_tensor()
         elif self.scenario == "Azimuthal":
-            self.matrix = exit_medium.construct_tensor()[tf.newaxis, tf.newaxis, ...]
+            self.matrix = exit_medium.construct_tensor()[np.newaxis, np.newaxis, ...]
         elif self.scenario == "Dispersion":
-            self.matrix = exit_medium.construct_tensor()[:, tf.newaxis, ...]
+            self.matrix = exit_medium.construct_tensor()[:, np.newaxis, ...]
         elif self.scenario == "Simple":
             # For simple scenario, just get the scalar tensor without additional dimensions
             self.matrix = exit_medium.construct_tensor_singular()

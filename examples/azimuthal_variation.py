@@ -8,7 +8,7 @@ showing the reflectivity in momentum space for a Calcite crystal.
 
 import numpy as np
 
-from hyperbolic_optics.plots import plot_mueller_dispersion
+from hyperbolic_optics.plots import plot_mueller_azimuthal
 from hyperbolic_optics.structure import Structure
 
 
@@ -19,21 +19,17 @@ def main():
     # Define dispersion scenario
     payload = {
         "ScenarioData": {
-            "type": "Dispersion",
-            "frequency": 1460.0,  # Fixed frequency in cm^-1
+            "type": "Azimuthal",
+            "incidentAngle": 40,
         },
         "Layers": [
-            {"type": "Ambient Incident Layer", "permittivity": 25.0},
-            {
-                "type": "Isotropic Middle-Stack Layer",
-                "thickness": 0.5,
-                "permittivity": 1.0,
-            },
+            {"type": "Ambient Incident Layer", "permittivity": 12.5},
+            {"type": "Isotropic Middle-Stack Layer", "thickness": 0.5},
             {
                 "type": "Semi Infinite Anisotropic Layer",
                 "material": "Calcite",
                 "rotationX": 0,
-                "rotationY": 70,  # Optical axis tilt
+                "rotationY": 90,
                 "rotationZ": 0,
             },
         ],
@@ -48,11 +44,9 @@ def main():
 
     # Generate the plot using your existing plotting function
 
-    plot_mueller_dispersion(
+    plot_mueller_azimuthal(
         structure,
         R_total,
-        title="The Hyperbolic Ghost Polariton",
-        rotation_y=70,
     )
 
 
