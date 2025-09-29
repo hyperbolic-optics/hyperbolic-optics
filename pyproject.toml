@@ -132,4 +132,5 @@ line_length = 100
 dev = [
     "autoflake>=2.3.1",
     "flake8-pyproject>=1.2.3",
+    "toml>=0.10.2",
 ]

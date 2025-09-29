@@ -1,9 +1,9 @@
 site_name: Hyperbolic Optics
-site_url: https://MarkCunningham0410.github.io/hyperbolic_optics/
+site_url: https://hyperbolic-optics.github.io/hyperbolic-optics/
 site_description: 4×4 Transfer Matrix Method for Anisotropic Multilayer Structures
 site_author: Mark Cunningham
-repo_url: https://github.com/MarkCunningham0410/hyperbolic_optics
-repo_name: MarkCunningham0410/hyperbolic_optics
+repo_url: https://github.com/hyperbolic-optics/hyperbolic-optics
+repo_name: hyperbolic-optics/hyperbolic-optics
 
 theme:
   name: material
