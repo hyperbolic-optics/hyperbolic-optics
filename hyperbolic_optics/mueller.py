@@ -1,5 +1,5 @@
-import tensorflow as tf
 import numpy as np
+
 
 class Mueller:
     def __init__(self, structure, debug=False):
@@ -13,7 +13,9 @@ class Mueller:
         self.structure = structure
         self.mueller_matrix = None
         self.stokes_parameters = None
-        self.incident_stokes = tf.constant([1, 0, 0, 0], dtype=tf.float64)  # Default to unpolarized light
+        self.incident_stokes = np.array(
+            [1, 0, 0, 0], dtype=np.float64
+        )  # Default to unpolarized light
         self.optical_components = []
         self.anisotropic_sample_added = False
         self.debug = debug
@@ -25,11 +27,11 @@ class Mueller:
 
     def _summarize_array(self, arr, name):
         """Summarize an array with statistics and sample points."""
-        if isinstance(arr, tf.Tensor):
-            arr = arr.numpy()
         flat_arr = arr.flatten()
-        summary = f"{name} - Shape: {arr.shape}, Min: {np.min(flat_arr):.6f}, Max: {np.max(flat_arr):.6f}, " \
-                  f"Mean: {np.mean(flat_arr):.6f}, Std: {np.std(flat_arr):.6f}"
+        summary = (
+            f"{name} - Shape: {arr.shape}, Min: {np.min(flat_arr):.6f}, Max: {np.max(flat_arr):.6f}, "
+            f"Mean: {np.mean(flat_arr):.6f}, Std: {np.std(flat_arr):.6f}"
+        )
         sample_points = np.linspace(0, len(flat_arr) - 1, 5, dtype=int)
         samples = flat_arr[sample_points]
         summary += f"\nSample points: {samples}"
@@ -46,21 +48,23 @@ class Mueller:
                 For 'circular': handedness ('right' or 'left')
                 For 'elliptical': alpha (in degrees), ellipticity (between -45 and 45 degrees)
         """
-        if polarization_type == 'linear':
-            angle = kwargs.get('angle', 0)
+        if polarization_type == "linear":
+            angle = kwargs.get("angle", 0)
             self.incident_stokes = self._linear_polarization(angle)
-        elif polarization_type == 'circular':
-            handedness = kwargs.get('handedness', 'right')
+        elif polarization_type == "circular":
+            handedness = kwargs.get("handedness", "right")
             self.incident_stokes = self._circular_polarization(handedness)
-        elif polarization_type == 'elliptical':
-            alpha = kwargs.get('alpha', 0)
-            ellipticity = kwargs.get('ellipticity', 0)
+        elif polarization_type == "elliptical":
+            alpha = kwargs.get("alpha", 0)
+            ellipticity = kwargs.get("ellipticity", 0)
             self.incident_stokes = self._elliptical_polarization(alpha, ellipticity)
         else:
             raise ValueError(f"Unsupported polarization type: {polarization_type}")
-        
+
         self._debug_print(f"Set incident polarization: {polarization_type}")
-        self._debug_print(self._summarize_array(self.incident_stokes, "Incident Stokes vector"))
+        self._debug_print(
+            self._summarize_array(self.incident_stokes, "Incident Stokes vector")
+        )
 
     def _linear_polarization(self, angle):
         """
@@ -70,10 +74,12 @@ class Mueller:
             angle (float): Angle of linear polarization in degrees (0° is p-polarized, 90° is s-polarized)
 
         Returns:
-            tf.Tensor: Stokes vector for the specified linear polarization
+            np.ndarray: Stokes vector for the specified linear polarization
         """
         angle_rad = np.radians(angle)
-        return tf.constant([1, np.cos(2*angle_rad), np.sin(2*angle_rad), 0], dtype=tf.float64)
+        return np.array(
+            [1, np.cos(2 * angle_rad), np.sin(2 * angle_rad), 0], dtype=np.float64
+        )
 
     def _circular_polarization(self, handedness):
         """
@@ -83,10 +89,10 @@ class Mueller:
             handedness (str): 'right' for right-handed, 'left' for left-handed
 
         Returns:
-            tf.Tensor: Stokes vector for the specified circular polarization
+            np.ndarray: Stokes vector for the specified circular polarization
         """
-        s3 = 1 if handedness == 'right' else -1
-        return tf.constant([1, 0, 0, s3], dtype=tf.float64)
+        s3 = 1 if handedness == "right" else -1
+        return np.array([1, 0, 0, s3], dtype=np.float64)
 
     def _elliptical_polarization(self, alpha, ellipticity):
         """
@@ -97,16 +103,19 @@ class Mueller:
             ellipticity (float): Ellipticity angle in degrees (between -45° and 45°)
 
         Returns:
-            tf.Tensor: Stokes vector for the specified elliptical polarization
+            np.ndarray: Stokes vector for the specified elliptical polarization
         """
         alpha_rad = np.radians(alpha)
         ellipticity_rad = np.radians(ellipticity)
-        return tf.constant([
-            1,
-            np.cos(2*ellipticity_rad) * np.cos(2*alpha_rad),
-            np.cos(2*ellipticity_rad) * np.sin(2*alpha_rad),
-            np.sin(2*ellipticity_rad)
-        ], dtype=tf.float64)
+        return np.array(
+            [
+                1,
+                np.cos(2 * ellipticity_rad) * np.cos(2 * alpha_rad),
+                np.cos(2 * ellipticity_rad) * np.sin(2 * alpha_rad),
+                np.sin(2 * ellipticity_rad),
+            ],
+            dtype=np.float64,
+        )
 
     def linear_polarizer(self, angle):
         """
@@ -116,19 +125,22 @@ class Mueller:
             angle: Polarizer angle in degrees (float).
 
         Returns:
-            Mueller matrix for the linear polarizer (tf.Tensor).
+            Mueller matrix for the linear polarizer (np.ndarray).
         """
-        angle_rad = tf.cast(np.radians(angle) * 2., dtype=tf.float64)
+        angle_rad = np.float64(np.radians(angle) * 2.0)
 
-        cos_angle = tf.cos(angle_rad)
-        sin_angle = tf.sin(angle_rad)
+        cos_angle = np.cos(angle_rad)
+        sin_angle = np.sin(angle_rad)
 
-        return 0.5 * tf.convert_to_tensor([
-            [1 , cos_angle, sin_angle, 0],
-            [cos_angle, cos_angle**2., cos_angle * sin_angle, 0],
-            [sin_angle, cos_angle * sin_angle, sin_angle**2., 0],
-            [0, 0, 0, 0]
-        ], dtype=tf.float64)
+        return 0.5 * np.array(
+            [
+                [1, cos_angle, sin_angle, 0],
+                [cos_angle, cos_angle**2.0, cos_angle * sin_angle, 0],
+                [sin_angle, cos_angle * sin_angle, sin_angle**2.0, 0],
+                [0, 0, 0, 0],
+            ],
+            dtype=np.float64,
+        )
 
     def quarter_wave_plate(self, angle):
         """
@@ -138,18 +150,21 @@ class Mueller:
             angle: Fast axis angle in degrees (float).
 
         Returns:
-            Mueller matrix for the quarter-wave plate (tf.Tensor).
+            Mueller matrix for the quarter-wave plate (np.ndarray).
         """
-        angle_rad = tf.cast(np.radians(angle), dtype=tf.float64)
-        cos_angle = tf.cos(2 * angle_rad)
-        sin_angle = tf.sin(2 * angle_rad)
+        angle_rad = np.float64(np.radians(angle))
+        cos_angle = np.cos(2 * angle_rad)
+        sin_angle = np.sin(2 * angle_rad)
 
-        return tf.convert_to_tensor([
-            [1, 0, 0, 0],
-            [0, cos_angle**2, cos_angle * sin_angle, -sin_angle],
-            [0, cos_angle * sin_angle, sin_angle**2, cos_angle],
-            [0, sin_angle, -cos_angle, 0]
-        ], dtype=tf.float64)
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, cos_angle**2, cos_angle * sin_angle, -sin_angle],
+                [0, cos_angle * sin_angle, sin_angle**2, cos_angle],
+                [0, sin_angle, -cos_angle, 0],
+            ],
+            dtype=np.float64,
+        )
 
     def half_wave_plate(self, angle):
         """
@@ -159,18 +174,21 @@ class Mueller:
             angle: Fast axis angle in degrees (float).
 
         Returns:
-            Mueller matrix for the half-wave plate (tf.Tensor).
+            Mueller matrix for the half-wave plate (np.ndarray).
         """
-        angle_rad = tf.cast(np.radians(angle), dtype=tf.float64)
-        cos_angle = tf.cos(2 * angle_rad)
-        sin_angle = tf.sin(2 * angle_rad)
+        angle_rad = np.float64(np.radians(angle))
+        cos_angle = np.cos(2 * angle_rad)
+        sin_angle = np.sin(2 * angle_rad)
 
-        return tf.convert_to_tensor([
-            [1, 0, 0, 0],
-            [0, cos_angle**2 - sin_angle**2, 2 * cos_angle * sin_angle, 0],
-            [0, 2 * cos_angle * sin_angle, sin_angle**2 - cos_angle**2, 0],
-            [0, 0, 0, -1]
-        ], dtype=tf.float64)
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, cos_angle**2 - sin_angle**2, 2 * cos_angle * sin_angle, 0],
+                [0, 2 * cos_angle * sin_angle, sin_angle**2 - cos_angle**2, 0],
+                [0, 0, 0, -1],
+            ],
+            dtype=np.float64,
+        )
 
     def calculate_mueller_matrix(self):
         """
@@ -181,32 +199,35 @@ class Mueller:
         r_sp = self.structure.r_sp
         r_ss = self.structure.r_ss
 
-        f_matrix = tf.convert_to_tensor([
+        f_matrix = np.array(
             [
-                r_pp * tf.math.conj(r_pp),
-                r_pp * tf.math.conj(r_ps),
-                r_ps * tf.math.conj(r_pp),
-                r_ps * tf.math.conj(r_ps)
+                [
+                    r_pp * np.conj(r_pp),
+                    r_pp * np.conj(r_ps),
+                    r_ps * np.conj(r_pp),
+                    r_ps * np.conj(r_ps),
+                ],
+                [
+                    r_pp * np.conj(r_sp),
+                    r_pp * np.conj(r_ss),
+                    r_ps * np.conj(r_sp),
+                    r_ps * np.conj(r_ss),
+                ],
+                [
+                    r_sp * np.conj(r_pp),
+                    r_sp * np.conj(r_ps),
+                    r_ss * np.conj(r_pp),
+                    r_ss * np.conj(r_ps),
+                ],
+                [
+                    r_sp * np.conj(r_sp),
+                    r_sp * np.conj(r_ss),
+                    r_ss * np.conj(r_sp),
+                    r_ss * np.conj(r_ss),
+                ],
             ],
-            [
-                r_pp * tf.math.conj(r_sp),
-                r_pp * tf.math.conj(r_ss),
-                r_ps * tf.math.conj(r_sp),
-                r_ps * tf.math.conj(r_ss)
-            ],
-            [
-                r_sp * tf.math.conj(r_pp),
-                r_sp * tf.math.conj(r_ps),
-                r_ss * tf.math.conj(r_pp),
-                r_ss * tf.math.conj(r_ps)
-            ],
-            [
-                r_sp * tf.math.conj(r_sp),
-                r_sp * tf.math.conj(r_ss),
-                r_ss * tf.math.conj(r_sp),
-                r_ss * tf.math.conj(r_ss)
-            ],
-        ], dtype=tf.complex128)
+            dtype=np.complex128,
+        )
 
         # Handle different scenario types
         if self.structure.scenario.type == "Simple":
@@ -214,24 +235,26 @@ class Mueller:
             pass
         else:
             # For other scenarios, transpose as before
-            f_matrix = tf.transpose(f_matrix, perm=[2, 3, 0, 1])
+            f_matrix = np.transpose(f_matrix, axes=[2, 3, 0, 1])
 
-        a_matrix = tf.convert_to_tensor([
-            [1, 0, 0, 1],
-            [1, 0, 0, -1],
-            [0, 1, 1, 0],
-            [0, 1j, -1j, 0]
-        ], dtype=tf.complex128)
+        a_matrix = np.array(
+            [[1, 0, 0, 1], [1, 0, 0, -1], [0, 1, 1, 0], [0, 1j, -1j, 0]],
+            dtype=np.complex128,
+        )
 
         # Add batch dimensions if needed
         if self.structure.scenario.type == "Simple":
             # For Simple scenario, just compute matrix multiplication directly
-            self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
+            self.mueller_matrix = (
+                a_matrix @ f_matrix @ np.linalg.inv(a_matrix)
+            ).astype(np.float64)
         else:
             # For other scenarios, add batch dimensions
-            a_matrix = a_matrix[tf.newaxis, tf.newaxis, ...]
-            self.mueller_matrix = tf.cast(a_matrix @ f_matrix @ tf.linalg.inv(a_matrix), dtype=tf.float64)
-        
+            a_matrix = a_matrix[np.newaxis, np.newaxis, ...]
+            self.mueller_matrix = (
+                a_matrix @ f_matrix @ np.linalg.inv(a_matrix)
+            ).astype(np.float64)
+
         self._debug_print("Calculated Mueller matrix for anisotropic sample:")
         self._debug_print(self._summarize_array(self.mueller_matrix, "Mueller matrix"))
 
@@ -243,17 +266,17 @@ class Mueller:
             component_type: Type of the optical component (str).
             *args: Arguments for the optical component (e.g., angle).
         """
-        if component_type == 'linear_polarizer':
+        if component_type == "linear_polarizer":
             self.optical_components.append(self.linear_polarizer(*args))
-        elif component_type == 'anisotropic_sample':
+        elif component_type == "anisotropic_sample":
             if self.anisotropic_sample_added:
                 raise ValueError("Anisotropic sample has already been added")
             self.calculate_mueller_matrix()
             self.optical_components.append(self.mueller_matrix)
             self.anisotropic_sample_added = True
-        elif component_type == 'quarter_wave_plate':
+        elif component_type == "quarter_wave_plate":
             self.optical_components.append(self.quarter_wave_plate(*args))
-        elif component_type == 'half_wave_plate':
+        elif component_type == "half_wave_plate":
             self.optical_components.append(self.half_wave_plate(*args))
         else:
             raise ValueError(f"Unsupported optical component type: {component_type}")
@@ -264,25 +287,25 @@ class Mueller:
         Calculate the Stokes parameters of the system using the set incident polarization and optical components.
 
         Returns:
-            Stokes parameters of the system (tf.Tensor).
+            Stokes parameters of the system (np.ndarray).
         """
         if self.structure.scenario.type == "Simple":
             # For Simple scenario, start with just the incident vector [4,]
-            stokes_vector = tf.reshape(self.incident_stokes, [4, 1])
+            stokes_vector = self.incident_stokes.reshape([4, 1])
         else:
             # For other scenarios, add batch dimensions
-            stokes_vector = tf.reshape(self.incident_stokes, [1, 1, 4, 1])
-        
-        self._debug_print(f"Initial Stokes vector: {stokes_vector.numpy().flatten()}")
+            stokes_vector = self.incident_stokes.reshape([1, 1, 4, 1])
+
+        self._debug_print(f"Initial Stokes vector: {stokes_vector.flatten()}")
 
         for i, component in enumerate(self.optical_components):
             if self.structure.scenario.type == "Simple":
                 # For Simple scenario, component should be [4, 4]
-                stokes_vector = tf.matmul(component, stokes_vector)
+                stokes_vector = component @ stokes_vector
             else:
                 # For other scenarios, component has batch dimensions
-                stokes_vector = tf.matmul(component, stokes_vector)
-            
+                stokes_vector = component @ stokes_vector
+
             self._debug_print(f"After component {i}:")
             self._debug_print(self._summarize_array(stokes_vector, f"Stokes vector"))
 
@@ -292,9 +315,11 @@ class Mueller:
         else:
             # For other scenarios, remove the last dimension [..., 4, 1] -> [..., 4]
             self.stokes_parameters = stokes_vector[..., 0]
-        
+
         self._debug_print("Final Stokes parameters:")
-        self._debug_print(self._summarize_array(self.stokes_parameters, "Stokes parameters"))
+        self._debug_print(
+            self._summarize_array(self.stokes_parameters, "Stokes parameters")
+        )
         return self.stokes_parameters
 
     def get_reflectivity(self):
@@ -302,7 +327,7 @@ class Mueller:
         Calculate the reflectivity of the system (S0 Stokes parameter).
 
         Returns:
-            Reflectivity of the system (tf.Tensor).
+            Reflectivity of the system (np.ndarray).
         """
         if self.stokes_parameters is None:
             self.calculate_stokes_parameters()
@@ -313,17 +338,20 @@ class Mueller:
         if self.stokes_parameters is None:
             self.calculate_stokes_parameters()
 
-        s0, s1, s2, s3 = tf.unstack(self.stokes_parameters, axis=-1)
-        
+        s0 = self.stokes_parameters[..., 0]
+        s1 = self.stokes_parameters[..., 1]
+        s2 = self.stokes_parameters[..., 2]
+        s3 = self.stokes_parameters[..., 3]
+
         # Avoid division by zero
         epsilon = 1e-10
-        s0_safe = tf.maximum(s0, epsilon)
-        
-        dop = tf.sqrt(s1**2 + s2**2 + s3**2) / s0_safe
-        
+        s0_safe = np.maximum(s0, epsilon)
+
+        dop = np.sqrt(s1**2 + s2**2 + s3**2) / s0_safe
+
         # Clip to ensure DOP is always between 0 and 1
-        dop = tf.clip_by_value(dop, 0.0, 1.0)
-        
+        dop = np.clip(dop, 0.0, 1.0)
+
         return dop
 
     def get_ellipticity(self):
@@ -331,7 +359,7 @@ class Mueller:
         Calculate the ellipticity of the polarization.
 
         Returns:
-            Ellipticity of the polarization (tf.Tensor).
+            Ellipticity of the polarization (np.ndarray).
         """
         if self.stokes_parameters is None:
             self.calculate_stokes_parameters()
@@ -340,14 +368,14 @@ class Mueller:
         s1 = self.stokes_parameters[..., 1]
         s2 = self.stokes_parameters[..., 2]
 
-        return 0.5 * tf.math.atan2(s3, tf.sqrt(s1**2 + s2**2))
+        return 0.5 * np.arctan2(s3, np.sqrt(s1**2 + s2**2))
 
     def get_azimuth(self):
         """
         Calculate the azimuth of the polarization.
 
         Returns:
-            Azimuth of the polarization (tf.Tensor).
+            Azimuth of the polarization (np.ndarray).
         """
         if self.stokes_parameters is None:
             self.calculate_stokes_parameters()
@@ -355,7 +383,7 @@ class Mueller:
         s1 = self.stokes_parameters[..., 1]
         s2 = self.stokes_parameters[..., 2]
 
-        return 0.5 * tf.math.atan2(s2, s1)
+        return 0.5 * np.arctan2(s2, s1)
 
     def get_stokes_parameters(self):
         """
@@ -368,10 +396,10 @@ class Mueller:
             self.calculate_stokes_parameters()
 
         return {
-            'S0': self.stokes_parameters[..., 0],
-            'S1': self.stokes_parameters[..., 1],
-            'S2': self.stokes_parameters[..., 2],
-            'S3': self.stokes_parameters[..., 3]
+            "S0": self.stokes_parameters[..., 0],
+            "S1": self.stokes_parameters[..., 1],
+            "S2": self.stokes_parameters[..., 2],
+            "S3": self.stokes_parameters[..., 3],
         }
 
     def get_polarisation_parameters(self):
@@ -382,9 +410,9 @@ class Mueller:
             Dictionary of polarization parameters (DOP, Ellipticity, Azimuth).
         """
         return {
-            'DOP': self.get_degree_of_polarisation(),
-            'Ellipticity': self.get_ellipticity(),
-            'Azimuth': self.get_azimuth()
+            "DOP": self.get_degree_of_polarisation(),
+            "Ellipticity": self.get_ellipticity(),
+            "Azimuth": self.get_azimuth(),
         }
 
     def get_all_parameters(self):
@@ -397,12 +425,12 @@ class Mueller:
         stokes = self.get_stokes_parameters()
         polarisation = self.get_polarisation_parameters()
         all_params = {**stokes, **polarisation}
-        
+
         if self.debug:
             print("Summary of all parameters:")
             for param, value in all_params.items():
                 print(self._summarize_array(value, param))
-        
+
         return all_params
 
     def reset(self):
@@ -411,7 +439,7 @@ class Mueller:
         """
         self.mueller_matrix = None
         self.stokes_parameters = None
-        self.incident_stokes = tf.constant([1, 0, 0, 0], dtype=tf.float64)
+        self.incident_stokes = np.array([1, 0, 0, 0], dtype=np.float64)
         self.optical_components = []
         self.anisotropic_sample_added = False
         self._debug_print("Mueller object reset to initial state.")

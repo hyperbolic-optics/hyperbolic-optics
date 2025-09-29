@@ -28,7 +28,6 @@ classifiers = [
 keywords = ["optics", "physics", "simulation", "anisotropic", "hyperbolic", "mueller matrix"]
 
 dependencies = [
-    "tensorflow>=2.10.0",
     "numpy>=1.20.0",
     "scipy>=1.7.0",
     "matplotlib>=3.5.0",
