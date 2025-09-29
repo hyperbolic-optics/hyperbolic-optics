@@ -43,21 +43,21 @@ plugins:
             docstring_style: google
             show_source: true
             show_root_heading: true
-            # Performance optimizations
-            members_order: source  # Faster than alphabetical
-            show_signature_annotations: false  # Skip if not needed
+            members_order: source
+            show_signature_annotations: false
             separate_signature: true
             merge_init_into_class: true
-      # Enable caching
+            docstring_section_style: list
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
       enable_inventory: true
-      # custom_templates: templates  # Only if you have custom templates
 
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
-      base_path: ['.']  # This allows it to find your examples/ folder
+      base_path: ['.']
       check_paths: true
   - pymdownx.superfences
   - pymdownx.arithmatex:
@@ -68,6 +68,8 @@ markdown_extensions:
       alternate_style: true
   - attr_list
   - md_in_html
+  - def_list
+  - tables
 
 extra_css:
   - stylesheets/extra.css

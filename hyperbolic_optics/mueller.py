@@ -7,17 +7,18 @@ elements.
 
 The Mueller formalism handles:
 
-- Arbitrary incident polarization states (linear, circular, elliptical)
-- Polarization-dependent reflection from anisotropic samples
-- Ideal optical components (polarizers, wave plates)
-- Sequential component combinations
+    - Arbitrary incident polarization states (linear, circular, elliptical)
+    - Polarization-dependent reflection from anisotropic samples
+    - Ideal optical components (polarizers, wave plates)
+    - Sequential component combinations
 
 Key relationships:
 
-- S_out = M · S_in (Stokes vector transformation)
-- M = A · F · A⁻¹ (Mueller from Jones matrix F)
+    - S_out = M · S_in (Stokes vector transformation)
+    - M = A · F · A⁻¹ (Mueller from Jones matrix F)
 
-Reference: Chipman, Lam & Young, "Polarized Light and Optical Systems" (2018)
+Reference:
+    Chipman, Lam & Young, "Polarized Light and Optical Systems" (2018)
 """
 
 from typing import Any
@@ -29,18 +30,18 @@ from .structure import Structure
 
 class Mueller:
     """Mueller matrix analyzer for polarization calculations.
-    
+
     The Mueller class provides tools for analyzing polarization transformations
     in optical systems using the Mueller matrix formalism. It handles arbitrary
     incident polarization states and sequential optical components.
-    
+
     Attributes:
         structure: The Structure object containing reflection coefficients
         mueller_matrix: 4×4 Mueller matrix for the sample
         stokes_parameters: Output Stokes parameters
         incident_stokes: Incident polarization state [S0, S1, S2, S3]
         optical_components: List of Mueller matrices for optical elements
-        
+
     Note:
         Mueller matrices are real-valued 4×4 matrices that transform Stokes
         parameters: S_out = M · S_in

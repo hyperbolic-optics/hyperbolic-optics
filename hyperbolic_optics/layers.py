@@ -1,10 +1,11 @@
 """Layer construction and transfer matrix calculation.
 
 This module implements various layer types for multilayer optical structures:
-- Ambient media (incident prism, exit medium)
-- Isotropic layers (air gaps, dielectric layers)
-- Anisotropic crystal layers (finite thickness)
-- Semi-infinite anisotropic layers
+
+    - Ambient media (incident prism, exit medium)
+    - Isotropic layers (air gaps, dielectric layers)
+    - Anisotropic crystal layers (finite thickness)
+    - Semi-infinite anisotropic layers
 
 Each layer type calculates its own transfer matrix using the 4×4 formalism,
 which relates electromagnetic field components at the layer boundaries.

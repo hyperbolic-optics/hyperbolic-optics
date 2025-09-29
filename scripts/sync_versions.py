@@ -13,7 +13,7 @@ def get_version_from_init():
     init_path = Path("hyperbolic_optics/__init__.py")
     with open(init_path) as f:
         content = f.read()
-    
+
     # Find __version__ = "x.y.z"
     match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
     if match:

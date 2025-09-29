@@ -4,21 +4,21 @@ This module provides material classes for various crystal types.
 
 Uniaxial materials (single optical axis):
 
-- Quartz (α-SiO₂)
-- Sapphire (α-Al₂O₃)
-- Calcite (CaCO₃) - upper and lower reststrahlen bands
+    - Quartz (α-SiO₂)
+    - Sapphire (α-Al₂O₃)
+    - Calcite (CaCO₃) - upper and lower reststrahlen bands
 
 Monoclinic materials (non-zero off-diagonal components):
 
-- Gallium Oxide (β-Ga₂O₃)
+    - Gallium Oxide (β-Ga₂O₃)
 
 Arbitrary materials:
 
-- User-defined permittivity and permeability tensors
+    - User-defined permittivity and permeability tensors
 
 Isotropic materials:
 
-- Air/vacuum
+    - Air/vacuum
 
 Note:
     All materials implement frequency-dependent permittivity using Lorentz

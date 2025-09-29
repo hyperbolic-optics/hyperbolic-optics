@@ -3,26 +3,28 @@
 This module implements the core 4×4 transfer matrix formalism for
 wave propagation in anisotropic media. The key steps are:
 
-1. Construct Berreman (delta) matrix from material tensors
-2. Solve eigenvalue problem for propagation modes
-3. Sort modes by propagation direction (forward/backward)
-4. Calculate electric and magnetic field components
-5. Compute Poynting vectors (energy flow)
-6. Classify modes by polarization (p vs s)
-7. Construct transfer matrix with phase propagation
+    1. Construct Berreman (delta) matrix from material tensors
+    2. Solve eigenvalue problem for propagation modes
+    3. Sort modes by propagation direction (forward/backward)
+    4. Calculate electric and magnetic field components
+    5. Compute Poynting vectors (energy flow)
+    6. Classify modes by polarization (p vs s)
+    7. Construct transfer matrix with phase propagation
 
 The Berreman matrix Δ satisfies: dF/dz = iΔF where F = [Ex, Ey, Hx, Hy]ᵀ
 
 Key physical insights:
-- Anisotropic media support 4 partial waves (2 forward, 2 backward)
-- Each mode has mixed s and p polarization character
-- Energy flow (Poynting vector) may differ from phase velocity
-- Evanescent modes have complex kz with Im(kz) > 0
+
+    - Anisotropic media support 4 partial waves (2 forward, 2 backward)
+    - Each mode has mixed s and p polarization character
+    - Energy flow (Poynting vector) may differ from phase velocity
+    - Evanescent modes have complex kz with Im(kz) > 0
 
 References:
-- Berreman, J. Opt. Soc. Am. 62, 502-510 (1972)
-- Yeh, JOSA 69, 742-756 (1979)
-- Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
+
+    - Berreman, J. Opt. Soc. Am. 62, 502-510 (1972)
+    - Yeh, JOSA 69, 742-756 (1979)
+    - Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
 """
 
 import numpy as np

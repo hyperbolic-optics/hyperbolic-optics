@@ -2,10 +2,10 @@
 
 This module defines four scenario types for different analysis needs:
 
-1. Simple: Single-point calculation (scalar angles and frequency)
-2. Incident: Angle sweep at multiple frequencies (kx-ω plots)
-3. Azimuthal: Sample rotation at fixed incident angle (β-ω plots)
-4. Dispersion: k-space map at fixed frequency (kx-ky plots)
+    1. Simple: Single-point calculation (scalar angles and frequency)
+    2. Incident: Angle sweep at multiple frequencies (kx-ω plots)
+    3. Azimuthal: Sample rotation at fixed incident angle (β-ω plots)
+    4. Dispersion: k-space map at fixed frequency (kx-ky plots)
 
 Each scenario type automatically sets up appropriate angle and frequency
 arrays with correct dimensions for batch processing.

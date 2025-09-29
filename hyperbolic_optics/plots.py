@@ -1,12 +1,13 @@
 """Publication-quality plotting functions for simulation results.
 
 This module provides plotting utilities for various visualization types:
-- Material permittivity spectra
-- Frequency vs incident angle (kx-ω diagrams)
-- Frequency vs azimuthal angle (β-ω diagrams)
-- k-space dispersion (kx-ky isofrequency contours)
-- Stokes parameter distributions
-- Mueller matrix elements
+
+    - Material permittivity spectra
+    - Frequency vs incident angle (kx-ω diagrams)
+    - Frequency vs azimuthal angle (β-ω diagrams)
+    - k-space dispersion (kx-ky isofrequency contours)
+    - Stokes parameter distributions
+    - Mueller matrix elements
 
 All plots use consistent styling for publication-ready figures with
 proper axis labels, colorbars, and typography.
@@ -17,6 +18,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 from hyperbolic_optics.materials import BaseMaterial
 from hyperbolic_optics.structure import Structure
 

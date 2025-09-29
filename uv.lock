@@ -555,7 +555,6 @@ wheels = [
 
 [[package]]
 name = "hyperbolic-optics"
-version = "0.1.8"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },
