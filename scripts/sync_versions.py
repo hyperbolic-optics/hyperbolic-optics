@@ -81,6 +81,44 @@ def update_init_version(version):
     print(f"✅ Updated __init__.py to version {version}")
 
 
+def update_docs_index(version):
+    """Update version in docs/index.md if it exists"""
+    docs_index_path = Path("docs/index.md")
+    if not docs_index_path.exists():
+        return
+
+    with open(docs_index_path) as f:
+        content = f.read()
+
+    # Update version in BibTeX citation
+    content = re.sub(r"version={.*?}", f"version={{{version}}}", content)
+    content = re.sub(r"year={.*?}", f"year={{{datetime.now().year}}}", content)
+
+    with open(docs_index_path, "w") as f:
+        f.write(content)
+
+    print(f"✅ Updated docs/index.md to version {version}")
+
+
+def update_docs_citation(version):
+    """Update version in docs/citation.md if it exists"""
+    docs_citation_path = Path("docs/citation.md")
+    if not docs_citation_path.exists():
+        return
+
+    with open(docs_citation_path) as f:
+        content = f.read()
+
+    # Update version in all BibTeX citations
+    content = re.sub(r"version={.*?}", f"version={{{version}}}", content)
+    content = re.sub(r"year={.*?}", f"year={{{datetime.now().year}}}", content)
+
+    with open(docs_citation_path, "w") as f:
+        f.write(content)
+
+    print(f"✅ Updated docs/citation.md to version {version}")
+
+
 def main():
     """Sync all version numbers"""
     version = get_version_from_pyproject()
@@ -89,6 +127,8 @@ def main():
     update_citation_cff(version)
     update_readme_citation(version)
     update_init_version(version)
+    update_docs_index(version)
+    update_docs_citation(version)
 
     print(f"🎉 All version numbers synchronized to {version}")
 

@@ -1,0 +1,253 @@
+/* 
+ * Custom CSS for Hyperbolic Optics Documentation
+ */
+
+/* ============================================
+   Code Blocks - Better visibility
+   ============================================ */
+
+/* Make code blocks stand out more */
+.highlight {
+    border-radius: 0.5rem;
+    border: 1px solid var(--md-code-bg-color);
+}
+
+/* Better inline code styling */
+code {
+    padding: 0.1em 0.4em;
+    border-radius: 0.3em;
+    background-color: var(--md-code-bg-color);
+    font-size: 0.85em;
+}
+
+/* Code block titles */
+.highlight pre code {
+    font-size: 0.85em;
+}
+
+/* ============================================
+   Admonitions - Science-themed colors
+   ============================================ */
+
+/* Custom note color for physics/optics theme */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+    border-left: 0.2rem solid #448aff;
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+    background-color: rgba(68, 138, 255, 0.1);
+}
+
+/* Warning for numerical issues */
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+    border-left: 0.2rem solid #ff9800;
+}
+
+/* ============================================
+   Tables - Better readability
+   ============================================ */
+
+.md-typeset table:not([class]) {
+    font-size: 0.9em;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+    background-color: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    font-weight: 600;
+}
+
+.md-typeset table:not([class]) tr:hover {
+    background-color: var(--md-default-fg-color--lightest);
+}
+
+/* ============================================
+   Math Equations - Better spacing
+   ============================================ */
+
+/* Block equations */
+.arithmatex {
+    margin: 1.5em 0;
+    padding: 1em;
+    background-color: var(--md-code-bg-color);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+/* Inline equations - slight background */
+.arithmatex.inline {
+    padding: 0.2em 0.4em;
+    margin: 0 0.1em;
+    background-color: transparent;
+}
+
+/* ============================================
+   Buttons - Download/action buttons
+   ============================================ */
+
+.md-button {
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.md-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.md-button--primary {
+    background-color: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    border: none;
+}
+
+/* ============================================
+   Badges - Status badges on homepage
+   ============================================ */
+
+/* Make badges slightly larger and more visible */
+.md-typeset img[alt*="badge"],
+.md-typeset img[alt*="shield"] {
+    margin: 0.2em;
+}
+
+/* ============================================
+   Headers - Better hierarchy
+   ============================================ */
+
+/* Add subtle bottom border to h2 */
+.md-typeset h2 {
+    border-bottom: 1px solid var(--md-default-fg-color--lightest);
+    padding-bottom: 0.3em;
+}
+
+/* Better spacing for h3 */
+.md-typeset h3 {
+    margin-top: 2em;
+}
+
+/* ============================================
+   Code examples - Title styling
+   ============================================ */
+
+/* Style for code block with title */
+.md-typeset .highlight [data-linenos]:before {
+    color: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   Navigation - Active item highlight
+   ============================================ */
+
+/* Make current page more obvious in nav */
+.md-nav__link--active {
+    font-weight: 600;
+}
+
+/* ============================================
+   API Documentation - Better spacing
+   ============================================ */
+
+/* Better spacing for function signatures */
+.md-typeset .doc-signature {
+    margin-bottom: 1em;
+}
+
+/* Parameter lists in API docs */
+.md-typeset .doc-param {
+    margin-left: 1em;
+}
+
+/* Return type styling */
+.md-typeset .doc-returns {
+    margin-top: 1em;
+    padding-left: 1em;
+    border-left: 2px solid var(--md-primary-fg-color);
+}
+
+/* ============================================
+   Dark mode adjustments
+   ============================================ */
+
+[data-md-color-scheme="slate"] {
+    /* Slightly lighter code background in dark mode */
+    --md-code-bg-color: #2e2e2e;
+}
+
+[data-md-color-scheme="slate"] .highlight {
+    border-color: #404040;
+}
+
+[data-md-color-scheme="slate"] .arithmatex {
+    background-color: #2e2e2e;
+}
+
+/* ============================================
+   Homepage specific - Hero section
+   ============================================ */
+
+/* Make first paragraph on homepage stand out */
+.md-content article > p:first-of-type {
+    font-size: 1.1em;
+    line-height: 1.6;
+}
+
+/* ============================================
+   Search results - Better highlighting
+   ============================================ */
+
+.md-search-result__article--document {
+    border-radius: 0.5rem;
+}
+
+/* ============================================
+   Footer - Better spacing
+   ============================================ */
+
+.md-footer-meta {
+    border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* ============================================
+   Scrollbar styling (webkit browsers)
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--md-default-bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--md-default-fg-color--lighter);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   Print styles
+   ============================================ */
+
+@media print {
+    .md-header,
+    .md-tabs,
+    .md-footer,
+    .md-sidebar {
+        display: none;
+    }
+    
+    .md-content {
+        margin: 0;
+    }
+}

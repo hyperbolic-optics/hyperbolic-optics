@@ -39,6 +39,12 @@ dev = [
     "flake8",
 ]
 
+docs = [
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-jupyter>=0.24.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/MarkCunningham0410/hyperbolic_optics"
 Repository = "https://github.com/MarkCunningham0410/hyperbolic_optics"
