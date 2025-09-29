@@ -31,8 +31,6 @@ from hyperbolic_optics.scenario import ScenarioSetup
 class Structure:
     """Main interface for optical simulations.
 
-    ...existing docstring...
-
     Examples:
         Basic single-point calculation:
 

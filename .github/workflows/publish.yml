@@ -21,8 +21,8 @@ jobs:
       
     - name: Update version references automatically
       run: |
-        # Extract version from pyproject.toml
-        VERSION=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
+        # Extract version from __init__.py instead of pyproject.toml
+        VERSION=$(grep -oP '__version__ = "\K[^"]+' hyperbolic_optics/__init__.py)
         DATE=$(date +%Y-%m-%d)
         YEAR=$(date +%Y)
         

@@ -17,8 +17,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from materials import BaseMaterial
-from structure import Structure
+from hyperbolic_optics.materials import BaseMaterial
+from hyperbolic_optics.structure import Structure
 
 # Configuration Constants
 CONFIG = {
@@ -32,6 +32,7 @@ CONFIG = {
         "DPI": 300,
         "COLORMAP": "PuRd_r",
         "SAVE_PATH": Path("test_figures"),
+        "FIGURE_SIZE": (20, 5),  # ADD THIS
     },
     "PHYSICS": {"PRISM_PERMITTIVITY": 50.0},
 }

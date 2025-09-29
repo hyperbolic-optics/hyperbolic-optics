@@ -8,6 +8,7 @@ Materials with a single optical axis (extraordinary axis differs from ordinary a
 
 #### Quartz
 
+
 ```python
 {
     "type": "Semi Infinite Anisotropic Layer",
@@ -18,6 +19,7 @@ Materials with a single optical axis (extraordinary axis differs from ordinary a
 }
 ```
 
+
 - **Frequency range**: 410-600 cm⁻¹
 - **Type**: Uniaxial positive
 - **Applications**: Mid-infrared phonon polaritons
@@ -27,6 +29,7 @@ Materials with a single optical axis (extraordinary axis differs from ordinary a
 Two variants available:
 
 **Upper Reststrahlen Band**:
+
 ```python
 {
     "type": "Semi Infinite Anisotropic Layer",
@@ -41,6 +44,7 @@ Two variants available:
 - **Type**: Uniaxial negative (hyperbolic)
 
 **Lower Reststrahlen Band**:
+
 ```python
 {
     "type": "Semi Infinite Anisotropic Layer",
@@ -104,6 +108,7 @@ Used for air gaps and isotropic layers:
 
 ### Custom Isotropic
 
+
 ```python
 {
     "type": "Isotropic Middle-Stack Layer",
@@ -115,6 +120,7 @@ Used for air gaps and isotropic layers:
 ## Arbitrary Materials
 
 Define custom materials with full tensors:
+
 
 ```python
 {
@@ -139,6 +145,7 @@ Define custom materials with full tensors:
 
 Materials can be rotated using Euler angles (in degrees):
 
+
 - **rotationX**: Rotation around x-axis (Not really used)
 - **rotationY**: Rotation around y-axis (typically optical axis tilt)
 - **rotationZ**: Rotation around z-axis (azimuthal)
@@ -146,6 +153,7 @@ Materials can be rotated using Euler angles (in degrees):
 ### Rotation Examples
 
 **Optical axis perpendicular to interface**:
+
 ```python
 "rotationX": 0,
 "rotationY": 0,
@@ -153,6 +161,7 @@ Materials can be rotated using Euler angles (in degrees):
 ```
 
 **Optical axis in the plane (70° tilt)**:
+
 ```python
 "rotationX": 0,
 "rotationY": 70,
@@ -160,6 +169,7 @@ Materials can be rotated using Euler angles (in degrees):
 ```
 
 **45° azimuthal rotation**:
+
 ```python
 "rotationX": 0,
 "rotationY": 90,
@@ -168,12 +178,15 @@ Materials can be rotated using Euler angles (in degrees):
 
 ### Rotation Types for Z-rotation
 
+
 ```python
 "rotationZ": 45,
 "rotationZType": "relative"  # Default: rotates with azimuthal angle
 ```
 
+
 or
+
 
 ```python
 "rotationZ": 45,

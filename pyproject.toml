@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hyperbolic-optics"
-version = "0.1.8"
+dynamic = ["version"]
 authors = [
     {name = "Mark Cunningham", email = "m.cunningham.2@research.gla.ac.uk"},
 ]
@@ -144,3 +144,6 @@ disallow_untyped_defs = false  # Set to true once you add type hints everywhere
 [[tool.mypy.overrides]]
 module = "hyperbolic_optics.types"
 disallow_untyped_defs = true
+
+[tool.hatch.version]
+path = "hyperbolic_optics/__init__.py"

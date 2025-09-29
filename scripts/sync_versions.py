@@ -7,15 +7,19 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-import toml
 
-
-def get_version_from_pyproject():
-    """Extract version from pyproject.toml"""
-    pyproject_path = Path("pyproject.toml")
-    with open(pyproject_path) as f:
-        data = toml.load(f)
-    return data["project"]["version"]
+def get_version_from_init():
+    """Extract version from __init__.py"""
+    init_path = Path("hyperbolic_optics/__init__.py")
+    with open(init_path) as f:
+        content = f.read()
+    
+    # Find __version__ = "x.y.z"
+    match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError("Could not find __version__ in __init__.py")
 
 
 def update_citation_cff(version):
@@ -60,27 +64,6 @@ def update_readme_citation(version):
     print(f"✅ Updated README.md citation to version {version}")
 
 
-def update_init_version(version):
-    """Update __version__ in __init__.py if it exists"""
-    init_path = Path("hyperbolic_optics/__init__.py")
-    if not init_path.exists():
-        return
-
-    with open(init_path) as f:
-        content = f.read()
-
-    # Add or update __version__
-    if "__version__" in content:
-        content = re.sub(r'__version__ = ["\'].*?["\']', f'__version__ = "{version}"', content)
-    else:
-        content = f'__version__ = "{version}"\n\n' + content
-
-    with open(init_path, "w") as f:
-        f.write(content)
-
-    print(f"✅ Updated __init__.py to version {version}")
-
-
 def update_docs_index(version):
     """Update version in docs/index.md if it exists"""
     docs_index_path = Path("docs/index.md")
@@ -121,12 +104,11 @@ def update_docs_citation(version):
 
 def main():
     """Sync all version numbers"""
-    version = get_version_from_pyproject()
-    print(f"Syncing all files to version {version}")
+    version = get_version_from_init()
+    print(f"Syncing all files to version {version} from __init__.py")
 
     update_citation_cff(version)
     update_readme_citation(version)
-    update_init_version(version)
     update_docs_index(version)
     update_docs_citation(version)
 
