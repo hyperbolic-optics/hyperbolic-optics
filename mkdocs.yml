@@ -43,6 +43,14 @@ plugins:
             docstring_style: google
             show_source: true
             show_root_heading: true
+            # Performance optimizations
+            members_order: source  # Faster than alphabetical
+            show_signature_annotations: false  # Skip if not needed
+            separate_signature: true
+            merge_init_into_class: true
+      # Enable caching
+      enable_inventory: true
+      # custom_templates: templates  # Only if you have custom templates
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -79,14 +87,14 @@ nav:
     - Scenarios: user-guide/scenarios.md
     - Materials: user-guide/materials.md
     - Mueller Matrices: user-guide/mueller.md
-  - API Reference:
-    - Structure: api/structure.md
-    - Materials: api/materials.md
-    - Layers: api/layers.md
-    - Mueller: api/mueller.md
-    - Scenario: api/scenario.md
-    - Plotting: api/plots.md
   - Examples:
     - Basic Examples: examples/basic.md
+  - API Reference:
+    - api/structure.md
+    - api/materials.md
+    - api/layers.md
+    - api/mueller.md
+    - api/scenario.md
+    - api/plots.md
   - Contributing: contributing.md
   - Citation: citation.md
