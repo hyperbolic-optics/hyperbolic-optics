@@ -3,11 +3,11 @@
 The Structure class is the primary interface for running optical simulations.
 It coordinates the entire calculation workflow:
 
-    1. Parse scenario configuration
-    2. Create multilayer stack
-    3. Calculate transfer matrices for each layer
-    4. Multiply matrices to get total system response
-    5. Extract reflection coefficients
+1. Parse scenario configuration
+2. Create multilayer stack
+3. Calculate transfer matrices for each layer
+4. Multiply matrices to get total system response
+5. Extract reflection coefficients
 
 The transfer matrix method is a recursive approach where each layer's
 effect is represented by a 4×4 matrix relating field components at its

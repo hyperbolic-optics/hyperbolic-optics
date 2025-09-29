@@ -7,15 +7,15 @@ elements.
 
 The Mueller formalism handles:
 
-    - Arbitrary incident polarization states (linear, circular, elliptical)
-    - Polarization-dependent reflection from anisotropic samples
-    - Ideal optical components (polarizers, wave plates)
-    - Sequential component combinations
+- Arbitrary incident polarization states (linear, circular, elliptical)
+- Polarization-dependent reflection from anisotropic samples
+- Ideal optical components (polarizers, wave plates)
+- Sequential component combinations
 
 Key relationships:
 
-    - S_out = M · S_in (Stokes vector transformation)
-    - M = A · F · A⁻¹ (Mueller from Jones matrix F)
+- S_out = M · S_in (Stokes vector transformation)
+- M = A · F · A⁻¹ (Mueller from Jones matrix F)
 
 Reference:
     Chipman, Lam & Young, "Polarized Light and Optical Systems" (2018)
