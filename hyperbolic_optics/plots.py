@@ -1,7 +1,6 @@
-import json
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -127,9 +126,7 @@ def plot_mueller_azimuthal(
 
     # Create figure with gridspec for precise layout control
     fig = plt.figure(figsize=(10, 5))
-    gs = fig.add_gridspec(
-        nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15
-    )
+    gs = fig.add_gridspec(nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15)
 
     # Create axis with gridspec
     ax = fig.add_subplot(gs[0])
@@ -139,9 +136,7 @@ def plot_mueller_azimuthal(
     frequency = structure.frequency
 
     # Create the color plot using pcolormesh
-    im = ax.pcolormesh(
-        x_axis, frequency, param, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    im = ax.pcolormesh(x_axis, frequency, param, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Set axis limits and ticks
     ax.set_xlim(0, 360)
@@ -160,9 +155,7 @@ def plot_mueller_azimuthal(
     )
 
     # Set axis labels with LaTeX formatting
-    ax.set_xlabel(
-        r"$\beta$ (degree)", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10
-    )
+    ax.set_xlabel(r"$\beta$ (degree)", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10)
     ax.set_ylabel(
         r"$\omega/2\pi c$ (cm$^{-1}$)",
         fontsize=CONFIG["PLOT"]["LABEL_SIZE"],
@@ -256,15 +249,11 @@ def plot_mueller_azimuthal_pair(
     x_axis = np.round(np.degrees(structure.azimuthal_angle), 1)
     frequency = structure.frequency
 
-    im1 = ax1.pcolormesh(
-        x_axis, frequency, param1, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    ax1.pcolormesh(x_axis, frequency, param1, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Create second subplot
     ax2 = fig.add_subplot(gs[1], sharey=ax1)
-    im2 = ax2.pcolormesh(
-        x_axis, frequency, param2, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    im2 = ax2.pcolormesh(x_axis, frequency, param2, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Style both subplots
     for idx, (ax, title) in enumerate([(ax1, title1), (ax2, title2)]):
@@ -282,9 +271,7 @@ def plot_mueller_azimuthal_pair(
             right=False,
         )
 
-        ax.set_xlabel(
-            r"$\beta$ (degree)", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10
-        )
+        ax.set_xlabel(r"$\beta$ (degree)", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10)
         if idx == 0:  # Only add ylabel to first subplot
             ax.set_ylabel(
                 r"$\omega/2\pi c$ (cm$^{-1}$)",
@@ -371,9 +358,7 @@ def plot_stokes_parameters(
     frequency = structure.frequency
 
     for data, title, row, col in ax_to_plot:
-        im = ax[row, col].pcolormesh(
-            x_axis, frequency, data, cmap=CONFIG["PLOT"]["COLORMAP"]
-        )
+        im = ax[row, col].pcolormesh(x_axis, frequency, data, cmap=CONFIG["PLOT"]["COLORMAP"])
         cbar = plt.colorbar(im, ax=ax[row, col])
         cbar.set_label(title, size=CONFIG["PLOT"]["LABEL_SIZE"])
         ax[row, col].set_title(title, size=CONFIG["PLOT"]["LABEL_SIZE"])
@@ -416,9 +401,7 @@ def plot_kx_frequency(
 
     # Create figure with gridspec for precise layout control
     fig = plt.figure(figsize=(10, 5))
-    gs = fig.add_gridspec(
-        nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15
-    )
+    gs = fig.add_gridspec(nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15)
 
     # Create axis with gridspec
     ax = fig.add_subplot(gs[0])
@@ -430,9 +413,7 @@ def plot_kx_frequency(
     frequency = structure.frequency
 
     # Create the color plot
-    im = ax.pcolormesh(
-        kx, frequency, param, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    im = ax.pcolormesh(kx, frequency, param, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Set x-axis limits and generate ticks
     max_kx = n_prism
@@ -587,18 +568,14 @@ def plot_kx_frequency_pair(
 
     # Create first subplot
     ax1 = fig.add_subplot(gs[0])
-    im1 = ax1.pcolormesh(
-        kx, frequency, param1, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    ax1.pcolormesh(kx, frequency, param1, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Create second subplot
     ax2 = fig.add_subplot(gs[1], sharey=ax1)
-    im2 = ax2.pcolormesh(
-        kx, frequency, param2, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-    )
+    im2 = ax2.pcolormesh(kx, frequency, param2, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Style both subplots
-    rotation_angles = [rotation_y1, rotation_y2]
+    [rotation_y1, rotation_y2]
     for idx, (ax, title, rot_y) in enumerate(
         [(ax1, title1, rotation_y1), (ax2, title2, rotation_y2)]
     ):
@@ -727,9 +704,7 @@ def plot_mueller_dispersion(
 
     # Create figure with gridspec for precise layout control
     fig = plt.figure(figsize=(10, 5))
-    gs = fig.add_gridspec(
-        nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15
-    )
+    gs = fig.add_gridspec(nrows=1, ncols=1, wspace=0.2, left=0.1, right=0.9, top=0.9, bottom=0.15)
 
     # Create axis with gridspec
     ax = fig.add_subplot(gs[0])
@@ -748,9 +723,7 @@ def plot_mueller_dispersion(
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "The input coordinates to pcolormesh")
-        im = ax.pcolormesh(
-            kx, ky, param.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-        )
+        im = ax.pcolormesh(kx, ky, param.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Set plot limits and aspect ratio
     ax.set_aspect("equal")
@@ -829,9 +802,7 @@ def plot_mueller_dispersion(
         )
 
     # Add unit circle to indicate light cone
-    circle = plt.Circle(
-        (0, 0), 1, fill=False, color="white", linestyle="-", linewidth=1.5
-    )
+    circle = plt.Circle((0, 0), 1, fill=False, color="white", linestyle="-", linewidth=1.5)
     ax.add_patch(circle)
 
     # Set aspect ratio to make plot square
@@ -911,17 +882,13 @@ def plot_mueller_dispersion_pair(
     ax1 = fig.add_subplot(gs[0])
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "The input coordinates to pcolormesh")
-        im1 = ax.pcolormesh(
-            kx, ky, param1.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-        )
+        ax1.pcolormesh(kx, ky, param1.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Create second subplot
     ax2 = fig.add_subplot(gs[1], sharey=ax1)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "The input coordinates to pcolormesh")
-        im2 = ax.pcolormesh(
-            kx, ky, param2.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1
-        )
+        im2 = ax2.pcolormesh(kx, ky, param2.T, cmap=CONFIG["PLOT"]["COLORMAP"], vmin=0, vmax=1)
 
     # Style both subplots
     for idx, (ax, title, rot_y) in enumerate(
@@ -964,9 +931,7 @@ def plot_mueller_dispersion_pair(
         # Set labels
         ax.set_xlabel(r"$k_x/k_0$", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10)
         if idx == 0:  # Only add ylabel to first subplot
-            ax.set_ylabel(
-                r"$k_y/k_0$", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10
-            )
+            ax.set_ylabel(r"$k_y/k_0$", fontsize=CONFIG["PLOT"]["LABEL_SIZE"], labelpad=10)
         else:
             ax.tick_params(labelleft=False)
 
@@ -1004,9 +969,7 @@ def plot_mueller_dispersion_pair(
             )
 
         # Add unit circle
-        circle = plt.Circle(
-            (0, 0), 1, fill=False, color="white", linestyle="-", linewidth=1.5
-        )
+        circle = plt.Circle((0, 0), 1, fill=False, color="white", linestyle="-", linewidth=1.5)
         ax.add_patch(circle)
 
         ax.set_box_aspect(1)

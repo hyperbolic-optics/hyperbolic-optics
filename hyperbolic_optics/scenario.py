@@ -62,13 +62,9 @@ class ScenarioSetup(ABC):
         """
         Creates the dispersion scenario
         """
-        self.incident_angle = np.linspace(
-            0.0 + 1.0e-8, m.pi / 2.0 - 1.0e-8, 180, dtype=np.float64
-        )
+        self.incident_angle = np.linspace(0.0 + 1.0e-8, m.pi / 2.0 - 1.0e-8, 180, dtype=np.float64)
 
-        self.azimuthal_angle = np.linspace(
-            1.0e-5, 2.0 * m.pi - 1.0e-5, 480, dtype=np.float64
-        )
+        self.azimuthal_angle = np.linspace(1.0e-5, 2.0 * m.pi - 1.0e-5, 480, dtype=np.float64)
 
         self.frequency = float(self.frequency)
 

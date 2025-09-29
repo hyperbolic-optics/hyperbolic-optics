@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://badge.fury.io/py/hyperbolic-optics.svg)](https://badge.fury.io/py/hyperbolic-optics)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml/badge.svg)](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml)
 [![Issues](https://img.shields.io/github/issues/MarkCunningham0410/hyperbolic_optics)](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
 
 This package provides a comprehensive suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
@@ -208,7 +209,13 @@ This package was used to generate results in:
 
 - **Transmission Coefficients:** Currently, transmission coefficients are not fully supported
 - **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn't yet implemented
-- **Testing:** Unit tests and further best practices are still in development
+
+## Testing
+
+This package includes a comprehensive test suite with 93+ tests covering all major functionality. Run tests locally with:
+```bash
+pytest
+pytest --cov=hyperbolic_optics --cov-report=html  # With coverage report
 
 *Please open an [issue](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) if you encounter any bugs or have suggestions for improvements.*
 

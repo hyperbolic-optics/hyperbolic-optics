@@ -6,7 +6,6 @@ This script demonstrates how to generate k-space dispersion plots (kx vs ky)
 showing the reflectivity in momentum space for a Calcite crystal.
 """
 
-import numpy as np
 
 from hyperbolic_optics.plots import plot_kx_frequency
 from hyperbolic_optics.structure import Structure

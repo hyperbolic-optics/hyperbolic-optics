@@ -1,6 +1,7 @@
 """
 Layers module for constructing individual layers in the device.
-NumPy implementation - Stage 2 Refactor: Updated to properly handle both eps and mu tensors from materials
+NumPy implementation - Stage 2 Refactor: Updated to properly
+handle both eps and mu tensors from materials
 """
 
 import math as m
@@ -8,11 +9,19 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from hyperbolic_optics.anisotropy_utils import (anisotropy_rotation_one_axis,
-                                                anisotropy_rotation_one_value)
-from hyperbolic_optics.materials import (Air, ArbitraryMaterial, CalciteLower,
-                                         CalciteUpper, GalliumOxide, Quartz,
-                                         Sapphire)
+from hyperbolic_optics.anisotropy_utils import (
+    anisotropy_rotation_one_axis,
+    anisotropy_rotation_one_value,
+)
+from hyperbolic_optics.materials import (
+    Air,
+    ArbitraryMaterial,
+    CalciteLower,
+    CalciteUpper,
+    GalliumOxide,
+    Quartz,
+    Sapphire,
+)
 from hyperbolic_optics.waves import Wave
 
 
@@ -21,7 +30,6 @@ class AmbientMedium:
 
     def __init__(self):
         """Initialize the ambient medium."""
-        pass
 
 
 class AmbientIncidentMedium(AmbientMedium):
@@ -151,9 +159,7 @@ class AmbientExitMedium(AmbientMedium):
 
     def _construct_tensor(self):
         sin_theta_incident = np.sin(self.theta_incident)
-        expr_inside_sqrt = (
-            1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
-        )
+        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
         expr_inside_sqrt_complex = expr_inside_sqrt.astype(np.complex128)
         cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
         N_exit = self.N_exit.astype(np.complex128)
@@ -213,9 +219,7 @@ class AmbientExitMedium(AmbientMedium):
 
     def _construct_tensor_singular(self):
         sin_theta_incident = np.sin(self.theta_incident)
-        expr_inside_sqrt = (
-            1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
-        )
+        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
         expr_inside_sqrt_complex = np.complex128(expr_inside_sqrt)
         cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
         N_exit = np.complex128(self.N_exit)
@@ -305,17 +309,15 @@ class Layer(ABC):
         self.material_factory()
 
         if self.scenario in ["Incident", "Azimuthal"]:
-            self.eps_tensor = self.material.fetch_permittivity_tensor().astype(
-                np.complex128
-            )
+            self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
             self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
         elif self.scenario in ["Dispersion", "Simple"]:
             self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(
                 self.frequency
             ).astype(np.complex128)
-            self.mu_tensor = self.material.fetch_magnetic_tensor_for_freq(
-                self.frequency
-            ).astype(np.complex128)
+            self.mu_tensor = self.material.fetch_magnetic_tensor_for_freq(self.frequency).astype(
+                np.complex128
+            )
 
     def rotate_tensors(self):
         """Rotate both permittivity and magnetic tensors according to the rotation angles."""
@@ -347,7 +349,8 @@ class Layer(ABC):
 
     # DEPRECATED: Remove this method in favor of rotate_tensors()
     def rotate_tensor(self):
-        """Rotate the permittivity tensor according to the rotation angles. DEPRECATED - use rotate_tensors()."""
+        """Rotate the permittivity tensor according to the rotation angles.
+        DEPRECATED - use rotate_tensors()."""
         import warnings
 
         warnings.warn(
@@ -397,11 +400,7 @@ class AirGapLayer(Layer):
             else:
                 # Handle nested permittivity structure if present
                 self.permittivity = {
-                    k: (
-                        complex(v.get("real", 0), v.get("imag", 0))
-                        if isinstance(v, dict)
-                        else v
-                    )
+                    k: (complex(v.get("real", 0), v.get("imag", 0)) if isinstance(v, dict) else v)
                     for k, v in perm.items()
                 }
         else:
@@ -415,11 +414,7 @@ class AirGapLayer(Layer):
             else:
                 # Handle nested permeability structure if present
                 self.permeability = {
-                    k: (
-                        complex(v.get("real", 0), v.get("imag", 0))
-                        if isinstance(v, dict)
-                        else v
-                    )
+                    k: (complex(v.get("real", 0), v.get("imag", 0)) if isinstance(v, dict) else v)
                     for k, v in mu.items()
                 }
         else:
@@ -514,16 +509,12 @@ class IsotropicSemiInfiniteLayer(Layer):
         self.eps_exit = np.float64(data.get("permittivity"))
 
         if self.eps_exit is None:
-            raise ValueError(
-                "No exit permittivity provided for isotropic semi-infinite layer"
-            )
+            raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
 
         self.create()
 
     def create(self):
-        exit_medium = AmbientExitMedium(
-            self.incident_angle, self.eps_incident, self.eps_exit
-        )
+        exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
 
         if self.scenario == "Incident":
             self.matrix = exit_medium.construct_tensor()

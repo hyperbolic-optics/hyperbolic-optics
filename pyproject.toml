@@ -50,3 +50,80 @@ packages = ["hyperbolic_optics"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "hyperbolic_optics/material_params.json" = "hyperbolic_optics/material_params.json"
+
+[tool.pytest.ini_options]
+# Test discovery patterns
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Test paths
+testpaths = ["tests"]
+
+# Output options
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings",
+    "--cov=hyperbolic_optics",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]
+
+# Markers for organizing tests
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "materials: marks tests related to materials",
+    "structure: marks tests related to structure",
+    "mueller: marks tests related to Mueller matrices",
+]
+
+# Minimum version
+minversion = "7.0"
+
+[tool.coverage.run]
+omit = [
+    "hyperbolic_optics/plots.py",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    "htmlcov",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[dependency-groups]
+dev = [
+    "autoflake>=2.3.1",
+    "flake8-pyproject>=1.2.3",
+]
