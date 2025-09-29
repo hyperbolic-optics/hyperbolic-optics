@@ -71,9 +71,7 @@ def update_init_version(version):
 
     # Add or update __version__
     if "__version__" in content:
-        content = re.sub(
-            r'__version__ = ["\'].*?["\']', f'__version__ = "{version}"', content
-        )
+        content = re.sub(r'__version__ = ["\'].*?["\']', f'__version__ = "{version}"', content)
     else:
         content = f'__version__ = "{version}"\n\n' + content
 

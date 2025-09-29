@@ -43,9 +43,7 @@ class Wave:
         semi_infinite=False,
         magnet=False,
     ):
-        self.k_x = (
-            kx.astype(np.complex128) if hasattr(kx, "astype") else np.complex128(kx)
-        )
+        self.k_x = kx.astype(np.complex128) if hasattr(kx, "astype") else np.complex128(kx)
         self.eps_tensor = eps_tensor  # Now pre-shaped from materials
         self.mu_tensor = mu_tensor  # Now pre-shaped from materials
 
@@ -96,9 +94,7 @@ class Wave:
             if len(self.eps_tensor.shape) > 2:
                 # If tensors have extra dimensions, squeeze them out
                 axes_to_squeeze = list(range(len(self.eps_tensor.shape) - 2))
-                self.eps_tensor = np.squeeze(
-                    self.eps_tensor, axis=tuple(axes_to_squeeze)
-                )
+                self.eps_tensor = np.squeeze(self.eps_tensor, axis=tuple(axes_to_squeeze))
                 self.mu_tensor = np.squeeze(self.mu_tensor, axis=tuple(axes_to_squeeze))
 
     def _get_tensor_shapes_for_mode(self):
@@ -215,14 +211,10 @@ class Wave:
             eigenvalues_diag = np.diag(eigenvalues)
         else:
             # For batched eigenvalues, vectorize the diag operation
-            eigenvalues_diag = np.apply_along_axis(
-                lambda x: np.diag(x), -1, eigenvalues
-            )
+            eigenvalues_diag = np.apply_along_axis(lambda x: np.diag(x), -1, eigenvalues)
             # Reshape to get correct dimensions
             original_shape = eigenvalues.shape
-            eigenvalues_diag = eigenvalues_diag.reshape(
-                original_shape + (eigenvalues.shape[-1],)
-            )
+            eigenvalues_diag = eigenvalues_diag.reshape(original_shape + (eigenvalues.shape[-1],))
 
         if self.mode == "Incident":
             k_0 = self.k_0[:, np.newaxis, np.newaxis, np.newaxis]
@@ -407,28 +399,16 @@ class Wave:
             sorted_fields = fields[:, indices]
         elif self.batch_dims == 1:
             sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
-            sorted_fields = np.take_along_axis(
-                fields, indices[..., np.newaxis, :], axis=-1
-            )
+            sorted_fields = np.take_along_axis(fields, indices[..., np.newaxis, :], axis=-1)
         else:  # batch_dims == 2
             sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
-            sorted_fields = np.take_along_axis(
-                fields, indices[..., np.newaxis, :], axis=-1
-            )
+            sorted_fields = np.take_along_axis(fields, indices[..., np.newaxis, :], axis=-1)
 
         # Split the sorted wavevectors and fields into transmitted and reflected components
-        transmitted_wavevectors = np.stack(
-            [sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1
-        )
-        reflected_wavevectors = np.stack(
-            [sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1
-        )
-        transmitted_fields = np.stack(
-            [sorted_fields[..., 0], sorted_fields[..., 1]], axis=-1
-        )
-        reflected_fields = np.stack(
-            [sorted_fields[..., 2], sorted_fields[..., 3]], axis=-1
-        )
+        transmitted_wavevectors = np.stack([sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1)
+        reflected_wavevectors = np.stack([sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1)
+        transmitted_fields = np.stack([sorted_fields[..., 0], sorted_fields[..., 1]], axis=-1)
+        reflected_fields = np.stack([sorted_fields[..., 2], sorted_fields[..., 3]], axis=-1)
 
         return (
             transmitted_wavevectors,
@@ -504,12 +484,10 @@ class Wave:
             Hx, Hy = fields[..., 2, :], fields[..., 3, :]
             return Ex, Ey, Hx, Hy
 
-        transmitted_Ex, transmitted_Ey, transmitted_Hx, transmitted_Hy = (
-            calculate_fields(transmitted_fields)
+        transmitted_Ex, transmitted_Ey, transmitted_Hx, transmitted_Hy = calculate_fields(
+            transmitted_fields
         )
-        reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy = calculate_fields(
-            reflected_fields
-        )
+        reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy = calculate_fields(reflected_fields)
 
         def calculate_Ez_Hz(Ex, Ey, Hx, Hy):
             """
@@ -582,7 +560,8 @@ class Wave:
 
         def create_wave_profile(fields, poynting, waves):
             """
-            Create a wave profile dictionary based on the input field components, Poynting vector components,
+            Create a wave profile dictionary based on the input field components,
+            Poynting vector components,
             and wavevectors.
 
             Args:
@@ -673,9 +652,7 @@ class Wave:
             if self.batch_dims == 0:
                 profile[element] = profile[element][..., sorting_indices.flatten()]
             else:
-                profile[element] = np.take_along_axis(
-                    profile[element], sorting_indices, axis=-1
-                )
+                profile[element] = np.take_along_axis(profile[element], sorting_indices, axis=-1)
 
         return profile
 
@@ -716,9 +693,7 @@ class Wave:
             eigenvalues = np.concatenate(
                 [self.profile.transmitted_k_z, self.profile.reflected_k_z], axis=-1
             )
-            eigenvectors = np.concatenate(
-                [transmitted_new_profile, reflected_new_profile], axis=-1
-            )
+            eigenvectors = np.concatenate([transmitted_new_profile, reflected_new_profile], axis=-1)
 
             transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
 

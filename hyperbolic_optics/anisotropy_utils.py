@@ -22,9 +22,7 @@ def anisotropy_rotation_one_value(matrix, theta, phi, beta):
     rotation_y = np.stack(
         [
             np.stack([cos_phi, np.zeros_like(phi), sin_phi], axis=-1),
-            np.stack(
-                [np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1
-            ),
+            np.stack([np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1),
             np.stack([-sin_phi, np.zeros_like(phi), cos_phi], axis=-1),
         ],
         axis=-2,
@@ -36,9 +34,7 @@ def anisotropy_rotation_one_value(matrix, theta, phi, beta):
         [
             np.stack([cos_beta, -sin_beta, np.zeros_like(beta)], axis=-1),
             np.stack([sin_beta, cos_beta, np.zeros_like(beta)], axis=-1),
-            np.stack(
-                [np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1
-            ),
+            np.stack([np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1),
         ],
         axis=-2,
     )
@@ -69,9 +65,7 @@ def anisotropy_rotation_one_axis(matrix, theta, phi, beta):
     rotation_y = np.stack(
         [
             np.stack([cos_phi, np.zeros_like(phi), sin_phi], axis=-1),
-            np.stack(
-                [np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1
-            ),
+            np.stack([np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1),
             np.stack([-sin_phi, np.zeros_like(phi), cos_phi], axis=-1),
         ],
         axis=-2,
@@ -83,9 +77,7 @@ def anisotropy_rotation_one_axis(matrix, theta, phi, beta):
         [
             np.stack([cos_beta, -sin_beta, np.zeros_like(beta)], axis=-1),
             np.stack([sin_beta, cos_beta, np.zeros_like(beta)], axis=-1),
-            np.stack(
-                [np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1
-            ),
+            np.stack([np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1),
         ],
         axis=-2,
     )
@@ -120,9 +112,7 @@ def anisotropy_rotation_all_axes(matrix, theta, phi, beta):
     rotation_y = np.stack(
         [
             np.stack([cos_phi, np.zeros_like(phi), sin_phi], axis=-1),
-            np.stack(
-                [np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1
-            ),
+            np.stack([np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1),
             np.stack([-sin_phi, np.zeros_like(phi), cos_phi], axis=-1),
         ],
         axis=-2,
@@ -134,9 +124,7 @@ def anisotropy_rotation_all_axes(matrix, theta, phi, beta):
         [
             np.stack([cos_beta, -sin_beta, np.zeros_like(beta)], axis=-1),
             np.stack([sin_beta, cos_beta, np.zeros_like(beta)], axis=-1),
-            np.stack(
-                [np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1
-            ),
+            np.stack([np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1),
         ],
         axis=-2,
     )

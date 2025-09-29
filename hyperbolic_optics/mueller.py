@@ -29,7 +29,8 @@ class Mueller:
         """Summarize an array with statistics and sample points."""
         flat_arr = arr.flatten()
         summary = (
-            f"{name} - Shape: {arr.shape}, Min: {np.min(flat_arr):.6f}, Max: {np.max(flat_arr):.6f}, "
+            f"{name} - Shape: {arr.shape}, "
+            f"Min: {np.min(flat_arr):.6f}, Max: {np.max(flat_arr):.6f}, "
             f"Mean: {np.mean(flat_arr):.6f}, Std: {np.std(flat_arr):.6f}"
         )
         sample_points = np.linspace(0, len(flat_arr) - 1, 5, dtype=int)
@@ -62,24 +63,21 @@ class Mueller:
             raise ValueError(f"Unsupported polarization type: {polarization_type}")
 
         self._debug_print(f"Set incident polarization: {polarization_type}")
-        self._debug_print(
-            self._summarize_array(self.incident_stokes, "Incident Stokes vector")
-        )
+        self._debug_print(self._summarize_array(self.incident_stokes, "Incident Stokes vector"))
 
     def _linear_polarization(self, angle):
         """
         Create a Stokes vector for linear polarization.
 
         Args:
-            angle (float): Angle of linear polarization in degrees (0° is p-polarized, 90° is s-polarized)
+            angle (float): Angle of linear polarization in degrees
+            (0° is p-polarized, 90° is s-polarized)
 
         Returns:
             np.ndarray: Stokes vector for the specified linear polarization
         """
         angle_rad = np.radians(angle)
-        return np.array(
-            [1, np.cos(2 * angle_rad), np.sin(2 * angle_rad), 0], dtype=np.float64
-        )
+        return np.array([1, np.cos(2 * angle_rad), np.sin(2 * angle_rad), 0], dtype=np.float64)
 
     def _circular_polarization(self, handedness):
         """
@@ -245,15 +243,11 @@ class Mueller:
         # Add batch dimensions if needed
         if self.structure.scenario.type == "Simple":
             # For Simple scenario, just compute matrix multiplication directly
-            self.mueller_matrix = (
-                a_matrix @ f_matrix @ np.linalg.inv(a_matrix)
-            ).astype(np.float64)
+            self.mueller_matrix = (a_matrix @ f_matrix @ np.linalg.inv(a_matrix)).astype(np.float64)
         else:
             # For other scenarios, add batch dimensions
             a_matrix = a_matrix[np.newaxis, np.newaxis, ...]
-            self.mueller_matrix = (
-                a_matrix @ f_matrix @ np.linalg.inv(a_matrix)
-            ).astype(np.float64)
+            self.mueller_matrix = (a_matrix @ f_matrix @ np.linalg.inv(a_matrix)).astype(np.float64)
 
         self._debug_print("Calculated Mueller matrix for anisotropic sample:")
         self._debug_print(self._summarize_array(self.mueller_matrix, "Mueller matrix"))
@@ -284,7 +278,8 @@ class Mueller:
 
     def calculate_stokes_parameters(self):
         """
-        Calculate the Stokes parameters of the system using the set incident polarization and optical components.
+        Calculate the Stokes parameters of the system
+        using the set incident polarization and optical components.
 
         Returns:
             Stokes parameters of the system (np.ndarray).
@@ -307,7 +302,7 @@ class Mueller:
                 stokes_vector = component @ stokes_vector
 
             self._debug_print(f"After component {i}:")
-            self._debug_print(self._summarize_array(stokes_vector, f"Stokes vector"))
+            self._debug_print(self._summarize_array(stokes_vector, "Stokes vector"))
 
         if self.structure.scenario.type == "Simple":
             # For Simple scenario, remove the last dimension [4, 1] -> [4]
@@ -317,9 +312,7 @@ class Mueller:
             self.stokes_parameters = stokes_vector[..., 0]
 
         self._debug_print("Final Stokes parameters:")
-        self._debug_print(
-            self._summarize_array(self.stokes_parameters, "Stokes parameters")
-        )
+        self._debug_print(self._summarize_array(self.stokes_parameters, "Stokes parameters"))
         return self.stokes_parameters
 
     def get_reflectivity(self):

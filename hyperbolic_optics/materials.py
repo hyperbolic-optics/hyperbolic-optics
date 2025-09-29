@@ -31,9 +31,7 @@ class BaseMaterial:
         if freq_max is None:
             freq_max = freq_range["default_max"]
 
-        self.frequency = np.linspace(
-            freq_min, freq_max, self.frequency_length, dtype=np.float64
-        )
+        self.frequency = np.linspace(freq_min, freq_max, self.frequency_length, dtype=np.float64)
 
     def _create_isotropic_mu_tensor_like(self, eps_tensor):
         """Create isotropic magnetic tensor with same shape as eps_tensor."""
@@ -87,12 +85,8 @@ class UniaxialMaterial(BaseMaterial):
         omega_tn_expanded = omega_tn[:, np.newaxis]
         gamma_tn_expanded = gamma_tn[:, np.newaxis]
 
-        top_line = (
-            omega_ln_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_ln_expanded
-        )
-        bottom_line = (
-            omega_tn_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_tn_expanded
-        )
+        top_line = omega_ln_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_ln_expanded
+        bottom_line = omega_tn_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_tn_expanded
         result = top_line / bottom_line
 
         return (high_freq * np.prod(result, axis=0))[0]
@@ -112,12 +106,8 @@ class UniaxialMaterial(BaseMaterial):
         omega_tn_expanded = omega_tn[:, np.newaxis]
         gamma_tn_expanded = gamma_tn[:, np.newaxis]
 
-        top_line = (
-            omega_ln_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_ln_expanded
-        )
-        bottom_line = (
-            omega_tn_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_tn_expanded
-        )
+        top_line = omega_ln_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_ln_expanded
+        bottom_line = omega_tn_expanded**2.0 - frequency**2.0 - 1j * frequency * gamma_tn_expanded
         result = top_line / bottom_line
 
         return high_freq * np.prod(result, axis=0)
@@ -144,12 +134,8 @@ class UniaxialMaterial(BaseMaterial):
     def fetch_permittivity_tensor_for_freq(self, requested_frequency):
         """Fetch permittivity tensor for a specific frequency."""
         params = self.permittivity_parameters()
-        eps_ext = self.permittivity_calc_for_freq(
-            requested_frequency, **params["extraordinary"]
-        )
-        eps_ord = self.permittivity_calc_for_freq(
-            requested_frequency, **params["ordinary"]
-        )
+        eps_ext = self.permittivity_calc_for_freq(requested_frequency, **params["extraordinary"])
+        eps_ord = self.permittivity_calc_for_freq(requested_frequency, **params["ordinary"])
         return self._create_permittivity_tensor(eps_ext, eps_ord)
 
     def permittivity_fetch(self):
@@ -177,14 +163,9 @@ class ParameterizedUniaxialMaterial(UniaxialMaterial):
 
     def permittivity_parameters(self):
         """Get permittivity parameters from configuration."""
-        params = load_material_parameters()["uniaxial_materials"][self.material_type][
-            "parameters"
-        ]
+        params = load_material_parameters()["uniaxial_materials"][self.material_type]["parameters"]
         return {
-            axis: {
-                key: np.array(value, dtype=np.complex128)
-                for key, value in axis_params.items()
-            }
+            axis: {key: np.array(value, dtype=np.complex128) for key, value in axis_params.items()}
             for axis, axis_params in params.items()
         }
 
@@ -281,9 +262,7 @@ class GalliumOxide(MonoclinicMaterial):
 
     def permittivity_parameters(self):
         """Get Gallium Oxide permittivity parameters."""
-        params = load_material_parameters()["monoclinic_materials"]["gallium_oxide"][
-            "parameters"
-        ]
+        params = load_material_parameters()["monoclinic_materials"]["gallium_oxide"]["parameters"]
         # Convert all numeric values to numpy arrays
         result = {}
         for mode, mode_params in params.items():
@@ -316,9 +295,7 @@ class GalliumOxide(MonoclinicMaterial):
         parameters = self.permittivity_parameters()
         frequency = self.frequency[:, np.newaxis]
 
-        eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(
-            parameters, frequency
-        )
+        eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(parameters, frequency)
         eps_zz_au = self._calculate_au_component(parameters, frequency)
 
         eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu
@@ -338,9 +315,7 @@ class GalliumOxide(MonoclinicMaterial):
         parameters = self.permittivity_parameters()
         frequency = np.array([[requested_frequency]], dtype=np.float64)
 
-        eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(
-            parameters, frequency
-        )
+        eps_xx_bu, eps_xy_bu, eps_yy_bu = self._calculate_bu_components(parameters, frequency)
         eps_zz_au = self._calculate_au_component(parameters, frequency)
 
         eps_xx = parameters["Bu"]["high_freq"]["xx"] + eps_xx_bu[0]

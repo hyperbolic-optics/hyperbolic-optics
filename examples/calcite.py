@@ -6,7 +6,6 @@ This script demonstrates the most basic usage of the hyperbolic-optics package
 by calculating reflection coefficients for a simple Calcite crystal structure.
 """
 
-import json
 
 import numpy as np
 
@@ -68,7 +67,7 @@ def main():
     print("Results:")
     print(f"  Incident angle: {structure.scenario.incident_angle * 180/np.pi:.1f}°")
     print(f"  Frequency: {structure.frequency:.1f} cm⁻¹")
-    print(f"  Material: Calcite")
+    print("  Material: Calcite")
     print()
     print("Reflection Coefficients:")
     print(f"  r_pp = {r_pp:.6f}")

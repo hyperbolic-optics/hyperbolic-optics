@@ -1,0 +1,69 @@
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.12', '3.13']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras
+
+    - name: Run tests
+      run: |
+        uv run pytest --cov=hyperbolic_optics --cov-report=xml --cov-report=term
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras
+
+    - name: Check code formatting with black
+      run: |
+        uv run black --check hyperbolic_optics tests
+      continue-on-error: true
+
+    - name: Check import sorting with isort
+      run: |
+        uv run isort --check-only hyperbolic_optics tests
+      continue-on-error: true
+
+    - name: Lint with flake8
+      run: |
+        uv run flake8 hyperbolic_optics tests --max-line-length=100 --extend-ignore=E203,W503
+      continue-on-error: true
