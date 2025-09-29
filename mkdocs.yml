@@ -88,6 +88,5 @@ nav:
     - Plotting: api/plots.md
   - Examples:
     - Basic Examples: examples/basic.md
-    - Advanced Examples: examples/advanced.md
   - Contributing: contributing.md
   - Citation: citation.md

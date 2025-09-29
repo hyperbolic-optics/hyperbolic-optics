@@ -1,3 +1,30 @@
+"""Wave propagation and electromagnetic field calculations.
+
+This module implements the core 4×4 transfer matrix formalism for
+wave propagation in anisotropic media. The key steps are:
+
+1. Construct Berreman (delta) matrix from material tensors
+2. Solve eigenvalue problem for propagation modes
+3. Sort modes by propagation direction (forward/backward)
+4. Calculate electric and magnetic field components
+5. Compute Poynting vectors (energy flow)
+6. Classify modes by polarization (p vs s)
+7. Construct transfer matrix with phase propagation
+
+The Berreman matrix Δ satisfies: dF/dz = iΔF where F = [Ex, Ey, Hx, Hy]ᵀ
+
+Key physical insights:
+- Anisotropic media support 4 partial waves (2 forward, 2 backward)
+- Each mode has mixed s and p polarization character
+- Energy flow (Poynting vector) may differ from phase velocity
+- Evanescent modes have complex kz with Im(kz) > 0
+
+References:
+- Berreman, J. Opt. Soc. Am. 62, 502-510 (1972)
+- Yeh, JOSA 69, 742-756 (1979)
+- Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
+"""
+
 import numpy as np
 from scipy.linalg import expm
 
@@ -5,7 +32,18 @@ from scipy.linalg import expm
 class WaveProfile:
     """Class representing the wave profile."""
 
-    def __init__(self, profile):
+    def __init__(self, profile: dict[str, dict[str, np.ndarray]]) -> None:
+        """Initialize wave profile containing field components and propagation constants.
+        
+        Args:
+            profile: Nested dictionary with 'transmitted' and 'reflected' keys,
+                    each containing field components (Ex, Ey, Ez, Hx, Hy, Hz),
+                    Poynting vectors (Px, Py, Pz), and propagation constants (k_z)
+        
+        Note:
+            Stores electromagnetic field distributions and energy flow for
+            the four partial waves (two transmitted, two reflected) in each layer.
+        """
         self.transmitted_Ex = profile["transmitted"]["Ex"]
         self.transmitted_Ey = profile["transmitted"]["Ey"]
         self.transmitted_Ez = profile["transmitted"]["Ez"]
@@ -34,15 +72,32 @@ class Wave:
 
     def __init__(
         self,
-        kx,
-        eps_tensor,
-        mu_tensor,
-        mode,
-        k_0=None,
-        thickness=None,
-        semi_infinite=False,
-        magnet=False,
-    ):
+        kx: np.ndarray,
+        eps_tensor: np.ndarray,
+        mu_tensor: np.ndarray,
+        mode: str,
+        k_0: np.ndarray | None = None,
+        thickness: float | None = None,
+        semi_infinite: bool = False,
+        magnet: bool = False
+    ) -> None:
+        """Initialize wave calculation for a layer.
+        
+        Args:
+            kx: Parallel wavevector component(s)
+            eps_tensor: Permittivity tensor [3, 3] or [N, 3, 3]
+            mu_tensor: Permeability tensor [3, 3] or [N, 3, 3]
+            mode: Calculation mode ('Incident', 'Azimuthal', 'Dispersion', 'Simple',
+                'airgap', 'simple_airgap', 'azimuthal_airgap', 'simple_scalar_airgap')
+            k_0: Free-space wavenumber (required for finite layers)
+            thickness: Layer thickness in cm (None for semi-infinite)
+            semi_infinite: Whether layer is semi-infinite
+            magnet: Whether material is magnetic (currently unused)
+            
+        Note:
+            The mode parameter determines array broadcasting patterns for
+            efficient batch processing of different scenario types.
+        """
         self.k_x = kx.astype(np.complex128) if hasattr(kx, "astype") else np.complex128(kx)
         self.eps_tensor = eps_tensor  # Now pre-shaped from materials
         self.mu_tensor = mu_tensor  # Now pre-shaped from materials
@@ -62,8 +117,15 @@ class Wave:
         # CHANGED: Ensure tensors have proper shapes and determine batch dimensions
         self._setup_tensor_shapes()
 
-    def _setup_tensor_shapes(self):
-        """Setup and validate tensor shapes, determine batch dimensions."""
+    def _setup_tensor_shapes(self) -> None:
+        """Setup and validate tensor shapes based on mode.
+        
+        Ensures kx, eps_tensor, and mu_tensor have compatible shapes for
+        the specified calculation mode and determines batch dimensions.
+        
+        Raises:
+            NotImplementedError: If mode is not recognized
+        """
         # Ensure k_x is complex
         self.k_x = (
             self.k_x.astype(np.complex128)
@@ -97,12 +159,19 @@ class Wave:
                 self.eps_tensor = np.squeeze(self.eps_tensor, axis=tuple(axes_to_squeeze))
                 self.mu_tensor = np.squeeze(self.mu_tensor, axis=tuple(axes_to_squeeze))
 
-    def _get_tensor_shapes_for_mode(self):
-        """Get properly shaped tensors for the current mode.
-
+    def _get_tensor_shapes_for_mode(
+        self
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Get properly shaped tensors for current calculation mode.
+        
         Returns:
-            tuple: (k_x, eps_tensor, mu_tensor) with proper shapes for the mode
+            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
+            and broadcasting dimensions for the mode
+            
+        Raises:
+            NotImplementedError: If mode is not implemented
         """
+
         if self.mode == "Incident":
             # k_x: [180] -> [180, 1] for broadcasting with tensors [1, 3, 3]
             k_x = self.k_x[:, np.newaxis] if len(self.k_x.shape) == 1 else self.k_x
@@ -142,11 +211,18 @@ class Wave:
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-    def _get_poynting_tensor_shapes(self):
+    def _get_poynting_tensor_shapes(
+        self
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get tensor shapes for Poynting vector calculation.
-
+        
         Returns:
-            tuple: (k_x, eps_tensor, mu_tensor) shaped for Poynting calculation
+            Tuple of (kx, eps_tensor, mu_tensor) reshaped for Poynting
+            vector computation with proper broadcasting
+            
+        Note:
+            Poynting calculations often require different dimensionality
+            than wave mode calculations.
         """
         # For Poynting calculations, we often need different reshaping
         if self.mode == "Incident":
@@ -196,15 +272,22 @@ class Wave:
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-    def _get_matrix_calculation_shapes(self, eigenvalues, eigenvectors):
-        """Get tensor shapes for matrix calculations with eigenvalues/eigenvectors.
-
+    def _get_matrix_calculation_shapes(
+        self,
+        eigenvalues: np.ndarray,
+        eigenvectors: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Get tensor shapes for transfer matrix construction.
+        
         Args:
-            eigenvalues: Eigenvalues tensor
-            eigenvectors: Eigenvectors tensor
-
+            eigenvalues: Eigenvalues from Berreman matrix
+            eigenvectors: Eigenvectors from Berreman matrix
+            
         Returns:
-            tuple: (k_0, eigenvalues_diag, eigenvectors) with proper shapes
+            Tuple of (k_0, eigenvalues_diag, eigenvectors) with proper shapes
+            
+        Raises:
+            NotImplementedError: If mode is not implemented
         """
         # Create diagonal matrix from eigenvalues
         if eigenvalues.ndim == 1:
@@ -259,13 +342,29 @@ class Wave:
         else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
 
-    def mode_reshaping(self):
-        """Reshape the k_x, eps_tensor, and mu_tensor based on the mode."""
+    def mode_reshaping(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Reshape tensors based on calculation mode.
+        
+        Returns:
+            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
+            
+        Note:
+            Wrapper around _get_tensor_shapes_for_mode for compatibility.
+        """
         return self._get_tensor_shapes_for_mode()
 
-    def delta_matrix_calc(self):
-        """
-        Construct the 4x4 Berreman transfer matrix.
+    def delta_matrix_calc(self) -> None:
+        """Construct 4×4 Berreman transfer matrix for anisotropic layer.
+        
+        Builds the Berreman matrix (also called delta matrix) that describes
+        wave propagation in an anisotropic medium. The matrix couples electric
+        and magnetic field components.
+        
+        Note:
+            The Berreman formalism reduces Maxwell's equations to an eigenvalue
+            problem: dF/dz = iΔF where F = [Ex, Ey, Hx, Hy]ᵀ
+            
+            Reference: N.C. Passler & A. Paarmann, JOSA B 34, 2128 (2017)
         """
         k_x, eps_tensor, mu_tensor = self.mode_reshaping()
 
@@ -342,8 +441,15 @@ class Wave:
                 axis=-1,
             )
 
-    def delta_permutations(self):
-        """Perform permutations on the Berreman matrix based on the mode."""
+    def delta_permutations(self) -> None:
+        """Perform axis permutations on Berreman matrix based on mode.
+        
+        Rearranges tensor axes to match expected broadcasting patterns for
+        different scenario types, optimizing computation.
+        
+        Raises:
+            NotImplementedError: If mode is not in permutation dictionary
+        """
 
         mode_permutations = {
             "Incident": ([2, 1, 3, 0], 2),
@@ -367,9 +473,22 @@ class Wave:
         if permutation is not None:
             self.berreman_matrix = np.transpose(self.berreman_matrix, axes=permutation)
 
-    def wave_sorting(self):
-        """
-        Sort the wavevectors and fields based on the eigenvalues.
+    def wave_sorting(
+        self
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Sort wave modes into transmitted and reflected components.
+        
+        Solves the eigenvalue problem for the Berreman matrix and sorts
+        eigenmodes based on their propagation direction (sign of Im(kz) or Re(kz)).
+        
+        Returns:
+            Tuple of (transmitted_wavevectors, reflected_wavevectors,
+                    transmitted_fields, reflected_fields)
+            
+        Note:
+            Forward-propagating modes (Im(kz) > 0 or Re(kz) > 0) are transmitted.
+            Backward-propagating modes are reflected. Sorting ensures proper
+            identification even for complex or purely real wavevectors.
         """
 
         wavevectors, fields = np.linalg.eig(self.berreman_matrix)
@@ -417,16 +536,25 @@ class Wave:
             reflected_fields,
         )
 
-    def get_matrix(self, eigenvalues, eigenvectors):
-        """
-        Get the transfer matrix based on the mode.
-
+    def get_matrix(
+        self, 
+        eigenvalues: np.ndarray, 
+        eigenvectors: np.ndarray
+    ) -> np.ndarray:
+        """Construct transfer matrix from eigenvalues and eigenvectors.
+        
         Args:
-            eigenvalues (np.ndarray): The eigenvalues of the Berreman matrix.
-            eigenvectors (np.ndarray): The eigenvectors of the Berreman matrix.
-
+            eigenvalues: Propagation constants (kz) for the wave modes
+            eigenvectors: Corresponding electromagnetic field distributions
+            
         Returns:
-            np.ndarray: The transfer matrix.
+            Transfer matrix for the layer (4×4 or batched)
+            
+        Note:
+            For semi-infinite layers, returns eigenvector matrix directly.
+            For finite layers, includes phase accumulation:
+            M = V · exp(-i·diag(kz)·k0·d) · V⁻¹
+            where d is thickness and V is the eigenvector matrix.
         """
         if self.semi_infinite:
             return eigenvectors
@@ -444,29 +572,41 @@ class Wave:
 
         return transfer_matrix
 
-    def poynting_reshaping(self):
-        """
-        Reshape the tensors for Poynting vector calculation based on the mode.
-
+    def poynting_reshaping(
+        self
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Reshape tensors for Poynting vector calculation.
+        
         Returns:
-            tuple: A tuple containing the reshaped k_x, eps_tensor, and mu_tensor.
+            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
+            for energy flow calculations
         """
         return self._get_poynting_tensor_shapes()
 
     def get_poynting(
-        self, transmitted_waves, reflected_waves, transmitted_fields, reflected_fields
-    ):
-        """
-        Calculate the Poynting vector components for transmitted and reflected waves.
-
+        self,
+        transmitted_waves: np.ndarray,
+        reflected_waves: np.ndarray,
+        transmitted_fields: np.ndarray,
+        reflected_fields: np.ndarray
+    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+        """Calculate electromagnetic fields and Poynting vectors for all modes.
+        
         Args:
-            transmitted_waves (np.ndarray): The transmitted wavevectors.
-            reflected_waves (np.ndarray): The reflected wavevectors.
-            transmitted_fields (np.ndarray): The transmitted field components.
-            reflected_fields (np.ndarray): The reflected field components.
-
+            transmitted_waves: Transmitted mode propagation constants
+            reflected_waves: Reflected mode propagation constants
+            transmitted_fields: Transmitted mode field components [Ex, Ey, Hx, Hy]
+            reflected_fields: Reflected mode field components
+            
         Returns:
-            tuple: A tuple containing the transmitted and reflected wave profiles.
+            Tuple of (transmitted_profile, reflected_profile) dictionaries,
+            each containing all field components (E, H), Poynting vectors (P),
+            and propagation constants
+            
+        Note:
+            The Poynting vector P = (1/2) Re(E × H*) gives time-averaged
+            energy flux density. Ez and Hz are computed from Maxwell's
+            equations using the material tensors.
         """
         k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
 
@@ -617,15 +757,20 @@ class Wave:
 
         return transmitted_wave_profile, reflected_wave_profile
 
-    def sort_poynting_indices(self, profile):
-        """
-        Sort the Poynting vector by the z-component.
-
+    def sort_poynting_indices(self, profile: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """Sort wave modes by polarization character (p vs s).
+        
         Args:
-            profile (dict): A dictionary containing the wave profile.
-
+            profile: Dictionary containing field and Poynting components
+            
         Returns:
-            dict: The updated wave profile with sorted indices.
+            Sorted profile dictionary with modes ordered by polarization
+            
+        Note:
+            Uses both Poynting vector and electric field ratios to classify
+            modes as primarily p-polarized (more x-component) or s-polarized
+            (more y-component). This classification is crucial for properly
+            assigning r_pp, r_ss, r_ps, r_sp coefficients.
         """
         poynting_x = np.abs(profile["Px"]) ** 2
         poynting_y = np.abs(profile["Py"]) ** 2
@@ -656,8 +801,17 @@ class Wave:
 
         return profile
 
-    def sort_profile_back_to_matrix(self):
-        """Sort the wave profile back to the transfer matrix."""
+    def sort_profile_back_to_matrix(self) -> np.ndarray:
+        """Reconstruct transfer matrix from sorted wave profile.
+        
+        Returns:
+            Transfer matrix with properly ordered wave modes
+            
+        Note:
+            For semi-infinite layers, constructs matrix with only transmitted
+            modes (zeros for reflected components). For finite layers, combines
+            transmitted and reflected modes to form complete transfer matrix.
+        """
         transmitted_new_profile = np.stack(
             [
                 self.profile.transmitted_Ex,
@@ -699,8 +853,25 @@ class Wave:
 
             return transfer_matrix
 
-    def execute(self):
-        """Execute the wave calculations."""
+    def execute(self) -> tuple[WaveProfile, np.ndarray]:
+        """Execute complete wave calculation pipeline.
+        
+        Returns:
+            Tuple of (wave_profile, transfer_matrix)
+            
+        Process:
+            1. Calculate Berreman matrix
+            2. Apply axis permutations
+            3. Solve eigenvalue problem and sort modes
+            4. Calculate fields and Poynting vectors
+            5. Sort modes by polarization
+            6. Construct transfer matrix
+            
+        Example:
+            >>> wave = Wave(kx, eps_tensor, mu_tensor, mode='Simple', 
+            ...            k_0=k0, thickness=0.5e-4)
+            >>> profile, matrix = wave.execute()
+        """
         self.delta_matrix_calc()
         self.delta_permutations()
 

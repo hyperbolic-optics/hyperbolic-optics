@@ -134,3 +134,13 @@ dev = [
     "flake8-pyproject>=1.2.3",
     "toml>=0.10.2",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Set to true once you add type hints everywhere
+
+[[tool.mypy.overrides]]
+module = "hyperbolic_optics.types"
+disallow_untyped_defs = true

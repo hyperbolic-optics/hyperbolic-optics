@@ -1,5 +1,19 @@
-"""
-Structure class for the optical system
+"""Main simulation structure and workflow orchestration.
+
+The Structure class is the primary interface for running optical simulations.
+It coordinates the entire calculation workflow:
+
+1. Parse scenario configuration
+2. Create multilayer stack
+3. Calculate transfer matrices for each layer
+4. Multiply matrices to get total system response
+5. Extract reflection coefficients
+
+The transfer matrix method is a recursive approach where each layer's
+effect is represented by a 4×4 matrix relating field components at its
+boundaries. The total response is the product of all layer matrices.
+
+Reference: Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
 """
 
 import functools
@@ -11,12 +25,78 @@ import numpy as np
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.materials import CalciteUpper, GalliumOxide, Quartz, Sapphire
 from hyperbolic_optics.scenario import ScenarioSetup
+from typing import Any
 
 
 class Structure:
-    """Class for the structure of the optical system."""
+    """Main interface for optical simulations.
+    
+    ...existing docstring...
+    
+    Examples:
+        Basic single-point calculation:
+        
+        >>> payload = {
+        ...     "ScenarioData": {
+        ...         "type": "Simple",
+        ...         "incidentAngle": 45.0,
+        ...         "azimuthal_angle": 0.0,
+        ...         "frequency": 1460.0
+        ...     },
+        ...     "Layers": [
+        ...         {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        ...         {"type": "Semi Infinite Anisotropic Layer",
+        ...          "material": "Calcite", "rotationY": 90}
+        ...     ]
+        ... }
+        >>> structure = Structure()
+        >>> structure.execute(payload)
+        >>> print(f"R_pp = {abs(structure.r_pp)**2:.4f}")
+        
+        Multi-layer structure with air gap:
+        
+        >>> payload = {
+        ...     "ScenarioData": {"type": "Incident"},
+        ...     "Layers": [
+        ...         {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        ...         {"type": "Isotropic Middle-Stack Layer", 
+        ...          "thickness": 0.5, "permittivity": 1.0},
+        ...         {"type": "Crystal Layer", "material": "Quartz",
+        ...          "thickness": 1.0, "rotationY": 70},
+        ...         {"type": "Semi Infinite Anisotropic Layer",
+        ...          "material": "Sapphire", "rotationY": 90}
+        ...     ]
+        ... }
+        >>> structure = Structure()
+        >>> structure.execute(payload)
+        >>> # Results are arrays: structure.r_pp.shape = (410, 360)
+        
+        Custom material with complex permittivity:
+        
+        >>> custom_material = {
+        ...     "eps_xx": {"real": 2.5, "imag": 0.1},
+        ...     "eps_yy": {"real": 3.0, "imag": 0.05},
+        ...     "eps_zz": {"real": -4.0, "imag": 0.5}
+        ... }
+        >>> payload = {
+        ...     "ScenarioData": {"type": "Simple", "incidentAngle": 45.0,
+        ...                      "azimuthal_angle": 0.0, "frequency": 1000.0},
+        ...     "Layers": [
+        ...         {"type": "Ambient Incident Layer", "permittivity": 25.0},
+        ...         {"type": "Semi Infinite Anisotropic Layer",
+        ...          "material": custom_material, "rotationY": 45}
+        ...     ]
+        ... }
+        >>> structure = Structure()
+        >>> structure.execute(payload)
+    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize empty optical structure for simulation.
+        
+        Creates placeholder attributes for scenario, layers, reflection
+        coefficients, and intermediate calculation results.
+        """
         self.scenario = None
         self.factory = LayerFactory()
         self.layers = []
@@ -32,19 +112,42 @@ class Structure:
         self.r_sp = None
         self.transfer_matrix = None
 
-    def get_scenario(self, scenario_data):
-        """Get the scenario from the scenario_data."""
+    def get_scenario(self, scenario_data: dict[str, Any]) -> None:
+        """Parse and initialize scenario from configuration data.
+        
+        Args:
+            scenario_data: Dictionary with scenario type and parameters
+            
+        Note:
+            Automatically sets up angle and frequency arrays based on
+            scenario type.
+        """
         self.scenario = ScenarioSetup(scenario_data)
         self.setup_attributes()
 
-    def setup_attributes(self):
-        """Set up the attributes for the structure based on the scenario."""
+    def setup_attributes(self) -> None:
+        """Transfer scenario attributes to structure for easy access.
+        
+        Copies incident_angle, azimuthal_angle, and frequency from scenario
+        to structure attributes.
+        """
         self.incident_angle = self.scenario.incident_angle
         self.azimuthal_angle = self.scenario.azimuthal_angle
         self.frequency = self.scenario.frequency
 
-    def get_frequency_range(self, last_layer):
-        """Get the frequency range based on the material of the last layer."""
+    def get_frequency_range(self, last_layer: dict[str, Any]) -> None:
+        """Determine frequency range from material's default range.
+        
+        Args:
+            last_layer: Dictionary containing material name
+            
+        Raises:
+            NotImplementedError: If material is not recognized
+            
+        Note:
+            Automatically uses material-specific frequency range (e.g.,
+            1300-1600 cm⁻¹ for Calcite upper band).
+        """
         material = last_layer["material"]
 
         if material == "Quartz":
@@ -58,15 +161,31 @@ class Structure:
         else:
             raise NotImplementedError("Material not implemented")
 
-    def calculate_kx_k0(self):
-        """Calculate the k_x and k_0 values for the structure."""
+    def calculate_kx_k0(self) -> None:
+        """Calculate parallel wavevector and free-space wavenumber.
+        
+        Computes:
+            kx = n_prism · sin(θ) where n_prism = √ε_prism
+            k0 = ω / c = 2π · frequency
+            
+        Note:
+            kx is conserved across all interfaces (phase matching condition).
+        """
         self.k_x = (
             np.sqrt(np.float64(self.eps_prism)) * np.sin(self.incident_angle.astype(np.float64))
         ).astype(np.float64)
         self.k_0 = self.frequency * 2.0 * m.pi
 
-    def get_layers(self, layer_data_list):
-        """Create the layers from the layer_data_list."""
+    def get_layers(self, layer_data_list: list[dict[str, Any]]) -> None:
+        """Create all layers in the structure from configuration.
+        
+        Args:
+            layer_data_list: List of layer configuration dictionaries
+            
+        Note:
+            First layer must be Ambient Incident Layer (prism).
+            Automatically determines frequency range if not specified.
+        """
         # First Layer is prism, so we parse it
         self.eps_prism = layer_data_list[0].get("permittivity", None)
         if not self.frequency:
@@ -98,13 +217,30 @@ class Structure:
                 )
             )
 
-    def calculate(self):
-        """Calculate the transfer matrix for the given layers."""
+    def calculate(self) -> None:
+        """Calculate total transfer matrix by multiplying layer matrices.
+        
+        Performs matrix multiplication of all layer transfer matrices from
+        incident to exit medium: M_total = M_exit · ... · M_2 · M_1 · M_prism
+        
+        Note:
+            Uses functools.reduce with operator.matmul for efficient
+            sequential multiplication.
+        """
         self.transfer_matrices = [layer.matrix for layer in self.layers]
         self.transfer_matrix = functools.reduce(operator.matmul, self.transfer_matrices)
 
-    def calculate_reflectivity(self):
-        """Calculate the reflectivity for the given transfer matrix."""
+    def calculate_reflectivity(self) -> None:
+        """Extract reflection coefficients from total transfer matrix.
+        
+        Solves the system of equations to obtain r_pp, r_ss, r_ps, r_sp
+        from the boundary conditions encoded in the transfer matrix.
+        
+        Note:
+            Reflection coefficients are complex and relate incident field
+            amplitudes to reflected field amplitudes:
+            E_reflected = r · E_incident
+        """
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
@@ -126,8 +262,16 @@ class Structure:
             - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]
         ) / bottom_line
 
-    def calculate_transmissivity(self):
-        """Calculate the transmissivity for the given transfer matrix."""
+    def calculate_transmissivity(self) -> None:
+        """Extract transmission coefficients from total transfer matrix.
+        
+        Calculates t_pp, t_ss, t_ps, t_sp representing transmission through
+        the entire structure.
+        
+        Warning:
+            Transmission coefficient support is incomplete and may not be
+            fully validated. Use with caution.
+        """
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
@@ -137,18 +281,33 @@ class Structure:
         self.t_sp = (-self.transfer_matrix[..., 2, 0]) / bottom_line
         self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
 
-    def display_layer_info(self):
-        """Display the information for each layer in the structure."""
+    def display_layer_info(self) -> None:
+        """Print information about all layers in the structure.
+        
+        Debugging utility to display layer configuration and properties.
+        """
         for layer in self.layers:
             print(layer)
-            print(layer)
 
-    def execute(self, payload):
-        """
-        Execute the calculation of reflectivity for the given scenario and layers.
-
+    def execute(self, payload: dict[str, Any]) -> None:
+        """Execute complete simulation from configuration payload.
+        
         Args:
-            payload (dict): A dictionary containing the scenario data and layers.
+            payload: Dictionary with 'ScenarioData' and 'Layers' keys
+            
+        Example:
+            >>> payload = {
+            ...     "ScenarioData": {"type": "Simple", "incidentAngle": 45.0,
+            ...                      "azimuthal_angle": 0.0, "frequency": 1460.0},
+            ...     "Layers": [
+            ...         {"type": "Ambient Incident Layer", "permittivity": 50.0},
+            ...         {"type": "Semi Infinite Anisotropic Layer",
+            ...          "material": "Calcite", "rotationY": 90}
+            ...     ]
+            ... }
+            >>> structure = Structure()
+            >>> structure.execute(payload)
+            >>> R_pp = abs(structure.r_pp)**2
         """
         # Get the scenario data
         self.get_scenario(payload.get("ScenarioData"))
