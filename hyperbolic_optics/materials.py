@@ -250,12 +250,12 @@ class UniaxialMaterial(BaseMaterial):
             # Single frequency case
             return np.diag([eps_ord, eps_ord, eps_ext]).astype(np.complex128)
         else:
-            # Multiple frequency case
+            # Multiple frequency case - vectorized diagonal matrix creation
             diag_tensors = np.stack([eps_ord, eps_ord, eps_ext], axis=-1)
-            # Create diagonal matrices
+            # Create diagonal matrices vectorized
             result = np.zeros(diag_tensors.shape[:-1] + (3, 3), dtype=np.complex128)
-            for i in range(result.shape[0]):
-                result[i] = np.diag(diag_tensors[i])
+            diagonal_indices = np.arange(3)
+            result[..., diagonal_indices, diagonal_indices] = diag_tensors
             return result
 
     def fetch_permittivity_tensor(self) -> np.ndarray:

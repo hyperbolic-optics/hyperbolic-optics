@@ -45,14 +45,10 @@ def main():
     # Calculate total reflectivity
     R_total = abs(structure.r_pp) ** 2 + abs(structure.r_ps) ** 2
 
-    # Generate the plot using your existing plotting function
+    # Plot removed for benchmarking
+    print(f"Dispersion calculation complete. R_total shape: {R_total.shape}")
 
-    plot_mueller_dispersion(
-        structure,
-        R_total,
-        title="The Hyperbolic Ghost Polariton",
-        rotation_y=70,
-    )
+    plot_mueller_dispersion(structure, R_total)
 
 
 if __name__ == "__main__":

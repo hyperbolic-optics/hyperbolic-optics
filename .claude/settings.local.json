@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(git stash:*)",
+      "Bash(uv add:*)",
+      "Bash(nvcc:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(timeout:*)",
+      "Bash(where nvcc)",
+      "Read(//c/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.0/bin/**)",
+      "Bash(pip uninstall:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

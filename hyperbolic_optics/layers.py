@@ -116,7 +116,7 @@ class AmbientIncidentMedium(AmbientMedium):
             axis=-1,
         )
 
-        matrix = np.stack([element1, element2, element3, element4], axis=1)
+        matrix = np.stack([element1, element2, element3, element4], axis=-2)
         return 0.5 * matrix.astype(np.complex128)
 
     def construct_tensor_singular(self) -> np.ndarray:
@@ -139,7 +139,7 @@ class AmbientIncidentMedium(AmbientMedium):
         element3 = np.stack([1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
         element4 = np.stack([-1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
 
-        matrix = np.stack([element1, element2, element3, element4], axis=0)
+        matrix = np.stack([element1, element2, element3, element4], axis=-2)
         return 0.5 * matrix.astype(np.complex128)
 
 
@@ -225,7 +225,7 @@ class AmbientExitMedium(AmbientMedium):
             axis=-1,
         )
 
-        matrix = np.stack([element1, element2, element3, element4], axis=1)
+        matrix = np.stack([element1, element2, element3, element4], axis=-2)
         return matrix.astype(np.complex128)
 
     def construct_tensor_singular(self) -> np.ndarray:
@@ -246,7 +246,7 @@ class AmbientExitMedium(AmbientMedium):
         element3 = np.array([-Nf_cos_theta_f, Nf_cos_theta_f, 0.0, 0.0])
         element4 = np.array([0.0, 0.0, N_exit, N_exit])
 
-        matrix = np.stack([element1, element2, element3, element4], axis=0)
+        matrix = np.stack([element1, element2, element3, element4], axis=-2)
         return matrix.astype(np.complex128)
 
 
@@ -339,6 +339,20 @@ class Layer(ABC):
                     self.rotationZ = self.rotationZ
                 else:
                     self.rotationZ = self.rotationZ * np.ones_like(self.azimuthal_angle)
+        elif self.scenario == "FullSweep":
+            # Create 2D grid [N_incident, N_azim]
+            if self.rotationZ_type == "relative":
+                # Broadcast: [N_incident, 1] + [1, N_azim] -> [N_incident, N_azim]
+                self.rotationZ = (
+                    self.incident_angle[:, np.newaxis] * 0
+                    + self.azimuthal_angle[np.newaxis, :]
+                    + self.rotationZ
+                )
+            else:
+                # Static rotation - broadcast scalar to grid
+                self.rotationZ = self.rotationZ + np.zeros(
+                    (len(self.incident_angle), len(self.azimuthal_angle))
+                )
 
     def calculate_tensors(self) -> None:
         """Calculate both permittivity and permeability tensors for the layer.
@@ -353,7 +367,7 @@ class Layer(ABC):
         """
         self.material_factory()
 
-        if self.scenario in ["Incident", "Azimuthal"]:
+        if self.scenario in ["Incident", "Azimuthal", "FullSweep"]:
             self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
             self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
         elif self.scenario in ["Dispersion", "Simple"]:
@@ -378,6 +392,10 @@ class Layer(ABC):
             rotation_func = anisotropy_rotation_one_value
         elif self.scenario == "Azimuthal":
             rotation_func = anisotropy_rotation_one_axis
+        elif self.scenario == "FullSweep":
+            from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_two_axes
+
+            rotation_func = anisotropy_rotation_two_axes
         elif self.scenario == "Simple":
             rotation_func = anisotropy_rotation_one_value
 
@@ -387,6 +405,11 @@ class Layer(ABC):
         self.mu_tensor = rotation_func(
             self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ
         )
+
+        # For Azimuthal, rotation produces [freq, azim, 3, 3], transpose to [azim, freq, 3, 3]
+        if self.scenario == "Azimuthal":
+            self.eps_tensor = np.swapaxes(self.eps_tensor, 0, 1)
+            self.mu_tensor = np.swapaxes(self.mu_tensor, 0, 1)
 
     @abstractmethod
     def create(self) -> None:
@@ -426,14 +449,26 @@ class PrismLayer(Layer):
         handling different array shapes for Simple, Incident, Azimuthal, and
         Dispersion scenarios.
         """
-        prism = AmbientIncidentMedium(self.eps_prism, self.kx)
+        # Ensure kx is 1D for prism calculation
+        kx_1d = self.kx.flatten() if self.kx.ndim > 1 else self.kx
+        prism = AmbientIncidentMedium(self.eps_prism, kx_1d)
 
         if self.scenario == "Incident":
-            self.matrix = prism.construct_tensor()
+            # Add frequency dimension: [N_angles, 4, 4] -> [N_angles, 1, 4, 4]
+            self.matrix = prism.construct_tensor()[:, np.newaxis, ...]
         elif self.scenario == "Azimuthal":
-            self.matrix = prism.construct_tensor_singular()[np.newaxis, np.newaxis, ...]
+            # Add dimensions for azimuthal and frequency: [4,4] -> [1, N_freq, 4, 4]
+            base_matrix = prism.construct_tensor_singular()
+            n_freq = self.k0.shape[0] if hasattr(self.k0, "shape") else 1
+            self.matrix = np.broadcast_to(
+                base_matrix[np.newaxis, np.newaxis, ...], (1, n_freq, 4, 4)
+            )
         elif self.scenario == "Dispersion":
             self.matrix = prism.construct_tensor()[:, np.newaxis, ...]
+        elif self.scenario == "FullSweep":
+            # Prism varies with incident angle, broadcast over azim and freq
+            # [N_incident, 4, 4] -> [N_incident, 1, 1, 4, 4]
+            self.matrix = prism.construct_tensor()[:, np.newaxis, np.newaxis, ...]
         elif self.scenario == "Simple":
             self.matrix = prism.construct_tensor_singular()
 
@@ -510,6 +545,8 @@ class AirGapLayer(Layer):
             self.mode = "azimuthal_airgap"
         elif self.scenario == "Dispersion":
             self.mode = "simple_airgap"
+        elif self.scenario == "FullSweep":
+            self.mode = "full_sweep_airgap"
         elif self.scenario == "Simple":
             self.mode = "simple_scalar_airgap"
 
@@ -527,6 +564,18 @@ class AirGapLayer(Layer):
             k_0=self.k0,
             thickness=self.thickness,
         ).execute()
+
+        # Add dimensions for broadcasting with crystal layers
+        if self.scenario == "Dispersion":
+            # Add azimuthal dimension: [180, 4, 4] -> [180, 1, 4, 4]
+            self.matrix = self.matrix[:, np.newaxis, ...]
+        elif self.scenario == "Azimuthal":
+            # Add azimuthal dimension: [410, 4, 4] -> [1, 410, 4, 4]
+            self.matrix = self.matrix[np.newaxis, ...]
+        elif self.scenario == "FullSweep":
+            # Airgap doesn't vary with incident angle, only with frequency
+            # Add incident and azimuthal dimensions: [410, 4, 4] -> [1, 1, 410, 4, 4]
+            self.matrix = self.matrix[np.newaxis, np.newaxis, ...]
 
 
 class CrystalLayer(Layer):
