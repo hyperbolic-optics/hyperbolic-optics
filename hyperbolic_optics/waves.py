@@ -139,136 +139,38 @@ class Wave:
         self.eps_tensor = self.eps_tensor.astype(np.complex128)
         self.mu_tensor = self.mu_tensor.astype(np.complex128)
 
-        # Determine batch dimensions based on mode
-        if self.mode in ["Incident", "Azimuthal", "Dispersion"]:
-            self.batch_dims = 2
-        elif self.mode in ["airgap", "simple_airgap"]:
-            self.batch_dims = 1
-        elif self.mode == "azimuthal_airgap":
-            self.batch_dims = 0
-        elif self.mode == "simple_scalar_airgap":
-            self.batch_dims = 0  # No batch dimensions for simple scalar
-        elif self.mode == "Simple":
-            self.batch_dims = 0  # No batch dimensions for simple scenario
-        else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
-
-        # For Simple mode, ensure tensors are just [3, 3] without batch dimensions
+        # Standardize tensor shapes based on mode
         if self.mode == "Simple":
+            # Simple: scalar kx, [3,3] tensors
             if len(self.eps_tensor.shape) > 2:
-                # If tensors have extra dimensions, squeeze them out
-                axes_to_squeeze = list(range(len(self.eps_tensor.shape) - 2))
-                self.eps_tensor = np.squeeze(self.eps_tensor, axis=tuple(axes_to_squeeze))
-                self.mu_tensor = np.squeeze(self.mu_tensor, axis=tuple(axes_to_squeeze))
+                self.eps_tensor = np.squeeze(self.eps_tensor)
+                self.mu_tensor = np.squeeze(self.mu_tensor)
+        # For all other modes, keep natural shapes
+        # kx reshaping will happen in delta_matrix_calc if needed
 
     def _get_tensor_shapes_for_mode(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get properly shaped tensors for current calculation mode.
 
         Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
-            and broadcasting dimensions for the mode
-
-        Raises:
-            NotImplementedError: If mode is not implemented
+            Tuple of (kx, eps_tensor, mu_tensor) - now just returns as-is
+            since shapes are already standardized in _setup_tensor_shapes
         """
-
-        if self.mode == "Incident":
-            # k_x: [180] -> [180, 1] for broadcasting with tensors [1, 3, 3]
-            k_x = self.k_x[:, np.newaxis] if len(self.k_x.shape) == 1 else self.k_x
-            return k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "Azimuthal":
-            # k_x: scalar or [1], tensors should be [360, 3, 3]
-            k_x = self.k_x
-            return k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "Dispersion":
-            # k_x: [180] -> [180, 1] for broadcasting with tensors [1, 480, 3, 3]
-            k_x = self.k_x[:, np.newaxis] if len(self.k_x.shape) == 1 else self.k_x
-            return k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "Simple":
-            # For simple mode, everything should be scalar/simple shapes
-            # k_x: scalar, tensors: [3, 3]
-            return self.k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "airgap":
-            # For airgap modes, tensors should already match k_x shape
-            return self.k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "simple_airgap":
-            # Similar to airgap but different batch structure
-            return self.k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "azimuthal_airgap":
-            # Different broadcasting pattern
-            return self.k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "simple_scalar_airgap":
-            # Simple scalar airgap - no batch dimensions
-            return self.k_x, self.eps_tensor, self.mu_tensor
-
-        else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
+        # After _setup_tensor_shapes, all arrays have consistent shapes for their mode
+        return self.k_x, self.eps_tensor, self.mu_tensor
 
     def _get_poynting_tensor_shapes(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get tensor shapes for Poynting vector calculation.
 
         Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) reshaped for Poynting
-            vector computation with proper broadcasting
+            Tuple of (kx, eps_tensor, mu_tensor) with shapes matching field arrays
 
         Note:
-            Poynting calculations often require different dimensionality
-            than wave mode calculations.
+            Fields have shape [..., 4, 2] (4 components, 2 modes).
+            Need to broadcast tensors to match [..., 3, 3] for Ez/Hz calculation.
         """
-        # For Poynting calculations, we often need different reshaping
-        if self.mode == "Incident":
-            k_x = self.k_x[np.newaxis, :, np.newaxis]
-            eps_tensor = self.eps_tensor[:, np.newaxis, np.newaxis, ...]
-            mu_tensor = self.mu_tensor[:, np.newaxis, np.newaxis, ...]
-            return k_x, eps_tensor, mu_tensor
-
-        elif self.mode == "airgap":
-            k_x = self.k_x[:, np.newaxis]
-            return k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "simple_airgap":
-            k_x = self.k_x[:, np.newaxis]
-            return k_x, self.eps_tensor, self.mu_tensor
-
-        elif self.mode == "Azimuthal":
-            eps_tensor = self.eps_tensor[:, :, np.newaxis, ...]
-            mu_tensor = self.mu_tensor[:, :, np.newaxis, ...]
-            return self.k_x, eps_tensor, mu_tensor
-
-        elif self.mode == "azimuthal_airgap":
-            eps_tensor = self.eps_tensor[np.newaxis, ...]
-            mu_tensor = self.mu_tensor[np.newaxis, ...]
-            return self.k_x, eps_tensor, mu_tensor
-
-        elif self.mode == "simple_scalar_airgap":
-            # For simple scalar airgap, add minimal dimensions for consistency
-            k_x = self.k_x[np.newaxis] if np.ndim(self.k_x) == 0 else self.k_x
-            eps_tensor = self.eps_tensor[np.newaxis, ...]
-            mu_tensor = self.mu_tensor[np.newaxis, ...]
-            return k_x, eps_tensor, mu_tensor
-
-        elif self.mode == "Simple":
-            # For simple mode, add minimal dimensions for Poynting calculation
-            k_x = self.k_x[np.newaxis] if np.ndim(self.k_x) == 0 else self.k_x
-            eps_tensor = self.eps_tensor[np.newaxis, ...]
-            mu_tensor = self.mu_tensor[np.newaxis, ...]
-            return k_x, eps_tensor, mu_tensor
-
-        elif self.mode == "Dispersion":
-            k_x = self.k_x[:, np.newaxis, np.newaxis]
-            eps_tensor = self.eps_tensor[np.newaxis, :, np.newaxis, ...]
-            mu_tensor = self.mu_tensor[np.newaxis, :, np.newaxis, ...]
-            return k_x, eps_tensor, mu_tensor
-
-        else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
+        # Just return as-is and let numpy broadcasting handle it
+        # The calculation of Ez/Hz uses [..., 2, 2] indexing which broadcasts naturally
+        return self.k_x, self.eps_tensor, self.mu_tensor
 
     def _get_matrix_calculation_shapes(
         self, eigenvalues: np.ndarray, eigenvectors: np.ndarray
@@ -281,62 +183,15 @@ class Wave:
 
         Returns:
             Tuple of (k_0, eigenvalues_diag, eigenvectors) with proper shapes
-
-        Raises:
-            NotImplementedError: If mode is not implemented
         """
-        # Create diagonal matrix from eigenvalues
-        if eigenvalues.ndim == 1:
-            eigenvalues_diag = np.diag(eigenvalues)
-        else:
-            # For batched eigenvalues, vectorize the diag operation
-            eigenvalues_diag = np.apply_along_axis(lambda x: np.diag(x), -1, eigenvalues)
-            # Reshape to get correct dimensions
-            original_shape = eigenvalues.shape
-            eigenvalues_diag = eigenvalues_diag.reshape(original_shape + (eigenvalues.shape[-1],))
+        # Create diagonal matrix from eigenvalues - vectorized
+        n = eigenvalues.shape[-1]
+        eigenvalues_diag = np.zeros(eigenvalues.shape + (n,), dtype=eigenvalues.dtype)
+        diagonal_indices = np.arange(n)
+        eigenvalues_diag[..., diagonal_indices, diagonal_indices] = eigenvalues
 
-        if self.mode == "Incident":
-            k_0 = self.k_0[:, np.newaxis, np.newaxis, np.newaxis]
-            return k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "airgap":
-            k_0 = (
-                self.k_0[:, np.newaxis, np.newaxis, np.newaxis]
-                if isinstance(self.k_0, np.ndarray)
-                else self.k_0
-            )
-            eigenvalues_diag = eigenvalues_diag[np.newaxis, ...]
-            eigenvectors = eigenvectors[np.newaxis, ...]
-            return k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "simple_airgap":
-            eigenvalues_diag = eigenvalues_diag[:, np.newaxis, ...]
-            eigenvectors = eigenvectors[:, np.newaxis, ...]
-            return self.k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "Azimuthal":
-            k_0 = self.k_0[:, np.newaxis, np.newaxis, np.newaxis]
-            return k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "azimuthal_airgap":
-            k_0 = self.k_0[:, np.newaxis, np.newaxis, np.newaxis]
-            eigenvalues_diag = eigenvalues_diag[np.newaxis, np.newaxis, ...]
-            eigenvectors = eigenvectors[np.newaxis, np.newaxis, ...]
-            return k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "simple_scalar_airgap":
-            # For simple scalar airgap, k_0 is scalar, no extra dimensions needed
-            return self.k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "Simple":
-            # For simple mode, k_0 is scalar, eigenvalues/vectors are [4, 4]
-            return self.k_0, eigenvalues_diag, eigenvectors
-
-        elif self.mode == "Dispersion":
-            return self.k_0, eigenvalues_diag, eigenvectors
-
-        else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
+        # Return k_0, eigenvalues_diag, eigenvectors - shapes already compatible
+        return self.k_0, eigenvalues_diag, eigenvectors
 
     def mode_reshaping(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Reshape tensors based on calculation mode.
@@ -363,6 +218,16 @@ class Wave:
             Reference: N.C. Passler & A. Paarmann, JOSA B 34, 2128 (2017)
         """
         k_x, eps_tensor, mu_tensor = self.mode_reshaping()
+
+        # Reshape kx for proper broadcasting with tensors
+        if self.mode in ["Incident", "Dispersion"]:
+            # Need kx as [N_angles, 1] to broadcast with [N_freq/N_azim, 3, 3] tensors
+            if k_x.ndim == 1:
+                k_x = k_x[:, np.newaxis]
+        elif self.mode == "FullSweep":
+            # Need kx as [N_angles, 1, 1] to broadcast with [N_angles, N_azim, N_freq, 3, 3] tensors
+            if k_x.ndim == 1:
+                k_x = k_x[:, np.newaxis, np.newaxis]
 
         # Extract relevant tensor components
         eps_20, eps_21, eps_22 = (
@@ -414,60 +279,31 @@ class Wave:
         m33 = -k_x * eps_02 * eps_22_inv
 
         # Stack the matrix elements into a 4x4 matrix
-        if self.mode == "Simple":
-            # For Simple mode, create matrix directly from scalars
-            self.berreman_matrix = np.array(
-                [
-                    [m00, m01, m02, m03],
-                    [m10, m11, m12, m13],
-                    [m20, m21, m22, m23],
-                    [m30, m31, m32, m33],
-                ],
-                dtype=np.complex128,
-            )
-        else:
-            # For other modes, use the original stacking method
-            self.berreman_matrix = np.stack(
-                [
-                    [m00, m01, m02, m03],
-                    [m10, m11, m12, m13],
-                    [m20, m21, m22, m23],
-                    [m30, m31, m32, m33],
-                ],
-                axis=-1,
-            )
+        # Always use the same stacking approach - shape [..., 4, 4]
+        row0 = np.stack([m00, m01, m02, m03], axis=-1)
+        row1 = np.stack([m10, m11, m12, m13], axis=-1)
+        row2 = np.stack([m20, m21, m22, m23], axis=-1)
+        row3 = np.stack([m30, m31, m32, m33], axis=-1)
+
+        self.berreman_matrix = np.stack([row0, row1, row2, row3], axis=-2).astype(np.complex128)
 
     def delta_permutations(self) -> None:
-        """Perform axis permutations on Berreman matrix based on mode.
+        """Determine batch dimensions for mode - no longer does permutations.
 
-        Rearranges tensor axes to match expected broadcasting patterns for
-        different scenario types, optimizing computation.
-
-        Raises:
-            NotImplementedError: If mode is not in permutation dictionary
+        With unified shape convention, permutations are no longer needed.
+        Just sets batch_dims for downstream operations.
         """
-
-        mode_permutations = {
-            "Incident": ([2, 1, 3, 0], 2),
-            "Azimuthal": ([1, 2, 3, 0], 2),
-            "Dispersion": ([1, 2, 3, 0], 2),
-            "Simple": (
-                [0, 1],
-                0,
-            ),  # Identity permutation for [4,4] matrix - NO transpose
-            "airgap": ([1, 2, 0], 1),
-            "simple_airgap": ([1, 2, 0], 1),
-            "azimuthal_airgap": ([1, 0], 0),
-            "simple_scalar_airgap": ([1, 0], 0),
-        }
-
-        if self.mode not in mode_permutations:
+        # Set batch_dims based on mode
+        if self.mode in ["Incident", "Azimuthal", "Dispersion", "FullSweep"]:
+            self.batch_dims = self.berreman_matrix.ndim - 2
+        elif self.mode == "Simple":
+            self.batch_dims = 0
+        elif self.mode in ["airgap", "simple_airgap", "full_sweep_airgap"]:
+            self.batch_dims = self.berreman_matrix.ndim - 2
+        elif self.mode in ["azimuthal_airgap", "simple_scalar_airgap"]:
+            self.batch_dims = 0
+        else:
             raise NotImplementedError(f"Mode {self.mode} not implemented")
-
-        permutation, self.batch_dims = mode_permutations[self.mode]
-
-        if permutation is not None:
-            self.berreman_matrix = np.transpose(self.berreman_matrix, axes=permutation)
 
     def wave_sorting(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Sort wave modes into transmitted and reflected components.
@@ -481,47 +317,28 @@ class Wave:
 
         Note:
             Forward-propagating modes (Im(kz) > 0 or Re(kz) > 0) are transmitted.
-            Backward-propagating modes are reflected. Sorting ensures proper
-            identification even for complex or purely real wavevectors.
+            Backward-propagating modes are reflected.
         """
-
         wavevectors, fields = np.linalg.eig(self.berreman_matrix)
 
-        def sort_vector(waves):
-            """Sort the wavevectors based on their real and imaginary parts."""
+        # Vectorized sorting - prefer imaginary part if significant, else real part
+        is_complex = np.abs(np.imag(wavevectors)) > 1e-9
+        idx_real = np.argsort(np.real(wavevectors), axis=-1)[..., ::-1]  # DESCENDING
+        idx_imag = np.argsort(np.imag(wavevectors), axis=-1)[..., ::-1]  # DESCENDING
+        indices = np.where(is_complex, idx_imag, idx_real)
 
-            is_complex = np.abs(np.imag(waves)) > 1e-9
-            idx_real = np.argsort(np.real(waves), axis=-1)[::-1]  # DESCENDING
-            idx_imag = np.argsort(np.imag(waves), axis=-1)[::-1]  # DESCENDING
-            indices = np.where(is_complex, idx_imag, idx_real)
+        # Gather sorted wavevectors and fields using take_along_axis
+        sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
 
-            return indices
+        # For fields, need to expand indices to match the [..., 4, 4] shape
+        field_indices = indices[..., np.newaxis, :]  # [..., 1, 4] for broadcasting
+        sorted_fields = np.take_along_axis(fields, field_indices, axis=-1)
 
-        # Sort the wavevectors based on their rank
-        if self.mode == "Simple":
-            # For simple mode, no mapping needed, just direct sorting
-            indices = sort_vector(wavevectors)
-        elif wavevectors.ndim > 1:
-            indices = np.apply_along_axis(sort_vector, -1, wavevectors)
-        else:
-            indices = sort_vector(wavevectors)
-
-        # Gather the sorted wavevectors and fields
-        if self.batch_dims == 0:
-            sorted_waves = wavevectors[indices]
-            sorted_fields = fields[:, indices]
-        elif self.batch_dims == 1:
-            sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
-            sorted_fields = np.take_along_axis(fields, indices[..., np.newaxis, :], axis=-1)
-        else:  # batch_dims == 2
-            sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
-            sorted_fields = np.take_along_axis(fields, indices[..., np.newaxis, :], axis=-1)
-
-        # Split the sorted wavevectors and fields into transmitted and reflected components
-        transmitted_wavevectors = np.stack([sorted_waves[..., 0], sorted_waves[..., 1]], axis=-1)
-        reflected_wavevectors = np.stack([sorted_waves[..., 2], sorted_waves[..., 3]], axis=-1)
-        transmitted_fields = np.stack([sorted_fields[..., 0], sorted_fields[..., 1]], axis=-1)
-        reflected_fields = np.stack([sorted_fields[..., 2], sorted_fields[..., 3]], axis=-1)
+        # Split into transmitted (first 2 modes) and reflected (last 2 modes)
+        transmitted_wavevectors = sorted_waves[..., :2]
+        reflected_wavevectors = sorted_waves[..., 2:]
+        transmitted_fields = sorted_fields[..., :2]
+        reflected_fields = sorted_fields[..., 2:]
 
         return (
             transmitted_wavevectors,
@@ -554,11 +371,64 @@ class Wave:
             eigenvalues, eigenvectors
         )
 
-        # Calculate the partial matrix
-        partial = expm(-1.0j * eigenvalues_diag * k_0 * self.thickness)
+        # For airgap modes, add dimensions to match k_0 frequency dimension
+        if self.mode == "azimuthal_airgap" and k_0.ndim > 0:
+            # k_0 is [N_freq], eigenvalues_diag is [4, 4]
+            # Reshape eigenvalues_diag to [N_freq, 4, 4]
+            eigenvalues_diag = eigenvalues_diag[np.newaxis, ...]
+            eigenvectors = eigenvectors[np.newaxis, ...]
+            # Reshape k_0 to [N_freq, 1, 1]
+            k_0_broadcast = k_0[:, np.newaxis, np.newaxis]
+        elif self.mode == "airgap" and k_0.ndim > 0:
+            # k_0 is [N_freq], eigenvalues_diag is [N_angles, 4, 4]
+            # Reshape eigenvalues_diag to [N_angles, N_freq, 4, 4]
+            eigenvalues_diag = eigenvalues_diag[:, np.newaxis, ...]
+            eigenvectors = eigenvectors[:, np.newaxis, ...]
+            # Reshape k_0 to [1, N_freq, 1, 1]
+            k_0_broadcast = k_0[np.newaxis, :, np.newaxis, np.newaxis]
+        elif self.mode == "Incident" and k_0.ndim > 0:
+            # k_0 is [N_freq], eigenvalues_diag is [N_angles, N_freq, 4, 4]
+            # Reshape k_0 to [1, N_freq, 1, 1]
+            k_0_broadcast = k_0[np.newaxis, :, np.newaxis, np.newaxis]
+        elif self.mode == "FullSweep" and k_0.ndim > 0:
+            # k_0 is [N_freq], eigenvalues_diag is [N_angles, N_azim, N_freq, 4, 4]
+            # Reshape k_0 to [1, 1, N_freq, 1, 1]
+            k_0_broadcast = k_0[np.newaxis, np.newaxis, :, np.newaxis, np.newaxis]
+        elif self.mode == "full_sweep_airgap" and k_0.ndim > 0:
+            # k_0 is [N_freq], eigenvalues_diag is [N_angles, 4, 4]
+            # Reshape eigenvalues_diag to [N_angles, N_freq, 4, 4]
+            eigenvalues_diag = eigenvalues_diag[:, np.newaxis, np.newaxis, ...]
+            eigenvectors = eigenvectors[:, np.newaxis, np.newaxis, ...]
+            # Reshape k_0 to [1, 1, N_freq, 1, 1]
+            k_0_broadcast = k_0[np.newaxis, np.newaxis, :, np.newaxis, np.newaxis]
+        else:
+            # Reshape k_0 for proper broadcasting with eigenvalues_diag [..., 4, 4]
+            k_0_broadcast = k_0 if isinstance(k_0, np.ndarray) else np.array(k_0)
+            while k_0_broadcast.ndim < eigenvalues_diag.ndim:
+                k_0_broadcast = k_0_broadcast[..., np.newaxis]
+
+        # Calculate the partial matrix - optimized for diagonal matrices
+        exponent = -1.0j * eigenvalues_diag * k_0_broadcast * self.thickness
+        if exponent.ndim >= 2 and exponent.shape[-1] == exponent.shape[-2]:
+            # For diagonal matrices, matrix exponential is exp() of diagonal elements
+            partial = np.zeros_like(exponent)
+            diagonal_indices = np.arange(exponent.shape[-1])
+            # Check if it's actually diagonal by verifying off-diagonal elements are zero
+            off_diag_mask = np.ones(exponent.shape[-2:], dtype=bool)
+            off_diag_mask[diagonal_indices, diagonal_indices] = False
+            if np.allclose(exponent[..., off_diag_mask], 0, atol=1e-12):
+                # It's diagonal, use fast diagonal exponential
+                exp_diag = np.exp(exponent[..., diagonal_indices, diagonal_indices])
+                partial[..., diagonal_indices, diagonal_indices] = exp_diag
+            else:
+                # Not actually diagonal, fall back to general matrix exponential
+                partial = expm(exponent)
+        else:
+            partial = expm(exponent)
 
         # Calculate the transfer matrix
-        transfer_matrix = eigenvectors @ partial @ np.linalg.inv(eigenvectors)
+        eigenvectors_inv = np.linalg.inv(eigenvectors)
+        transfer_matrix = np.matmul(np.matmul(eigenvectors, partial), eigenvectors_inv)
 
         return transfer_matrix
 
@@ -630,11 +500,21 @@ class Wave:
             Returns:
                 tuple: A tuple containing the calculated Ez and Hz components.
             """
-            Ez = (-1.0 / eps_tensor[..., 2, 2]) * (
-                k_x * Hy + eps_tensor[..., 2, 0] * Ex + eps_tensor[..., 2, 1] * Ey
+            # Broadcast k_x to match field dimensions
+            # Fields have shape [..., 2] where 2 is the number of modes
+            k_x_broadcast = k_x
+            while k_x_broadcast.ndim < Hy.ndim:
+                k_x_broadcast = k_x_broadcast[..., np.newaxis]
+
+            Ez = (-1.0 / eps_tensor[..., 2, 2, np.newaxis]) * (
+                k_x_broadcast * Hy
+                + eps_tensor[..., 2, 0, np.newaxis] * Ex
+                + eps_tensor[..., 2, 1, np.newaxis] * Ey
             )
-            Hz = (1.0 / mu_tensor[..., 2, 2]) * (
-                k_x * Ey - mu_tensor[..., 2, 0] * Hx - mu_tensor[..., 2, 1] * Hy
+            Hz = (1.0 / mu_tensor[..., 2, 2, np.newaxis]) * (
+                k_x_broadcast * Ey
+                - mu_tensor[..., 2, 0, np.newaxis] * Hx
+                - mu_tensor[..., 2, 1, np.newaxis] * Hy
             )
             return Ez, Hz
 
@@ -760,32 +640,26 @@ class Wave:
             (more y-component). This classification is crucial for properly
             assigning r_pp, r_ss, r_ps, r_sp coefficients.
         """
+        # Calculate polarization ratios
         poynting_x = np.abs(profile["Px"]) ** 2
         poynting_y = np.abs(profile["Py"]) ** 2
-
         electric_x = np.abs(profile["Ex"]) ** 2
         electric_y = np.abs(profile["Ey"]) ** 2
 
-        denominator_E_field = electric_x + electric_y
-        Cp_E = electric_x / denominator_E_field
+        Cp_E = electric_x / (electric_x + electric_y)
+        Cp_P = poynting_x / (poynting_x + poynting_y)
 
-        denominator_poynting = poynting_x + poynting_y
-        Cp_P = poynting_x / denominator_poynting
-
+        # Sort by Poynting (descending) or E-field (ascending) based on difference threshold
         indices_P = np.argsort(Cp_P, axis=-1)[..., ::-1]  # DESCENDING
         indices_E = np.argsort(Cp_E, axis=-1)  # ASCENDING
 
+        # Choose sorting method based on distinctiveness of modes
         condition_P = np.abs(Cp_P[..., 1] - Cp_P[..., 0])[..., np.newaxis]
-        thresh = 1e-6
-        overall_condition = condition_P > thresh
+        sorting_indices = np.where(condition_P > 1e-6, indices_P, indices_E)
 
-        sorting_indices = np.where(overall_condition, indices_P, indices_E)
-
-        for element in profile:
-            if self.batch_dims == 0:
-                profile[element] = profile[element][..., sorting_indices.flatten()]
-            else:
-                profile[element] = np.take_along_axis(profile[element], sorting_indices, axis=-1)
+        # Apply sorting to all profile elements using vectorized take_along_axis
+        for key in profile:
+            profile[key] = np.take_along_axis(profile[key], sorting_indices, axis=-1)
 
         return profile
 

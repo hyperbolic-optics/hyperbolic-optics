@@ -132,8 +132,8 @@ class TestPrismLayer:
         k0 = 1460.0 * 2.0 * np.pi  # Use a fixed frequency
 
         layer = PrismLayer(layer_data, incident_scenario, kx, k0)
-        # For incident scenario, should be [360, 4, 4]
-        assert layer.matrix.shape == (360, 4, 4)
+        # For incident scenario, should be [360, 1, 4, 4]
+        assert layer.matrix.shape == (360, 1, 4, 4)
 
 
 class TestAirGapLayer:

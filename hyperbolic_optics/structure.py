@@ -260,6 +260,20 @@ class Structure:
             - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]
         ) / bottom_line
 
+        # Transpose for Azimuthal and Incident to get (freq, angle) ordering
+        if self.scenario.type in ["Azimuthal", "Incident"]:
+            self.r_pp = np.swapaxes(self.r_pp, 0, 1)
+            self.r_ps = np.swapaxes(self.r_ps, 0, 1)
+            self.r_sp = np.swapaxes(self.r_sp, 0, 1)
+            self.r_ss = np.swapaxes(self.r_ss, 0, 1)
+        elif self.scenario.type == "FullSweep":
+            # Squeeze extra dimensions and reorder to [freq, incident, azim]
+            # Current: [1, 1, N_incident, N_azim, N_freq] -> [N_freq, N_incident, N_azim]
+            self.r_pp = np.moveaxis(np.squeeze(self.r_pp), -1, 0)
+            self.r_ps = np.moveaxis(np.squeeze(self.r_ps), -1, 0)
+            self.r_sp = np.moveaxis(np.squeeze(self.r_sp), -1, 0)
+            self.r_ss = np.moveaxis(np.squeeze(self.r_ss), -1, 0)
+
     def calculate_transmissivity(self) -> None:
         """Extract transmission coefficients from total transfer matrix.
 

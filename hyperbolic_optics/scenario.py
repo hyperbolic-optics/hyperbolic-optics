@@ -59,6 +59,8 @@ class ScenarioSetup(ABC):
             self.create_dispersion_scenario()
         elif self.type == "Simple":
             self.create_simple_scenario()
+        elif self.type == "FullSweep":
+            self.create_full_sweep_scenario()
         else:
             raise NotImplementedError(f"Scenario type {self.type} not implemented")
 
@@ -122,3 +124,21 @@ class ScenarioSetup(ABC):
         self.incident_angle = np.float64(m.radians(self.incident_angle) + 1.0e-15)
         self.azimuthal_angle = np.float64(m.radians(self.azimuthal_angle) + 1.0e-15)
         self.frequency = float(self.frequency)
+
+    def create_full_sweep_scenario(self) -> None:
+        """Create full 3D parameter sweep: frequency × incident_angle × azimuthal_angle.
+
+        Sets up a 3D grid sweeping all three parameters simultaneously for complete
+        visualization of the optical response space.
+
+        Note:
+            Frequency range is determined by the material in the final layer.
+            Output will have shape [N_freq, N_incident, N_azimuthal]
+        """
+        # Incident angles - sweep from 0 to +90 degrees (90 points)
+        self.incident_angle = np.linspace(0.0 + 1.0e-9, m.pi / 2.0 - 1.0e-9, 180, dtype=np.float64)
+
+        # Azimuthal angles - full rotation 0 to 360 degrees (120 points)
+        self.azimuthal_angle = np.linspace(
+            0.0 + 1.0e-15, 2.0 * m.pi - 1.0e-15, 120, dtype=np.float64
+        )
