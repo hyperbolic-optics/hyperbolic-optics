@@ -31,7 +31,7 @@ References:
     - Berreman, JOSA 62, 502-510 (1972)
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 # Layers
 from hyperbolic_optics.layers import LayerFactory

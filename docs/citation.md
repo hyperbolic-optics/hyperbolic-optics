@@ -9,7 +9,7 @@ If you use this package in your research, please cite:
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
   year={2025},
-  version={0.2.0},
+  version={0.2.3},
   doi={10.5281/zenodo.14946556},
   url={https://pypi.org/project/hyperbolic-optics/},
   howpublished={PyPI},
@@ -53,7 +53,7 @@ If you need to cite a specific version:
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
   year={2025},
-  version={0.2.0},
+  version={0.2.3},
   doi={10.5281/zenodo.14946556},
   url={https://pypi.org/project/hyperbolic-optics/0.1.8/}
 }
