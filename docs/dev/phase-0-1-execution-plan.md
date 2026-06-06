@@ -175,12 +175,30 @@ pytest -m "not slow" -o addopts=""                    # 102 passed, 3 deselected
 
 ## Phase 1 — Canonical shapes (pure refactor)
 
+> **Status: DONE.** Landed in two commits — `Phase 1a` (add `axes.py` + remove
+> vestigial code, behaviour-preserving) and `Phase 1b` (the coupled canonical
+> shape change). All 12 goldens stay bit-identical; the full suite (102 tests)
+> passes; `uv run ruff check` is clean. As-built notes are inline below.
+
 ### Goal
 
 Make `[A, B, F, *matrix]` (un-swept axes size 1) the *only* array convention,
 so the physics code stops knowing about scenarios. See full plan §4 for the
 convention and §5 for the complete hit-list. Work in **small commits, running
 `pytest tests/test_golden.py` after each.**
+
+> **As-built deltas from the sketch below:**
+> - The coupled change had to land atomically (boundary-in + `Wave` + layers +
+>   boundary-out all change the data-flow contract together), not as six
+>   independently-green commits. It was split into the two commits above.
+> - The air-gap matrix is canonical `[A, 1, F, 4, 4]` (it depends on incident
+>   angle *and* frequency via kx/k0), not `[1, 1, F, 4, 4]` as §4.5 sketched.
+> - Isotropic exit became fully scenario-agnostic: with size-1 axes it now
+>   broadcasts in FullSweep too, so no explicit FullSweep branch was needed.
+> - Extra dead code removed: `AmbientIncidentMedium.construct_tensor_singular`
+>   (the prism now always uses `construct_tensor`).
+> - `tests/test_layers.py` asserted the old internal shapes and passed scalar
+>   kx/k0; it was updated to feed canonical inputs and assert canonical shapes.
 
 ### Commit-by-commit order
 

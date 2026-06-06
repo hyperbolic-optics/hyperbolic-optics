@@ -19,11 +19,12 @@ order — they are phased deliberately so each step is guarded by tests written 
 the step before it. Section 12 records decisions already made; section 13 lists
 the questions still open for the maintainer (Mark).
 
-**Status of work in this clone:** *Phase 0 is DONE* — the golden-master harness
-exists (`tests/golden/`, `tests/test_golden.py`) with 12 committed snapshots, all
-passing. See [`phase-0-1-execution-plan.md`](phase-0-1-execution-plan.md) for the
-as-built detail. Phase 1 has **not** started: no `hyperbolic_optics/axes.py`, and
-`waves.py` still carries the `mode` coupling.
+**Status of work in this clone:** *Phases 0 and 1 are DONE.* The golden-master
+harness (`tests/golden/`, `tests/test_golden.py`, 12 snapshots) is committed and
+green, and the canonical `[A, B, F]` refactor has landed: `Wave` is mode-free,
+`hyperbolic_optics/axes.py` enforces the convention, and all 12 goldens remain
+bit-identical. See [`phase-0-1-execution-plan.md`](phase-0-1-execution-plan.md)
+for as-built detail. Next up is **Phase 2** (mode-sorting hardening).
 
 **Golden rule of this whole effort:** Phases 1–2 are *pure refactors*. They must
 not change a single reflection-coefficient value. Phase 0 builds the safety net
