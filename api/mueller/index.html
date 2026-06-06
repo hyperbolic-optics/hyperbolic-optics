@@ -2202,16 +2202,7 @@ arbitrary incident polarization states to reflected states.</p>
 <span class="normal"><a href="#__codelineno-0-327">327</a></span>
 <span class="normal"><a href="#__codelineno-0-328">328</a></span>
 <span class="normal"><a href="#__codelineno-0-329">329</a></span>
-<span class="normal"><a href="#__codelineno-0-330">330</a></span>
-<span class="normal"><a href="#__codelineno-0-331">331</a></span>
-<span class="normal"><a href="#__codelineno-0-332">332</a></span>
-<span class="normal"><a href="#__codelineno-0-333">333</a></span>
-<span class="normal"><a href="#__codelineno-0-334">334</a></span>
-<span class="normal"><a href="#__codelineno-0-335">335</a></span>
-<span class="normal"><a href="#__codelineno-0-336">336</a></span>
-<span class="normal"><a href="#__codelineno-0-337">337</a></span>
-<span class="normal"><a href="#__codelineno-0-338">338</a></span>
-<span class="normal"><a href="#__codelineno-0-339">339</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_mueller_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-330">330</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_mueller_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate Mueller matrix from reflection coefficients.</span>
 <a id="__codelineno-0-275" name="__codelineno-0-275"></a>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    Converts the complex 2×2 Jones matrix to a real 4×4 Mueller matrix</span>
@@ -2257,27 +2248,18 @@ arbitrary incident polarization states to reflected states.</p>
 <a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">,</span>
 <a id="__codelineno-0-317" name="__codelineno-0-317"></a>    <span class="p">)</span>
 <a id="__codelineno-0-318" name="__codelineno-0-318"></a>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="c1"># Handle different scenario types</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;Simple&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="c1"># For Simple scenario, f_matrix is just [4, 4], no need to transpose</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="k">pass</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>        <span class="c1"># For other scenarios, transpose as before</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="n">f_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">f_matrix</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>    <span class="n">a_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">,</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="p">)</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>    <span class="c1"># Add batch dimensions if needed</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;Simple&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="c1"># For Simple scenario, just compute matrix multiplication directly</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_matrix</span> <span class="o">@</span> <span class="n">f_matrix</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">a_matrix</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="c1"># For other scenarios, add batch dimensions</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>        <span class="n">a_matrix</span> <span class="o">=</span> <span class="n">a_matrix</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_matrix</span> <span class="o">@</span> <span class="n">f_matrix</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">a_matrix</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="c1"># f_matrix is built with the 4x4 as the leading axes; move them to the</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="c1"># trailing axes so it broadcasts for any batch rank -- scalar (Simple),</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>    <span class="c1"># 2-D (Incident/Azimuthal/Dispersion) or 3-D (FullSweep). a_matrix [4, 4]</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="c1"># then broadcasts against [*batch, 4, 4] in the matmul, so no scenario</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>    <span class="c1"># branching (and FullSweep now works).</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>    <span class="n">f_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">f_matrix</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>    <span class="n">a_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">,</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="p">)</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>    <span class="c1"># The Mueller matrix is real-valued (A·F·A⁻¹); take the real part directly.</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">a_matrix</span> <span class="o">@</span> <span class="n">f_matrix</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">a_matrix</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2353,7 +2335,16 @@ mueller.add_optical_component('linear_polarizer', 90)</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-341">341</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-332">332</a></span>
+<span class="normal"><a href="#__codelineno-0-333">333</a></span>
+<span class="normal"><a href="#__codelineno-0-334">334</a></span>
+<span class="normal"><a href="#__codelineno-0-335">335</a></span>
+<span class="normal"><a href="#__codelineno-0-336">336</a></span>
+<span class="normal"><a href="#__codelineno-0-337">337</a></span>
+<span class="normal"><a href="#__codelineno-0-338">338</a></span>
+<span class="normal"><a href="#__codelineno-0-339">339</a></span>
+<span class="normal"><a href="#__codelineno-0-340">340</a></span>
+<span class="normal"><a href="#__codelineno-0-341">341</a></span>
 <span class="normal"><a href="#__codelineno-0-342">342</a></span>
 <span class="normal"><a href="#__codelineno-0-343">343</a></span>
 <span class="normal"><a href="#__codelineno-0-344">344</a></span>
@@ -2375,47 +2366,38 @@ mueller.add_optical_component('linear_polarizer', 90)</p>
 <span class="normal"><a href="#__codelineno-0-360">360</a></span>
 <span class="normal"><a href="#__codelineno-0-361">361</a></span>
 <span class="normal"><a href="#__codelineno-0-362">362</a></span>
-<span class="normal"><a href="#__codelineno-0-363">363</a></span>
-<span class="normal"><a href="#__codelineno-0-364">364</a></span>
-<span class="normal"><a href="#__codelineno-0-365">365</a></span>
-<span class="normal"><a href="#__codelineno-0-366">366</a></span>
-<span class="normal"><a href="#__codelineno-0-367">367</a></span>
-<span class="normal"><a href="#__codelineno-0-368">368</a></span>
-<span class="normal"><a href="#__codelineno-0-369">369</a></span>
-<span class="normal"><a href="#__codelineno-0-370">370</a></span>
-<span class="normal"><a href="#__codelineno-0-371">371</a></span>
-<span class="normal"><a href="#__codelineno-0-372">372</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="k">def</span><span class="w"> </span><span class="nf">add_optical_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add optical component to the propagation path.</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">        component_type: Type of component (&#39;anisotropic_sample&#39;,</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">                    &#39;linear_polarizer&#39;, &#39;quarter_wave_plate&#39;,</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">                    &#39;half_wave_plate&#39;)</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">        *args: Component-specific parameters (e.g., angle for polarizers)</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">        ValueError: If component type is not recognized or anisotropic</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">                sample is added more than once</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;linear_polarizer&#39;, 0)</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;anisotropic_sample&#39;)</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;linear_polarizer&#39;, 90)</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="k">if</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;linear_polarizer&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear_polarizer</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;anisotropic_sample&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span><span class="p">:</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic sample has already been added&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_mueller_matrix</span><span class="p">()</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span><span class="p">)</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-367" name="__codelineno-0-367"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;quarter_wave_plate&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-368" name="__codelineno-0-368"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quarter_wave_plate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;half_wave_plate&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">half_wave_plate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported optical component type: </span><span class="si">{</span><span class="n">component_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-363">363</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="k">def</span><span class="w"> </span><span class="nf">add_optical_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add optical component to the propagation path.</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        component_type: Type of component (&#39;anisotropic_sample&#39;,</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">                    &#39;linear_polarizer&#39;, &#39;quarter_wave_plate&#39;,</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">                    &#39;half_wave_plate&#39;)</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">        *args: Component-specific parameters (e.g., angle for polarizers)</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        ValueError: If component type is not recognized or anisotropic</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">                sample is added more than once</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;linear_polarizer&#39;, 0)</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;anisotropic_sample&#39;)</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">        &gt;&gt;&gt; mueller.add_optical_component(&#39;linear_polarizer&#39;, 90)</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a>    <span class="k">if</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;linear_polarizer&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear_polarizer</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;anisotropic_sample&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span><span class="p">:</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic sample has already been added&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_mueller_matrix</span><span class="p">()</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span><span class="p">)</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;quarter_wave_plate&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quarter_wave_plate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="k">elif</span> <span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;half_wave_plate&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">half_wave_plate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported optical component type: </span><span class="si">{</span><span class="n">component_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2462,7 +2444,16 @@ S3 = right vs left circular polarization</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-374">374</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-365">365</a></span>
+<span class="normal"><a href="#__codelineno-0-366">366</a></span>
+<span class="normal"><a href="#__codelineno-0-367">367</a></span>
+<span class="normal"><a href="#__codelineno-0-368">368</a></span>
+<span class="normal"><a href="#__codelineno-0-369">369</a></span>
+<span class="normal"><a href="#__codelineno-0-370">370</a></span>
+<span class="normal"><a href="#__codelineno-0-371">371</a></span>
+<span class="normal"><a href="#__codelineno-0-372">372</a></span>
+<span class="normal"><a href="#__codelineno-0-373">373</a></span>
+<span class="normal"><a href="#__codelineno-0-374">374</a></span>
 <span class="normal"><a href="#__codelineno-0-375">375</a></span>
 <span class="normal"><a href="#__codelineno-0-376">376</a></span>
 <span class="normal"><a href="#__codelineno-0-377">377</a></span>
@@ -2474,69 +2465,28 @@ S3 = right vs left circular polarization</p>
 <span class="normal"><a href="#__codelineno-0-383">383</a></span>
 <span class="normal"><a href="#__codelineno-0-384">384</a></span>
 <span class="normal"><a href="#__codelineno-0-385">385</a></span>
-<span class="normal"><a href="#__codelineno-0-386">386</a></span>
-<span class="normal"><a href="#__codelineno-0-387">387</a></span>
-<span class="normal"><a href="#__codelineno-0-388">388</a></span>
-<span class="normal"><a href="#__codelineno-0-389">389</a></span>
-<span class="normal"><a href="#__codelineno-0-390">390</a></span>
-<span class="normal"><a href="#__codelineno-0-391">391</a></span>
-<span class="normal"><a href="#__codelineno-0-392">392</a></span>
-<span class="normal"><a href="#__codelineno-0-393">393</a></span>
-<span class="normal"><a href="#__codelineno-0-394">394</a></span>
-<span class="normal"><a href="#__codelineno-0-395">395</a></span>
-<span class="normal"><a href="#__codelineno-0-396">396</a></span>
-<span class="normal"><a href="#__codelineno-0-397">397</a></span>
-<span class="normal"><a href="#__codelineno-0-398">398</a></span>
-<span class="normal"><a href="#__codelineno-0-399">399</a></span>
-<span class="normal"><a href="#__codelineno-0-400">400</a></span>
-<span class="normal"><a href="#__codelineno-0-401">401</a></span>
-<span class="normal"><a href="#__codelineno-0-402">402</a></span>
-<span class="normal"><a href="#__codelineno-0-403">403</a></span>
-<span class="normal"><a href="#__codelineno-0-404">404</a></span>
-<span class="normal"><a href="#__codelineno-0-405">405</a></span>
-<span class="normal"><a href="#__codelineno-0-406">406</a></span>
-<span class="normal"><a href="#__codelineno-0-407">407</a></span>
-<span class="normal"><a href="#__codelineno-0-408">408</a></span>
-<span class="normal"><a href="#__codelineno-0-409">409</a></span>
-<span class="normal"><a href="#__codelineno-0-410">410</a></span>
-<span class="normal"><a href="#__codelineno-0-411">411</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_stokes_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate output Stokes parameters after all optical components.</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    Propagates the incident Stokes vector through all added optical</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    components by sequential Mueller matrix multiplication.</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        Output Stokes vector [S0, S1, S2, S3] with shape matching scenario</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a><span class="sd">        S0 = total intensity (reflectance)</span>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">        S1 = horizontal vs vertical linear polarization</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">        S2 = +45° vs -45° linear polarization</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">        S3 = right vs left circular polarization</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;Simple&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>        <span class="c1"># For Simple scenario, start with just the incident vector [4,]</span>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a>        <span class="n">stokes_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">incident_stokes</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a>        <span class="c1"># For other scenarios, add batch dimensions</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="n">stokes_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">incident_stokes</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">component</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="p">):</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;Simple&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a>            <span class="c1"># For Simple scenario, component should be [4, 4]</span>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>            <span class="n">stokes_vector</span> <span class="o">=</span> <span class="n">component</span> <span class="o">@</span> <span class="n">stokes_vector</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a>            <span class="c1"># For other scenarios, component has batch dimensions</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a>            <span class="n">stokes_vector</span> <span class="o">=</span> <span class="n">component</span> <span class="o">@</span> <span class="n">stokes_vector</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;Simple&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a>        <span class="c1"># For Simple scenario, remove the last dimension [4, 1] -&gt; [4]</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="o">=</span> <span class="n">stokes_vector</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>        <span class="c1"># For other scenarios, remove the last dimension [..., 4, 1] -&gt; [..., 4]</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="o">=</span> <span class="n">stokes_vector</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span>
+<span class="normal"><a href="#__codelineno-0-386">386</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_stokes_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-366" name="__codelineno-0-366"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate output Stokes parameters after all optical components.</span>
+<a id="__codelineno-0-367" name="__codelineno-0-367"></a>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="sd">    Propagates the incident Stokes vector through all added optical</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="sd">    components by sequential Mueller matrix multiplication.</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-372" name="__codelineno-0-372"></a><span class="sd">        Output Stokes vector [S0, S1, S2, S3] with shape matching scenario</span>
+<a id="__codelineno-0-373" name="__codelineno-0-373"></a>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="sd">        S0 = total intensity (reflectance)</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">        S1 = horizontal vs vertical linear polarization</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        S2 = +45° vs -45° linear polarization</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        S3 = right vs left circular polarization</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>    <span class="c1"># Incident Stokes as a column vector [4, 1]; it broadcasts against any</span>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a>    <span class="c1"># batched component matrix [*batch, 4, 4], so this is scenario-agnostic.</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a>    <span class="n">stokes_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">incident_stokes</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span><span class="p">:</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>        <span class="n">stokes_vector</span> <span class="o">=</span> <span class="n">component</span> <span class="o">@</span> <span class="n">stokes_vector</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="o">=</span> <span class="n">stokes_vector</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2578,31 +2528,31 @@ S3 = right vs left circular polarization</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-413">413</a></span>
-<span class="normal"><a href="#__codelineno-0-414">414</a></span>
-<span class="normal"><a href="#__codelineno-0-415">415</a></span>
-<span class="normal"><a href="#__codelineno-0-416">416</a></span>
-<span class="normal"><a href="#__codelineno-0-417">417</a></span>
-<span class="normal"><a href="#__codelineno-0-418">418</a></span>
-<span class="normal"><a href="#__codelineno-0-419">419</a></span>
-<span class="normal"><a href="#__codelineno-0-420">420</a></span>
-<span class="normal"><a href="#__codelineno-0-421">421</a></span>
-<span class="normal"><a href="#__codelineno-0-422">422</a></span>
-<span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span>
-<span class="normal"><a href="#__codelineno-0-425">425</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get total reflectance (S0 Stokes parameter).</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        Reflectance array with shape matching scenario type</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        Automatically calculates Stokes parameters if not already computed.</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-388">388</a></span>
+<span class="normal"><a href="#__codelineno-0-389">389</a></span>
+<span class="normal"><a href="#__codelineno-0-390">390</a></span>
+<span class="normal"><a href="#__codelineno-0-391">391</a></span>
+<span class="normal"><a href="#__codelineno-0-392">392</a></span>
+<span class="normal"><a href="#__codelineno-0-393">393</a></span>
+<span class="normal"><a href="#__codelineno-0-394">394</a></span>
+<span class="normal"><a href="#__codelineno-0-395">395</a></span>
+<span class="normal"><a href="#__codelineno-0-396">396</a></span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span>
+<span class="normal"><a href="#__codelineno-0-399">399</a></span>
+<span class="normal"><a href="#__codelineno-0-400">400</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get total reflectance (S0 Stokes parameter).</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">        Reflectance array with shape matching scenario type</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">        Automatically calculates Stokes parameters if not already computed.</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2647,65 +2597,65 @@ DOP = 0: unpolarized (random)
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-427">427</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-402">402</a></span>
+<span class="normal"><a href="#__codelineno-0-403">403</a></span>
+<span class="normal"><a href="#__codelineno-0-404">404</a></span>
+<span class="normal"><a href="#__codelineno-0-405">405</a></span>
+<span class="normal"><a href="#__codelineno-0-406">406</a></span>
+<span class="normal"><a href="#__codelineno-0-407">407</a></span>
+<span class="normal"><a href="#__codelineno-0-408">408</a></span>
+<span class="normal"><a href="#__codelineno-0-409">409</a></span>
+<span class="normal"><a href="#__codelineno-0-410">410</a></span>
+<span class="normal"><a href="#__codelineno-0-411">411</a></span>
+<span class="normal"><a href="#__codelineno-0-412">412</a></span>
+<span class="normal"><a href="#__codelineno-0-413">413</a></span>
+<span class="normal"><a href="#__codelineno-0-414">414</a></span>
+<span class="normal"><a href="#__codelineno-0-415">415</a></span>
+<span class="normal"><a href="#__codelineno-0-416">416</a></span>
+<span class="normal"><a href="#__codelineno-0-417">417</a></span>
+<span class="normal"><a href="#__codelineno-0-418">418</a></span>
+<span class="normal"><a href="#__codelineno-0-419">419</a></span>
+<span class="normal"><a href="#__codelineno-0-420">420</a></span>
+<span class="normal"><a href="#__codelineno-0-421">421</a></span>
+<span class="normal"><a href="#__codelineno-0-422">422</a></span>
+<span class="normal"><a href="#__codelineno-0-423">423</a></span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span>
 <span class="normal"><a href="#__codelineno-0-428">428</a></span>
 <span class="normal"><a href="#__codelineno-0-429">429</a></span>
 <span class="normal"><a href="#__codelineno-0-430">430</a></span>
-<span class="normal"><a href="#__codelineno-0-431">431</a></span>
-<span class="normal"><a href="#__codelineno-0-432">432</a></span>
-<span class="normal"><a href="#__codelineno-0-433">433</a></span>
-<span class="normal"><a href="#__codelineno-0-434">434</a></span>
-<span class="normal"><a href="#__codelineno-0-435">435</a></span>
-<span class="normal"><a href="#__codelineno-0-436">436</a></span>
-<span class="normal"><a href="#__codelineno-0-437">437</a></span>
-<span class="normal"><a href="#__codelineno-0-438">438</a></span>
-<span class="normal"><a href="#__codelineno-0-439">439</a></span>
-<span class="normal"><a href="#__codelineno-0-440">440</a></span>
-<span class="normal"><a href="#__codelineno-0-441">441</a></span>
-<span class="normal"><a href="#__codelineno-0-442">442</a></span>
-<span class="normal"><a href="#__codelineno-0-443">443</a></span>
-<span class="normal"><a href="#__codelineno-0-444">444</a></span>
-<span class="normal"><a href="#__codelineno-0-445">445</a></span>
-<span class="normal"><a href="#__codelineno-0-446">446</a></span>
-<span class="normal"><a href="#__codelineno-0-447">447</a></span>
-<span class="normal"><a href="#__codelineno-0-448">448</a></span>
-<span class="normal"><a href="#__codelineno-0-449">449</a></span>
-<span class="normal"><a href="#__codelineno-0-450">450</a></span>
-<span class="normal"><a href="#__codelineno-0-451">451</a></span>
-<span class="normal"><a href="#__codelineno-0-452">452</a></span>
-<span class="normal"><a href="#__codelineno-0-453">453</a></span>
-<span class="normal"><a href="#__codelineno-0-454">454</a></span>
-<span class="normal"><a href="#__codelineno-0-455">455</a></span>
-<span class="normal"><a href="#__codelineno-0-456">456</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_degree_of_polarisation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate degree of polarization (DOP).</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a><span class="sd">        DOP array with values clipped to [0, 1]</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="sd">        DOP = √(S1² + S2² + S3²) / S0</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">        DOP = 1: fully polarized</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">        DOP = 0: unpolarized (random)</span>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">        0 &lt; DOP &lt; 1: partially polarized</span>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a>    <span class="n">s0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="n">s3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="c1"># Avoid division by zero</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-10</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="n">s0_safe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="n">dop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s3</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">s0_safe</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="c1"># Clip to ensure DOP is always between 0 and 1</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="n">dop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">dop</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a>
-<a id="__codelineno-0-456" name="__codelineno-0-456"></a>    <span class="k">return</span> <span class="n">dop</span>
+<span class="normal"><a href="#__codelineno-0-431">431</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_degree_of_polarisation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate degree of polarization (DOP).</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">        DOP array with values clipped to [0, 1]</span>
+<a id="__codelineno-0-407" name="__codelineno-0-407"></a>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">        DOP = √(S1² + S2² + S3²) / S0</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">        DOP = 1: fully polarized</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">        DOP = 0: unpolarized (random)</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">        0 &lt; DOP &lt; 1: partially polarized</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a>    <span class="n">s0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="n">s3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="c1"># Avoid division by zero</span>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-10</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">s0_safe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="n">dop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s3</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">s0_safe</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>    <span class="c1"># Clip to ensure DOP is always between 0 and 1</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>    <span class="n">dop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">dop</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a>    <span class="k">return</span> <span class="n">dop</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2749,43 +2699,43 @@ Intermediate values: elliptical polarization</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-458">458</a></span>
-<span class="normal"><a href="#__codelineno-0-459">459</a></span>
-<span class="normal"><a href="#__codelineno-0-460">460</a></span>
-<span class="normal"><a href="#__codelineno-0-461">461</a></span>
-<span class="normal"><a href="#__codelineno-0-462">462</a></span>
-<span class="normal"><a href="#__codelineno-0-463">463</a></span>
-<span class="normal"><a href="#__codelineno-0-464">464</a></span>
-<span class="normal"><a href="#__codelineno-0-465">465</a></span>
-<span class="normal"><a href="#__codelineno-0-466">466</a></span>
-<span class="normal"><a href="#__codelineno-0-467">467</a></span>
-<span class="normal"><a href="#__codelineno-0-468">468</a></span>
-<span class="normal"><a href="#__codelineno-0-469">469</a></span>
-<span class="normal"><a href="#__codelineno-0-470">470</a></span>
-<span class="normal"><a href="#__codelineno-0-471">471</a></span>
-<span class="normal"><a href="#__codelineno-0-472">472</a></span>
-<span class="normal"><a href="#__codelineno-0-473">473</a></span>
-<span class="normal"><a href="#__codelineno-0-474">474</a></span>
-<span class="normal"><a href="#__codelineno-0-475">475</a></span>
-<span class="normal"><a href="#__codelineno-0-476">476</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_ellipticity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate ellipticity angle of polarization ellipse.</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">        Ellipticity angle in radians (-π/4 to π/4)</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">        Ellipticity = 0: linear polarization</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        Ellipticity = ±π/4: circular polarization</span>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">        Intermediate values: elliptical polarization</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a>    <span class="n">s3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a>    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">s3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-433">433</a></span>
+<span class="normal"><a href="#__codelineno-0-434">434</a></span>
+<span class="normal"><a href="#__codelineno-0-435">435</a></span>
+<span class="normal"><a href="#__codelineno-0-436">436</a></span>
+<span class="normal"><a href="#__codelineno-0-437">437</a></span>
+<span class="normal"><a href="#__codelineno-0-438">438</a></span>
+<span class="normal"><a href="#__codelineno-0-439">439</a></span>
+<span class="normal"><a href="#__codelineno-0-440">440</a></span>
+<span class="normal"><a href="#__codelineno-0-441">441</a></span>
+<span class="normal"><a href="#__codelineno-0-442">442</a></span>
+<span class="normal"><a href="#__codelineno-0-443">443</a></span>
+<span class="normal"><a href="#__codelineno-0-444">444</a></span>
+<span class="normal"><a href="#__codelineno-0-445">445</a></span>
+<span class="normal"><a href="#__codelineno-0-446">446</a></span>
+<span class="normal"><a href="#__codelineno-0-447">447</a></span>
+<span class="normal"><a href="#__codelineno-0-448">448</a></span>
+<span class="normal"><a href="#__codelineno-0-449">449</a></span>
+<span class="normal"><a href="#__codelineno-0-450">450</a></span>
+<span class="normal"><a href="#__codelineno-0-451">451</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_ellipticity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate ellipticity angle of polarization ellipse.</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">        Ellipticity angle in radians (-π/4 to π/4)</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">        Ellipticity = 0: linear polarization</span>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">        Ellipticity = ±π/4: circular polarization</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">        Intermediate values: elliptical polarization</span>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">s3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">s3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2828,39 +2778,39 @@ perpendicular to propagation direction.</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-478">478</a></span>
-<span class="normal"><a href="#__codelineno-0-479">479</a></span>
-<span class="normal"><a href="#__codelineno-0-480">480</a></span>
-<span class="normal"><a href="#__codelineno-0-481">481</a></span>
-<span class="normal"><a href="#__codelineno-0-482">482</a></span>
-<span class="normal"><a href="#__codelineno-0-483">483</a></span>
-<span class="normal"><a href="#__codelineno-0-484">484</a></span>
-<span class="normal"><a href="#__codelineno-0-485">485</a></span>
-<span class="normal"><a href="#__codelineno-0-486">486</a></span>
-<span class="normal"><a href="#__codelineno-0-487">487</a></span>
-<span class="normal"><a href="#__codelineno-0-488">488</a></span>
-<span class="normal"><a href="#__codelineno-0-489">489</a></span>
-<span class="normal"><a href="#__codelineno-0-490">490</a></span>
-<span class="normal"><a href="#__codelineno-0-491">491</a></span>
-<span class="normal"><a href="#__codelineno-0-492">492</a></span>
-<span class="normal"><a href="#__codelineno-0-493">493</a></span>
-<span class="normal"><a href="#__codelineno-0-494">494</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_azimuth</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate azimuth angle of polarization ellipse major axis.</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">        Azimuth angle in radians</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">        Defines orientation of the polarization ellipse in the plane</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="sd">        perpendicular to propagation direction.</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="n">s1</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-453">453</a></span>
+<span class="normal"><a href="#__codelineno-0-454">454</a></span>
+<span class="normal"><a href="#__codelineno-0-455">455</a></span>
+<span class="normal"><a href="#__codelineno-0-456">456</a></span>
+<span class="normal"><a href="#__codelineno-0-457">457</a></span>
+<span class="normal"><a href="#__codelineno-0-458">458</a></span>
+<span class="normal"><a href="#__codelineno-0-459">459</a></span>
+<span class="normal"><a href="#__codelineno-0-460">460</a></span>
+<span class="normal"><a href="#__codelineno-0-461">461</a></span>
+<span class="normal"><a href="#__codelineno-0-462">462</a></span>
+<span class="normal"><a href="#__codelineno-0-463">463</a></span>
+<span class="normal"><a href="#__codelineno-0-464">464</a></span>
+<span class="normal"><a href="#__codelineno-0-465">465</a></span>
+<span class="normal"><a href="#__codelineno-0-466">466</a></span>
+<span class="normal"><a href="#__codelineno-0-467">467</a></span>
+<span class="normal"><a href="#__codelineno-0-468">468</a></span>
+<span class="normal"><a href="#__codelineno-0-469">469</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_azimuth</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate azimuth angle of polarization ellipse major axis.</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        Azimuth angle in radians</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        Defines orientation of the polarization ellipse in the plane</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        perpendicular to propagation direction.</span>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>    <span class="n">s1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="n">s1</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2902,41 +2852,41 @@ perpendicular to propagation direction.</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-496">496</a></span>
-<span class="normal"><a href="#__codelineno-0-497">497</a></span>
-<span class="normal"><a href="#__codelineno-0-498">498</a></span>
-<span class="normal"><a href="#__codelineno-0-499">499</a></span>
-<span class="normal"><a href="#__codelineno-0-500">500</a></span>
-<span class="normal"><a href="#__codelineno-0-501">501</a></span>
-<span class="normal"><a href="#__codelineno-0-502">502</a></span>
-<span class="normal"><a href="#__codelineno-0-503">503</a></span>
-<span class="normal"><a href="#__codelineno-0-504">504</a></span>
-<span class="normal"><a href="#__codelineno-0-505">505</a></span>
-<span class="normal"><a href="#__codelineno-0-506">506</a></span>
-<span class="normal"><a href="#__codelineno-0-507">507</a></span>
-<span class="normal"><a href="#__codelineno-0-508">508</a></span>
-<span class="normal"><a href="#__codelineno-0-509">509</a></span>
-<span class="normal"><a href="#__codelineno-0-510">510</a></span>
-<span class="normal"><a href="#__codelineno-0-511">511</a></span>
-<span class="normal"><a href="#__codelineno-0-512">512</a></span>
-<span class="normal"><a href="#__codelineno-0-513">513</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_stokes_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all four Stokes parameters.</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        Dictionary with keys &#39;S0&#39;, &#39;S1&#39;, &#39;S2&#39;, &#39;S3&#39; containing parameter arrays</span>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="sd">        Automatically calculates if not already computed.</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-506" name="__codelineno-0-506"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-507" name="__codelineno-0-507"></a>
-<a id="__codelineno-0-508" name="__codelineno-0-508"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-509" name="__codelineno-0-509"></a>        <span class="s2">&quot;S0&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-510" name="__codelineno-0-510"></a>        <span class="s2">&quot;S1&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-511" name="__codelineno-0-511"></a>        <span class="s2">&quot;S2&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
-<a id="__codelineno-0-512" name="__codelineno-0-512"></a>        <span class="s2">&quot;S3&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
-<a id="__codelineno-0-513" name="__codelineno-0-513"></a>    <span class="p">}</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-471">471</a></span>
+<span class="normal"><a href="#__codelineno-0-472">472</a></span>
+<span class="normal"><a href="#__codelineno-0-473">473</a></span>
+<span class="normal"><a href="#__codelineno-0-474">474</a></span>
+<span class="normal"><a href="#__codelineno-0-475">475</a></span>
+<span class="normal"><a href="#__codelineno-0-476">476</a></span>
+<span class="normal"><a href="#__codelineno-0-477">477</a></span>
+<span class="normal"><a href="#__codelineno-0-478">478</a></span>
+<span class="normal"><a href="#__codelineno-0-479">479</a></span>
+<span class="normal"><a href="#__codelineno-0-480">480</a></span>
+<span class="normal"><a href="#__codelineno-0-481">481</a></span>
+<span class="normal"><a href="#__codelineno-0-482">482</a></span>
+<span class="normal"><a href="#__codelineno-0-483">483</a></span>
+<span class="normal"><a href="#__codelineno-0-484">484</a></span>
+<span class="normal"><a href="#__codelineno-0-485">485</a></span>
+<span class="normal"><a href="#__codelineno-0-486">486</a></span>
+<span class="normal"><a href="#__codelineno-0-487">487</a></span>
+<span class="normal"><a href="#__codelineno-0-488">488</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-471" name="__codelineno-0-471"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_stokes_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all four Stokes parameters.</span>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a><span class="sd">        Dictionary with keys &#39;S0&#39;, &#39;S1&#39;, &#39;S2&#39;, &#39;S3&#39; containing parameter arrays</span>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">        Automatically calculates if not already computed.</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>        <span class="s2">&quot;S0&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a>        <span class="s2">&quot;S1&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>        <span class="s2">&quot;S2&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>        <span class="s2">&quot;S3&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2973,27 +2923,27 @@ perpendicular to propagation direction.</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-515">515</a></span>
-<span class="normal"><a href="#__codelineno-0-516">516</a></span>
-<span class="normal"><a href="#__codelineno-0-517">517</a></span>
-<span class="normal"><a href="#__codelineno-0-518">518</a></span>
-<span class="normal"><a href="#__codelineno-0-519">519</a></span>
-<span class="normal"><a href="#__codelineno-0-520">520</a></span>
-<span class="normal"><a href="#__codelineno-0-521">521</a></span>
-<span class="normal"><a href="#__codelineno-0-522">522</a></span>
-<span class="normal"><a href="#__codelineno-0-523">523</a></span>
-<span class="normal"><a href="#__codelineno-0-524">524</a></span>
-<span class="normal"><a href="#__codelineno-0-525">525</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_polarisation_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get derived polarization properties.</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-519" name="__codelineno-0-519"></a><span class="sd">        Dictionary with &#39;DOP&#39;, &#39;Ellipticity&#39;, &#39;Azimuth&#39; arrays</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a>        <span class="s2">&quot;DOP&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_degree_of_polarisation</span><span class="p">(),</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="s2">&quot;Ellipticity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ellipticity</span><span class="p">(),</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>        <span class="s2">&quot;Azimuth&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_azimuth</span><span class="p">(),</span>
-<a id="__codelineno-0-525" name="__codelineno-0-525"></a>    <span class="p">}</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-490">490</a></span>
+<span class="normal"><a href="#__codelineno-0-491">491</a></span>
+<span class="normal"><a href="#__codelineno-0-492">492</a></span>
+<span class="normal"><a href="#__codelineno-0-493">493</a></span>
+<span class="normal"><a href="#__codelineno-0-494">494</a></span>
+<span class="normal"><a href="#__codelineno-0-495">495</a></span>
+<span class="normal"><a href="#__codelineno-0-496">496</a></span>
+<span class="normal"><a href="#__codelineno-0-497">497</a></span>
+<span class="normal"><a href="#__codelineno-0-498">498</a></span>
+<span class="normal"><a href="#__codelineno-0-499">499</a></span>
+<span class="normal"><a href="#__codelineno-0-500">500</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_polarisation_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get derived polarization properties.</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">        Dictionary with &#39;DOP&#39;, &#39;Ellipticity&#39;, &#39;Azimuth&#39; arrays</span>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a>        <span class="s2">&quot;DOP&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_degree_of_polarisation</span><span class="p">(),</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a>        <span class="s2">&quot;Ellipticity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ellipticity</span><span class="p">(),</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="s2">&quot;Azimuth&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_azimuth</span><span class="p">(),</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3043,37 +2993,37 @@ print(f"Average DOP: {params['DOP'].mean():.3f}")</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-527">527</a></span>
-<span class="normal"><a href="#__codelineno-0-528">528</a></span>
-<span class="normal"><a href="#__codelineno-0-529">529</a></span>
-<span class="normal"><a href="#__codelineno-0-530">530</a></span>
-<span class="normal"><a href="#__codelineno-0-531">531</a></span>
-<span class="normal"><a href="#__codelineno-0-532">532</a></span>
-<span class="normal"><a href="#__codelineno-0-533">533</a></span>
-<span class="normal"><a href="#__codelineno-0-534">534</a></span>
-<span class="normal"><a href="#__codelineno-0-535">535</a></span>
-<span class="normal"><a href="#__codelineno-0-536">536</a></span>
-<span class="normal"><a href="#__codelineno-0-537">537</a></span>
-<span class="normal"><a href="#__codelineno-0-538">538</a></span>
-<span class="normal"><a href="#__codelineno-0-539">539</a></span>
-<span class="normal"><a href="#__codelineno-0-540">540</a></span>
-<span class="normal"><a href="#__codelineno-0-541">541</a></span>
-<span class="normal"><a href="#__codelineno-0-542">542</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get comprehensive set of all Stokes and polarization parameters.</span>
-<a id="__codelineno-0-529" name="__codelineno-0-529"></a>
-<a id="__codelineno-0-530" name="__codelineno-0-530"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a><span class="sd">        Dictionary containing S0, S1, S2, S3, DOP, Ellipticity, Azimuth</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a>
-<a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">        &gt;&gt;&gt; params = mueller.get_all_parameters()</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">        &gt;&gt;&gt; print(f&quot;Reflectance: {params[&#39;S0&#39;].mean():.3f}&quot;)</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">        &gt;&gt;&gt; print(f&quot;Average DOP: {params[&#39;DOP&#39;].mean():.3f}&quot;)</span>
-<a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-538" name="__codelineno-0-538"></a>    <span class="n">stokes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a>    <span class="n">polarisation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_polarisation_parameters</span><span class="p">()</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="n">all_params</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">stokes</span><span class="p">,</span> <span class="o">**</span><span class="n">polarisation</span><span class="p">}</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="k">return</span> <span class="n">all_params</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-502">502</a></span>
+<span class="normal"><a href="#__codelineno-0-503">503</a></span>
+<span class="normal"><a href="#__codelineno-0-504">504</a></span>
+<span class="normal"><a href="#__codelineno-0-505">505</a></span>
+<span class="normal"><a href="#__codelineno-0-506">506</a></span>
+<span class="normal"><a href="#__codelineno-0-507">507</a></span>
+<span class="normal"><a href="#__codelineno-0-508">508</a></span>
+<span class="normal"><a href="#__codelineno-0-509">509</a></span>
+<span class="normal"><a href="#__codelineno-0-510">510</a></span>
+<span class="normal"><a href="#__codelineno-0-511">511</a></span>
+<span class="normal"><a href="#__codelineno-0-512">512</a></span>
+<span class="normal"><a href="#__codelineno-0-513">513</a></span>
+<span class="normal"><a href="#__codelineno-0-514">514</a></span>
+<span class="normal"><a href="#__codelineno-0-515">515</a></span>
+<span class="normal"><a href="#__codelineno-0-516">516</a></span>
+<span class="normal"><a href="#__codelineno-0-517">517</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get comprehensive set of all Stokes and polarization parameters.</span>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a><span class="sd">        Dictionary containing S0, S1, S2, S3, DOP, Ellipticity, Azimuth</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a><span class="sd">        &gt;&gt;&gt; params = mueller.get_all_parameters()</span>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">        &gt;&gt;&gt; print(f&quot;Reflectance: {params[&#39;S0&#39;].mean():.3f}&quot;)</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a><span class="sd">        &gt;&gt;&gt; print(f&quot;Average DOP: {params[&#39;DOP&#39;].mean():.3f}&quot;)</span>
+<a id="__codelineno-0-512" name="__codelineno-0-512"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-513" name="__codelineno-0-513"></a>    <span class="n">stokes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-514" name="__codelineno-0-514"></a>    <span class="n">polarisation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_polarisation_parameters</span><span class="p">()</span>
+<a id="__codelineno-0-515" name="__codelineno-0-515"></a>    <span class="n">all_params</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">stokes</span><span class="p">,</span> <span class="o">**</span><span class="n">polarisation</span><span class="p">}</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>    <span class="k">return</span> <span class="n">all_params</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3105,33 +3055,33 @@ and resets incident polarization to unpolarized state.</p>
 
             <details class="quote">
               <summary>Source code in <code>hyperbolic_optics/mueller.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-544">544</a></span>
-<span class="normal"><a href="#__codelineno-0-545">545</a></span>
-<span class="normal"><a href="#__codelineno-0-546">546</a></span>
-<span class="normal"><a href="#__codelineno-0-547">547</a></span>
-<span class="normal"><a href="#__codelineno-0-548">548</a></span>
-<span class="normal"><a href="#__codelineno-0-549">549</a></span>
-<span class="normal"><a href="#__codelineno-0-550">550</a></span>
-<span class="normal"><a href="#__codelineno-0-551">551</a></span>
-<span class="normal"><a href="#__codelineno-0-552">552</a></span>
-<span class="normal"><a href="#__codelineno-0-553">553</a></span>
-<span class="normal"><a href="#__codelineno-0-554">554</a></span>
-<span class="normal"><a href="#__codelineno-0-555">555</a></span>
-<span class="normal"><a href="#__codelineno-0-556">556</a></span>
-<span class="normal"><a href="#__codelineno-0-557">557</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset Mueller object to initial state.</span>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="sd">    Clears all calculated matrices, Stokes parameters, optical components,</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">    and resets incident polarization to unpolarized state.</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a><span class="sd">        Call this before setting up a new calculation sequence.</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">incident_stokes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span> <span class="o">=</span> <span class="kc">False</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-519">519</a></span>
+<span class="normal"><a href="#__codelineno-0-520">520</a></span>
+<span class="normal"><a href="#__codelineno-0-521">521</a></span>
+<span class="normal"><a href="#__codelineno-0-522">522</a></span>
+<span class="normal"><a href="#__codelineno-0-523">523</a></span>
+<span class="normal"><a href="#__codelineno-0-524">524</a></span>
+<span class="normal"><a href="#__codelineno-0-525">525</a></span>
+<span class="normal"><a href="#__codelineno-0-526">526</a></span>
+<span class="normal"><a href="#__codelineno-0-527">527</a></span>
+<span class="normal"><a href="#__codelineno-0-528">528</a></span>
+<span class="normal"><a href="#__codelineno-0-529">529</a></span>
+<span class="normal"><a href="#__codelineno-0-530">530</a></span>
+<span class="normal"><a href="#__codelineno-0-531">531</a></span>
+<span class="normal"><a href="#__codelineno-0-532">532</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-519" name="__codelineno-0-519"></a><span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset Mueller object to initial state.</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">    Clears all calculated matrices, Stokes parameters, optical components,</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a><span class="sd">    and resets incident polarization to unpolarized state.</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>
+<a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">        Call this before setting up a new calculation sequence.</span>
+<a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">mueller_matrix</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-529" name="__codelineno-0-529"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">stokes_parameters</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-530" name="__codelineno-0-530"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">incident_stokes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">optical_components</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">anisotropic_sample_added</span> <span class="o">=</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

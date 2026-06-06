@@ -1234,6 +1234,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#hyperbolic_optics.materials.create_material" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;create_material
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1773,6 +1782,15 @@
   <a href="#hyperbolic_optics.materials.load_material_parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;load_material_parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hyperbolic_optics.materials.create_material" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;create_material
     </span>
   </a>
   
@@ -5086,6 +5104,109 @@ and off-diagonal components are zero.</p>
 <a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;material_params.json&quot;</span>
 <a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 <a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyperbolic_optics.materials.create_material" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">create_material</span>
+
+
+</h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create_material</span><span class="p">(</span><span class="n">material</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Instantiate a material from a name string or an arbitrary-tensor dict.</p>
+<p>Single source of truth for the material name -&gt; class mapping, shared by the
+layer factory and by frequency-range resolution.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>material</code></b>
+              (<code><span title="str">str</span> | <span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>A registered material name, or a dict of permittivity/
+permeability components for an :class:<code>ArbitraryMaterial</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="NotImplementedError">NotImplementedError</span></code>
+            –
+          <div class="doc-md-description">
+            <p>If the name is not recognised.</p>
+          </div>
+        </li>
+    </ul>
+
+
+            <details class="quote">
+              <summary>Source code in <code>hyperbolic_optics/materials.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-929">929</a></span>
+<span class="normal"><a href="#__codelineno-0-930">930</a></span>
+<span class="normal"><a href="#__codelineno-0-931">931</a></span>
+<span class="normal"><a href="#__codelineno-0-932">932</a></span>
+<span class="normal"><a href="#__codelineno-0-933">933</a></span>
+<span class="normal"><a href="#__codelineno-0-934">934</a></span>
+<span class="normal"><a href="#__codelineno-0-935">935</a></span>
+<span class="normal"><a href="#__codelineno-0-936">936</a></span>
+<span class="normal"><a href="#__codelineno-0-937">937</a></span>
+<span class="normal"><a href="#__codelineno-0-938">938</a></span>
+<span class="normal"><a href="#__codelineno-0-939">939</a></span>
+<span class="normal"><a href="#__codelineno-0-940">940</a></span>
+<span class="normal"><a href="#__codelineno-0-941">941</a></span>
+<span class="normal"><a href="#__codelineno-0-942">942</a></span>
+<span class="normal"><a href="#__codelineno-0-943">943</a></span>
+<span class="normal"><a href="#__codelineno-0-944">944</a></span>
+<span class="normal"><a href="#__codelineno-0-945">945</a></span>
+<span class="normal"><a href="#__codelineno-0-946">946</a></span>
+<span class="normal"><a href="#__codelineno-0-947">947</a></span>
+<span class="normal"><a href="#__codelineno-0-948">948</a></span>
+<span class="normal"><a href="#__codelineno-0-949">949</a></span>
+<span class="normal"><a href="#__codelineno-0-950">950</a></span>
+<span class="normal"><a href="#__codelineno-0-951">951</a></span>
+<span class="normal"><a href="#__codelineno-0-952">952</a></span>
+<span class="normal"><a href="#__codelineno-0-953">953</a></span>
+<span class="normal"><a href="#__codelineno-0-954">954</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-929" name="__codelineno-0-929"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_material</span><span class="p">(</span><span class="n">material</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">BaseMaterial</span><span class="p">:</span>
+<a id="__codelineno-0-930" name="__codelineno-0-930"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Instantiate a material from a name string or an arbitrary-tensor dict.</span>
+<a id="__codelineno-0-931" name="__codelineno-0-931"></a>
+<a id="__codelineno-0-932" name="__codelineno-0-932"></a><span class="sd">    Single source of truth for the material name -&gt; class mapping, shared by the</span>
+<a id="__codelineno-0-933" name="__codelineno-0-933"></a><span class="sd">    layer factory and by frequency-range resolution.</span>
+<a id="__codelineno-0-934" name="__codelineno-0-934"></a>
+<a id="__codelineno-0-935" name="__codelineno-0-935"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-936" name="__codelineno-0-936"></a><span class="sd">        material: A registered material name, or a dict of permittivity/</span>
+<a id="__codelineno-0-937" name="__codelineno-0-937"></a><span class="sd">            permeability components for an :class:`ArbitraryMaterial`.</span>
+<a id="__codelineno-0-938" name="__codelineno-0-938"></a>
+<a id="__codelineno-0-939" name="__codelineno-0-939"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-940" name="__codelineno-0-940"></a><span class="sd">        NotImplementedError: If the name is not recognised.</span>
+<a id="__codelineno-0-941" name="__codelineno-0-941"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-942" name="__codelineno-0-942"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">material</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+<a id="__codelineno-0-943" name="__codelineno-0-943"></a>        <span class="k">return</span> <span class="n">ArbitraryMaterial</span><span class="p">(</span><span class="n">material</span><span class="p">)</span>
+<a id="__codelineno-0-944" name="__codelineno-0-944"></a>    <span class="n">registry</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-945" name="__codelineno-0-945"></a>        <span class="s2">&quot;Quartz&quot;</span><span class="p">:</span> <span class="n">Quartz</span><span class="p">,</span>
+<a id="__codelineno-0-946" name="__codelineno-0-946"></a>        <span class="s2">&quot;Sapphire&quot;</span><span class="p">:</span> <span class="n">Sapphire</span><span class="p">,</span>
+<a id="__codelineno-0-947" name="__codelineno-0-947"></a>        <span class="s2">&quot;Calcite&quot;</span><span class="p">:</span> <span class="n">CalciteUpper</span><span class="p">,</span>
+<a id="__codelineno-0-948" name="__codelineno-0-948"></a>        <span class="s2">&quot;CalciteLower&quot;</span><span class="p">:</span> <span class="n">CalciteLower</span><span class="p">,</span>
+<a id="__codelineno-0-949" name="__codelineno-0-949"></a>        <span class="s2">&quot;GalliumOxide&quot;</span><span class="p">:</span> <span class="n">GalliumOxide</span><span class="p">,</span>
+<a id="__codelineno-0-950" name="__codelineno-0-950"></a>    <span class="p">}</span>
+<a id="__codelineno-0-951" name="__codelineno-0-951"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-952" name="__codelineno-0-952"></a>        <span class="k">return</span> <span class="n">registry</span><span class="p">[</span><span class="n">material</span><span class="p">]()</span>
+<a id="__codelineno-0-953" name="__codelineno-0-953"></a>    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+<a id="__codelineno-0-954" name="__codelineno-0-954"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Material </span><span class="si">{</span><span class="n">material</span><span class="si">}</span><span class="s2"> not implemented&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
