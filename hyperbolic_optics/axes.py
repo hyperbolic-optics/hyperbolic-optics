@@ -9,8 +9,7 @@ where un-swept axes are size 1 (never absent):
 
 NumPy never materialises size-1 broadcast axes, so carrying them costs nothing in
 time or memory, and it lets the physics code broadcast over leading axes without
-knowing which scenario produced the arrays. See
-``docs/dev/canonical-shape-refactor-plan.md`` (sections 4-5).
+knowing which scenario produced the arrays.
 """
 
 import numpy as np

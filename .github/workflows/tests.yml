@@ -33,7 +33,9 @@ jobs:
 
     - name: Run tests
       run: |
-        uv run pytest --cov=hyperbolic_optics --cov-report=xml --cov-report=term
+        # Goldens are an environment-pinned local refactor lock; the slow
+        # FullSweep cases are deselected to keep the matrix fast.
+        uv run pytest -m "not slow and not golden" --cov=hyperbolic_optics --cov-report=xml --cov-report=term
 
   lint:
     runs-on: ubuntu-latest

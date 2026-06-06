@@ -84,6 +84,7 @@ markers = [
     "materials: marks tests related to materials",
     "structure: marks tests related to structure",
     "mueller: marks tests related to Mueller matrices",
+    "golden: environment-pinned golden-master regression tests (deselected in CI)",
 ]
 
 # Minimum version

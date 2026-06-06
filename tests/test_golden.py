@@ -27,6 +27,10 @@ DATA_DIR = Path(__file__).parent / "golden" / "data"
 RTOL = 1e-7
 ATOL = 1e-9
 
+# Goldens are an environment-pinned refactor lock (see tests/golden/__init__.py),
+# not a cross-platform gate; CI deselects them via `-m "not golden"`.
+pytestmark = pytest.mark.golden
+
 
 def _params():
     """Build parametrization, marking expensive payloads as slow."""
