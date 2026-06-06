@@ -289,8 +289,7 @@ class Layer(ABC):
         self.incident_angle = scenario.incident_angle
         self.azimuthal_angle = scenario.azimuthal_angle
 
-        # CHANGED: Remove the default non_magnetic_tensor assignment
-        # We'll get both tensors from materials now
+        # Populated later from the material (see calculate_tensors).
         self.eps_tensor = None
         self.mu_tensor = None
 
@@ -481,7 +480,7 @@ class AirGapLayer(Layer):
         else:
             self.permittivity = complex(perm, 0)
 
-        # CHANGED: Handle magnetic permeability input
+        # Handle complex permeability input
         mu = data.get("permeability", 1.0)
         if isinstance(mu, dict):
             if "real" in mu or "imag" in mu:
@@ -495,7 +494,6 @@ class AirGapLayer(Layer):
         else:
             self.permeability = complex(mu, 0)
 
-        # CHANGED: Create the isotropic material with both eps and mu
         self.isotropic_material = Air(
             permittivity=self.permittivity, permeability=self.permeability
         )
@@ -547,9 +545,9 @@ class CrystalLayer(Layer):
             Euler angles specified in degrees.
         """
         super().__init__(data, scenario, kx, k0)
-        self.calculate_tensors()  # Get both eps and mu tensors
+        self.calculate_tensors()
         self.calculate_z_rotation()
-        self.rotate_tensors()  # Rotate both tensors
+        self.rotate_tensors()
         self.create()
 
     def create(self) -> None:
@@ -587,9 +585,8 @@ class SemiInfiniteCrystalLayer(Layer):
         """
         super().__init__(data, scenario, kx, k0)
         self.calculate_z_rotation()
-        # CHANGED: Use the new unified tensor calculation methods
-        self.calculate_tensors()  # Get both eps and mu tensors
-        self.rotate_tensors()  # Rotate both tensors
+        self.calculate_tensors()
+        self.rotate_tensors()
         self.create()
 
     def create(self) -> None:

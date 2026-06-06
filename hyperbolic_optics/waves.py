@@ -295,15 +295,7 @@ class Wave:
         k_x, eps_tensor, mu_tensor = self.k_x, self.eps_tensor, self.mu_tensor
 
         def calculate_fields(fields):
-            """
-            Extract the field components from the input tensor.
-
-            Args:
-                fields (np.ndarray): The input tensor containing the field components.
-
-            Returns:
-                tuple: A tuple containing the extracted field components (Ex, Ey, Hx, Hy).
-            """
+            """Extract (Ex, Ey, Hx, Hy) from a [..., 4, modes] field array."""
             Ex, Ey = fields[..., 0, :], fields[..., 1, :]
             Hx, Hy = fields[..., 2, :], fields[..., 3, :]
             return Ex, Ey, Hx, Hy
@@ -314,20 +306,8 @@ class Wave:
         reflected_Ex, reflected_Ey, reflected_Hx, reflected_Hy = calculate_fields(reflected_fields)
 
         def calculate_Ez_Hz(Ex, Ey, Hx, Hy):
-            """
-            Calculate the Ez and Hz components based on the input field components.
-
-            Args:
-                Ex (np.ndarray): The Ex field component.
-                Ey (np.ndarray): The Ey field component.
-                Hx (np.ndarray): The Hx field component.
-                Hy (np.ndarray): The Hy field component.
-
-            Returns:
-                tuple: A tuple containing the calculated Ez and Hz components.
-            """
-            # Broadcast k_x to match field dimensions
-            # Fields have shape [..., 2] where 2 is the number of modes
+            """Recover Ez, Hz from the in-plane components via Maxwell's equations."""
+            # Broadcast k_x over the trailing mode axis.
             k_x_broadcast = k_x
             while k_x_broadcast.ndim < Hy.ndim:
                 k_x_broadcast = k_x_broadcast[..., np.newaxis]
@@ -352,21 +332,7 @@ class Wave:
         )
 
         def calculate_poynting(Ex, Ey, Ez, Hx, Hy, Hz):
-            """
-            Calculate the Poynting vector components based on the input field components.
-
-            Args:
-                Ex (np.ndarray): The Ex field component.
-                Ey (np.ndarray): The Ey field component.
-                Ez (np.ndarray): The Ez field component.
-                Hx (np.ndarray): The Hx field component.
-                Hy (np.ndarray): The Hy field component.
-                Hz (np.ndarray): The Hz field component.
-
-            Returns:
-                tuple: A tuple containing the calculated Poynting vector components
-                    (Px, Py, Pz, physical_Px, physical_Py, physical_Pz).
-            """
+            """Return the complex and time-averaged (physical) Poynting components."""
             Px = Ey * Hz - Ez * Hy
             Py = Ez * Hx - Ex * Hz
             Pz = Ex * Hy - Ey * Hx
@@ -393,20 +359,7 @@ class Wave:
         )
 
         def create_wave_profile(fields, poynting, waves):
-            """
-            Create a wave profile dictionary based on the input field components,
-            Poynting vector components,
-            and wavevectors.
-
-            Args:
-                fields (tuple): A tuple containing the field components (Ex, Ey, Ez, Hx, Hy, Hz).
-                poynting (tuple): A tuple containing the Poynting vector components
-                    (Px, Py, Pz, physical_Px, physical_Py, physical_Pz).
-                waves (np.ndarray): The wavevectors.
-
-            Returns:
-                dict: A dictionary representing the wave profile.
-            """
+            """Assemble fields, Poynting components and wavevectors into a profile dict."""
             Ex, Ey, Ez, Hx, Hy, Hz = fields
             Px, Py, Pz, physical_Px, physical_Py, physical_Pz = poynting
             return {
