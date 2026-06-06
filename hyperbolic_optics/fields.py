@@ -293,6 +293,78 @@ class FieldProfile:
         """Return ``max|R + T + ΣAᵢ − 1|`` over the batch (≈ 0 when correct)."""
         return self.summary(polarization)["conservation_residual"]
 
+    # -- polarization-resolved power (experimental) ---------------------------
+
+    def polarization_resolved(self, polarization: str = "p") -> dict[str, np.ndarray]:
+        """**Experimental.** Split R and T into co- and cross-polarized channels.
+
+        For a pure ``"p"`` or ``"s"`` incidence, the reflected/transmitted power is
+        decomposed into the *co-polarized* channel (same polarization as incident)
+        and the *cross-polarized* channel (the polarization-converted light — the
+        power analogue of ``r_ps`` / ``t_ps``). The conversion fractions
+        ``cross / (co + cross)`` quantify how much light changed polarization.
+
+        Reflection is split exactly (``R_co = |r_co|²``, ``R_cross = |r_cross|²``,
+        reflection being back into the same prism). Transmission is split via the
+        per-mode flux of the two forward exit waves.
+
+        Experimental / caveat: the transmitted s/p split is rigorous only for an
+        **isotropic exit** medium, where the two exit eigenmodes are clean s and p
+        and their fluxes add (``T_co + T_cross = T``). For an anisotropic exit the
+        eigenmodes are elliptical, so the split is an eigenmode-resolved
+        approximation and may not sum exactly to the total transmittance.
+
+        Args:
+            polarization: ``"p"`` or ``"s"`` (co/cross is undefined for a mixed
+                Jones state).
+
+        Returns:
+            Dict (presentation shape) with ``R_co, R_cross, T_co, T_cross`` and
+            ``conversion_reflection``, ``conversion_transmission``.
+
+        Raises:
+            ValueError: If ``polarization`` is not ``"p"`` or ``"s"``.
+        """
+        key = polarization.lower() if isinstance(polarization, str) else None
+        if key not in ("p", "s"):
+            raise ValueError("polarization_resolved requires pure 'p' or 's' incidence.")
+        _, _, c_exit, s_inc, _ = self._solve(polarization)
+
+        # Reflected amplitudes are the backward slots of c_inc = Gamma @ c_exit.
+        c_inc = _matvec(self.gamma, c_exit)
+        refl_s, refl_p = c_inc[..., _S_BWD], c_inc[..., _P_BWD]
+
+        # Per-mode transmitted flux (exit modes: index 0 = s-like, 1 = p-like).
+        w_full, _, amps = self._exit_transmitted_modes(c_exit)
+        tangential = w_full[..., [0, 1, 3, 4], :]  # [..., (Ex,Ey,Hx,Hy), 2]
+
+        def mode_transmittance(mode: int) -> np.ndarray:
+            field = amps[..., mode][..., np.newaxis] * tangential[..., :, mode]
+            return _poynting_z(field) / s_inc
+
+        t_s, t_p = mode_transmittance(0), mode_transmittance(1)
+
+        if key == "p":
+            r_co, r_cross, t_co, t_cross = refl_p, refl_s, t_p, t_s
+        else:
+            r_co, r_cross, t_co, t_cross = refl_s, refl_p, t_s, t_p
+
+        r_co_pow = np.abs(r_co) ** 2
+        r_cross_pow = np.abs(r_cross) ** 2
+
+        def _fraction(cross: np.ndarray, co: np.ndarray) -> np.ndarray:
+            total = co + cross
+            return np.where(np.abs(total) > 1e-30, cross / total, 0.0)
+
+        return {
+            "R_co": present(r_co_pow),
+            "R_cross": present(r_cross_pow),
+            "T_co": present(t_co),
+            "T_cross": present(t_cross),
+            "conversion_reflection": present(_fraction(r_cross_pow, r_co_pow)),
+            "conversion_transmission": present(_fraction(t_cross, t_co)),
+        }
+
     # -- field profile --------------------------------------------------------
 
     def _exit_transmitted_modes(
@@ -444,3 +516,52 @@ class FieldProfile:
         result["Sz"] = sz_sq
         result["absorption_cumulative"] = np.take(sz_sq, 0, axis=-1)[..., np.newaxis] - sz_sq
         return result
+
+    def stokes_from_field_profile(
+        self,
+        polarization: str | tuple[complex, complex] = "p",
+        n_points: int = 200,
+        semi_inf_thickness: float | None = None,
+    ) -> dict[str, np.ndarray]:
+        """Polarization state of the transverse field vs depth (Stokes + ellipse).
+
+        Reconstructs the field with :meth:`field_profile` and forms the Stokes
+        parameters of the transverse pair ``(Ex, Ey)`` at every depth, so you can
+        watch the polarization ellipse evolve as the wave crosses a birefringent
+        layer. ``Ex`` is the in-plane (p-like) component, ``Ey`` the out-of-plane
+        (s-like) one; the convention is ``e^{-iωt}``.
+
+        Args:
+            polarization: ``"p"``, ``"s"`` or a complex ``(a_s, a_p)`` Jones pair.
+            n_points: Depth samples per layer (passed to :meth:`field_profile`).
+            semi_inf_thickness: Semi-infinite exit display window in µm (see
+                :meth:`field_profile`).
+
+        Returns:
+            Dict with ``z`` (µm) and ``layer_boundaries`` plus the Stokes profiles
+            ``S0`` (intensity) and ``S1, S2, S3``, and the ellipse parameters
+            ``azimuth`` (ψ, rad) and ``ellipticity`` (χ, rad). A single coherent
+            field is fully polarized, so the degree of polarization is 1 by
+            construction and is not returned.
+
+        Note:
+            Like :meth:`field_profile`, this is undefined while sweeping a layer
+            thickness (raises if the canonical ``T`` axis size > 1).
+        """
+        profile = self.field_profile(polarization, n_points, semi_inf_thickness)
+        ex, ey = profile["Ex"], profile["Ey"]
+        ex_sq, ey_sq = np.abs(ex) ** 2, np.abs(ey) ** 2
+        s0 = ex_sq + ey_sq
+        s1 = ex_sq - ey_sq
+        s2 = 2.0 * np.real(ex * np.conj(ey))
+        s3 = -2.0 * np.imag(ex * np.conj(ey))
+        return {
+            "z": profile["z"],
+            "layer_boundaries": profile["layer_boundaries"],
+            "S0": s0,
+            "S1": s1,
+            "S2": s2,
+            "S3": s3,
+            "azimuth": 0.5 * np.arctan2(s2, s1),
+            "ellipticity": 0.5 * np.arctan2(s3, np.sqrt(s1**2 + s2**2)),
+        }

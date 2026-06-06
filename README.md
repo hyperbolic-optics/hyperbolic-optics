@@ -229,6 +229,22 @@ For a single semi-infinite anisotropic layer there are no interior layers to
 resolve, so `T = 1 − R` is the power delivered into the bulk, and `field_profile`
 shows it being absorbed with depth.
 
+### Polarization conversion
+
+Cross-polarization (the `r_ps`/`t_ps` channels) can be analysed several ways:
+
+- `FieldProfile.polarization_resolved("p")` *(experimental)* — splits `R` and `T`
+  into co- and cross-polarized power and reports the conversion fractions. The
+  transmitted s/p split is rigorous for an isotropic exit.
+- `FieldProfile.stokes_from_field_profile("p")` — the Stokes vector and
+  polarization ellipse (azimuth ψ, ellipticity χ) of the transverse field *versus
+  depth*, so you can watch the state evolve through a birefringent layer.
+- `Mueller.calculate_transmission_mueller_matrix()` — the transmission Mueller
+  matrix from the `t` coefficients. Its `|t|²` intensity equals true power
+  transmittance only for a **symmetric prism = substrate** system; into a
+  lower-index medium it breaks in the evanescent regime (use
+  `FieldProfile.transmittance` for power there).
+
 `examples/layer_resolved_absorption.py` reproduces the azimuthal layer-resolved
 absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
 (Passler, Jeannin & Paarmann, *J. Opt. Soc. Am. B* **37**, 1060 (2020)).
