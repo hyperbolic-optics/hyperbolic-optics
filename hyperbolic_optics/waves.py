@@ -28,7 +28,6 @@ References:
 """
 
 import numpy as np
-from scipy.linalg import expm
 
 
 class WaveProfile:
@@ -105,7 +104,6 @@ class Wave:
         self.mu_tensor = mu_tensor  # Now pre-shaped from materials
 
         self.mode = mode
-        self.batch_size = None
 
         self.k_0 = k_0
         self.thickness = thickness
@@ -148,30 +146,6 @@ class Wave:
         # For all other modes, keep natural shapes
         # kx reshaping will happen in delta_matrix_calc if needed
 
-    def _get_tensor_shapes_for_mode(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Get properly shaped tensors for current calculation mode.
-
-        Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) - now just returns as-is
-            since shapes are already standardized in _setup_tensor_shapes
-        """
-        # After _setup_tensor_shapes, all arrays have consistent shapes for their mode
-        return self.k_x, self.eps_tensor, self.mu_tensor
-
-    def _get_poynting_tensor_shapes(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Get tensor shapes for Poynting vector calculation.
-
-        Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) with shapes matching field arrays
-
-        Note:
-            Fields have shape [..., 4, 2] (4 components, 2 modes).
-            Need to broadcast tensors to match [..., 3, 3] for Ez/Hz calculation.
-        """
-        # Just return as-is and let numpy broadcasting handle it
-        # The calculation of Ez/Hz uses [..., 2, 2] indexing which broadcasts naturally
-        return self.k_x, self.eps_tensor, self.mu_tensor
-
     def _get_matrix_calculation_shapes(
         self, eigenvalues: np.ndarray, eigenvectors: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -193,17 +167,6 @@ class Wave:
         # Return k_0, eigenvalues_diag, eigenvectors - shapes already compatible
         return self.k_0, eigenvalues_diag, eigenvectors
 
-    def mode_reshaping(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Reshape tensors based on calculation mode.
-
-        Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
-
-        Note:
-            Wrapper around _get_tensor_shapes_for_mode for compatibility.
-        """
-        return self._get_tensor_shapes_for_mode()
-
     def delta_matrix_calc(self) -> None:
         """Construct 4×4 Berreman transfer matrix for anisotropic layer.
 
@@ -217,7 +180,7 @@ class Wave:
 
             Reference: N.C. Passler & A. Paarmann, JOSA B 34, 2128 (2017)
         """
-        k_x, eps_tensor, mu_tensor = self.mode_reshaping()
+        k_x, eps_tensor, mu_tensor = self.k_x, self.eps_tensor, self.mu_tensor
 
         # Reshape kx for proper broadcasting with tensors
         if self.mode in ["Incident", "Dispersion"]:
@@ -286,24 +249,6 @@ class Wave:
         row3 = np.stack([m30, m31, m32, m33], axis=-1)
 
         self.berreman_matrix = np.stack([row0, row1, row2, row3], axis=-2).astype(np.complex128)
-
-    def delta_permutations(self) -> None:
-        """Determine batch dimensions for mode - no longer does permutations.
-
-        With unified shape convention, permutations are no longer needed.
-        Just sets batch_dims for downstream operations.
-        """
-        # Set batch_dims based on mode
-        if self.mode in ["Incident", "Azimuthal", "Dispersion", "FullSweep"]:
-            self.batch_dims = self.berreman_matrix.ndim - 2
-        elif self.mode == "Simple":
-            self.batch_dims = 0
-        elif self.mode in ["airgap", "simple_airgap", "full_sweep_airgap"]:
-            self.batch_dims = self.berreman_matrix.ndim - 2
-        elif self.mode in ["azimuthal_airgap", "simple_scalar_airgap"]:
-            self.batch_dims = 0
-        else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
 
     def wave_sorting(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Sort wave modes into transmitted and reflected components.
@@ -407,39 +352,20 @@ class Wave:
             while k_0_broadcast.ndim < eigenvalues_diag.ndim:
                 k_0_broadcast = k_0_broadcast[..., np.newaxis]
 
-        # Calculate the partial matrix - optimized for diagonal matrices
+        # eigenvalues_diag is diagonal by construction, so the matrix exponential
+        # is simply exp() of the diagonal entries (no general expm needed).
         exponent = -1.0j * eigenvalues_diag * k_0_broadcast * self.thickness
-        if exponent.ndim >= 2 and exponent.shape[-1] == exponent.shape[-2]:
-            # For diagonal matrices, matrix exponential is exp() of diagonal elements
-            partial = np.zeros_like(exponent)
-            diagonal_indices = np.arange(exponent.shape[-1])
-            # Check if it's actually diagonal by verifying off-diagonal elements are zero
-            off_diag_mask = np.ones(exponent.shape[-2:], dtype=bool)
-            off_diag_mask[diagonal_indices, diagonal_indices] = False
-            if np.allclose(exponent[..., off_diag_mask], 0, atol=1e-12):
-                # It's diagonal, use fast diagonal exponential
-                exp_diag = np.exp(exponent[..., diagonal_indices, diagonal_indices])
-                partial[..., diagonal_indices, diagonal_indices] = exp_diag
-            else:
-                # Not actually diagonal, fall back to general matrix exponential
-                partial = expm(exponent)
-        else:
-            partial = expm(exponent)
+        partial = np.zeros_like(exponent)
+        diagonal_indices = np.arange(exponent.shape[-1])
+        partial[..., diagonal_indices, diagonal_indices] = np.exp(
+            exponent[..., diagonal_indices, diagonal_indices]
+        )
 
         # Calculate the transfer matrix
         eigenvectors_inv = np.linalg.inv(eigenvectors)
         transfer_matrix = np.matmul(np.matmul(eigenvectors, partial), eigenvectors_inv)
 
         return transfer_matrix
-
-    def poynting_reshaping(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Reshape tensors for Poynting vector calculation.
-
-        Returns:
-            Tuple of (kx, eps_tensor, mu_tensor) with appropriate shapes
-            for energy flow calculations
-        """
-        return self._get_poynting_tensor_shapes()
 
     def get_poynting(
         self,
@@ -466,7 +392,7 @@ class Wave:
             energy flux density. Ez and Hz are computed from Maxwell's
             equations using the material tensors.
         """
-        k_x, eps_tensor, mu_tensor = self.poynting_reshaping()
+        k_x, eps_tensor, mu_tensor = self.k_x, self.eps_tensor, self.mu_tensor
 
         def calculate_fields(fields):
             """
@@ -735,7 +661,6 @@ class Wave:
             >>> profile, matrix = wave.execute()
         """
         self.delta_matrix_calc()
-        self.delta_permutations()
 
         transmitted_waves, reflected_waves, transmitted_fields, reflected_fields = (
             self.wave_sorting()
