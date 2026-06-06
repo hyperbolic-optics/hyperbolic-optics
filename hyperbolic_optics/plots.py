@@ -335,6 +335,67 @@ def plot_materials_gallery(save_name: str | None = None) -> None:
     _save_and_show(save_name)
 
 
+def plot_poincare_sphere(
+    stokes: dict[str, np.ndarray] | np.ndarray,
+    color_by: np.ndarray | None = None,
+    title: str | None = None,
+    save_name: str | None = None,
+) -> None:
+    """Plot a Stokes trajectory on the Poincaré sphere (works for any scenario).
+
+    Takes the output Stokes parameters from any scenario (e.g.
+    ``Mueller.get_stokes_parameters`` or ``Jones.get_stokes_parameters``) and plots
+    the normalized state ``(S1, S2, S3)/S0`` on the unit sphere — poles are right/
+    left circular, the equator is linear. All batch axes are flattened into the
+    point cloud, so it visualizes how polarization evolves across an incident-angle,
+    azimuthal, frequency or depth sweep.
+
+    Args:
+        stokes: Either a dict with keys ``S0, S1, S2, S3`` or an array ``[..., 4]``.
+        color_by: Optional array (any broadcastable shape) used to colour the
+            points — e.g. frequency or sweep index. Defaults to point order.
+        title: Optional plot title.
+        save_name: Optional filename for saving (without extension).
+    """
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3d projection)
+
+    PlotStyle.initialize()
+    if isinstance(stokes, dict):
+        s0, s1, s2, s3 = (np.asarray(stokes[k], dtype=np.float64) for k in ("S0", "S1", "S2", "S3"))
+    else:
+        arr = np.asarray(stokes, dtype=np.float64)
+        s0, s1, s2, s3 = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
+
+    s0_safe = np.where(np.abs(s0) > 1e-12, s0, 1.0)
+    x = (s1 / s0_safe).ravel()
+    y = (s2 / s0_safe).ravel()
+    z = (s3 / s0_safe).ravel()
+    colours = np.arange(x.size) if color_by is None else np.broadcast_to(color_by, s0.shape).ravel()
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    u = np.linspace(0, 2 * np.pi, 48)
+    v = np.linspace(0, np.pi, 24)
+    ax.plot_wireframe(
+        np.outer(np.cos(u), np.sin(v)),
+        np.outer(np.sin(u), np.sin(v)),
+        np.outer(np.ones_like(u), np.cos(v)),
+        color="0.85",
+        linewidth=0.4,
+    )
+    scatter = ax.scatter(x, y, z, c=colours, cmap="viridis", s=8)
+    fig.colorbar(
+        scatter, ax=ax, shrink=0.6, pad=0.1, label="frequency" if color_by is not None else "order"
+    )
+    ax.set_xlabel(r"$S_1/S_0$")
+    ax.set_ylabel(r"$S_2/S_0$")
+    ax.set_zlabel(r"$S_3/S_0$")
+    ax.set_box_aspect((1, 1, 1))
+    if title:
+        ax.set_title(title)
+    _save_and_show(save_name)
+
+
 def plot_mueller_azimuthal(
     structure: Structure,
     param: np.ndarray,

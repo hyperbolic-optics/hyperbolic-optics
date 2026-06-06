@@ -286,3 +286,62 @@ class Jones:
                 self.structure.r_ss,
             )
         return Mueller._mueller_from_jones(pp, ps, sp, ss)
+
+    def ellipsometric_parameters(self) -> dict[str, np.ndarray]:
+        """Generalized ellipsometric angles from the reflection coefficients.
+
+        The standard ratio ``rho = r_pp / r_ss = tan(Psi)·e^{iΔ}`` gives ``Psi``
+        (the amplitude-ratio angle, degrees, in ``[0, 90]``) and ``Delta`` (the
+        phase difference, degrees, in ``(-180, 180]``). For anisotropic samples the
+        cross-polarization ratios ``r_ps/r_ss`` and ``r_sp/r_pp`` are reported as
+        the generalized angles ``Psi_ps/Delta_ps`` and ``Psi_sp/Delta_sp``.
+
+        Returns:
+            Dict of ``Psi, Delta, Psi_ps, Delta_ps, Psi_sp, Delta_sp`` (degrees),
+            each in the scenario's presentation shape.
+        """
+        r_pp, r_ss = self.structure.r_pp, self.structure.r_ss
+        r_ps, r_sp = self.structure.r_ps, self.structure.r_sp
+
+        def _angles(numerator: np.ndarray, denominator: np.ndarray) -> tuple:
+            rho = numerator / denominator
+            return np.degrees(np.arctan(np.abs(rho))), np.degrees(np.angle(rho))
+
+        psi, delta = _angles(r_pp, r_ss)
+        psi_ps, delta_ps = _angles(r_ps, r_ss)
+        psi_sp, delta_sp = _angles(r_sp, r_pp)
+        return {
+            "Psi": psi,
+            "Delta": delta,
+            "Psi_ps": psi_ps,
+            "Delta_ps": delta_ps,
+            "Psi_sp": psi_sp,
+            "Delta_sp": delta_sp,
+        }
+
+    def find_exceptional_points(self, overlap_threshold: float = 0.99) -> dict[str, np.ndarray]:
+        """Locate exceptional points across the scenario sweep.
+
+        At an exceptional point the two eigenpolarizations of the (non-normal)
+        Jones matrix coalesce: the eigenvector overlap approaches 1 and the
+        discriminant approaches 0. This scans :meth:`eigenpolarizations` over the
+        batch and returns those indicators plus the strongest candidate.
+
+        Args:
+            overlap_threshold: Eigenvector-overlap value above which a point is
+                flagged as near an exceptional point.
+
+        Returns:
+            Dict with the full ``overlap`` and ``discriminant`` maps (presentation
+            shape), a boolean ``near_ep`` mask, and ``ep_index`` -- the (unravelled)
+            position of minimum ``|discriminant|`` (the strongest EP candidate).
+        """
+        data = self.eigenpolarizations()
+        overlap = data["eigenvector_overlap"]
+        magnitude = np.abs(data["discriminant"])
+        return {
+            "overlap": overlap,
+            "discriminant": data["discriminant"],
+            "near_ep": overlap >= overlap_threshold,
+            "ep_index": np.unravel_index(np.argmin(magnitude), magnitude.shape),
+        }

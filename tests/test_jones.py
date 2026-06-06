@@ -170,6 +170,43 @@ class TestEigenpolarizations:
         assert result["discriminant"].shape == (410, 360)
 
 
+class TestEllipsometry:
+    def test_psi_delta_reconstruct_rho(self):
+        structure = _converting()
+        params = Jones(structure).ellipsometric_parameters()
+        # tan(Psi) e^{i Delta} == r_pp / r_ss
+        rho = np.tan(np.radians(params["Psi"])) * np.exp(1j * np.radians(params["Delta"]))
+        assert complex(rho) == pytest.approx(
+            complex(structure.r_pp) / complex(structure.r_ss), abs=1e-9
+        )
+        assert 0.0 <= float(params["Psi"]) <= 90.0
+        assert -180.0 < float(params["Delta"]) <= 180.0
+
+    def test_cross_terms_vanish_without_conversion(self):
+        # optic axis in the plane of incidence (rotationZ=0) -> no p<->s conversion
+        structure = _simple([_CALCITE])
+        params = Jones(structure).ellipsometric_parameters()
+        assert float(params["Psi_ps"]) == pytest.approx(0.0, abs=1e-6)
+        assert float(params["Psi_sp"]) == pytest.approx(0.0, abs=1e-6)
+
+
+class TestExceptionalPoints:
+    def test_find_returns_maps_and_candidate(self):
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {"type": "Incident"},
+                "Layers": [{"type": "Ambient Incident Layer", "permittivity": 12.5}, _CALCITE],
+            }
+        )
+        result = Jones(structure).find_exceptional_points(overlap_threshold=0.99)
+        assert result["overlap"].shape == structure.r_pp.shape
+        assert result["near_ep"].dtype == bool
+        # ep_index points at the global minimum of |discriminant|
+        disc = np.abs(result["discriminant"])
+        assert disc[result["ep_index"]] == pytest.approx(np.min(disc))
+
+
 class TestBroadcastingCompose:
     """A kx-free ideal component composes with a swept sample by broadcasting."""
 
