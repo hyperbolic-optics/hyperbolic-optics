@@ -58,6 +58,9 @@ from hyperbolic_optics.scenario import ScenarioSetup
 # Core classes
 from hyperbolic_optics.structure import Structure
 
+# Thickness sweep helper
+from hyperbolic_optics.sweep import ThicknessSweep
+
 # Type hints (for users who want them)
 from hyperbolic_optics.types import (
     ComplexArray,
@@ -79,6 +82,7 @@ __all__ = [
     "Structure",
     "Mueller",
     "FieldProfile",
+    "ThicknessSweep",
     "ScenarioSetup",
     # Materials
     "Quartz",

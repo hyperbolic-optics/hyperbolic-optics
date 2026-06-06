@@ -315,9 +315,15 @@ class Wave:
             return eigenvectors
 
         # Phase accumulated by each eigenmode through the layer: exp(-i kz k0 d).
-        # eigenvalues are the kz of the four modes [..., 4]; k_0 is canonical
-        # [1, 1, F], so a trailing axis broadcasts it over the mode axis.
-        phase = np.exp(-1.0j * eigenvalues * self.k_0[..., np.newaxis] * self.thickness)
+        # eigenvalues are the kz of the four modes [A, B, F, 1, 4]; k_0 is canonical
+        # [1, 1, F, 1], so a trailing axis broadcasts it over the mode axis. The
+        # eigen-solve is thickness-independent: a swept thickness only enters here,
+        # so a [1, 1, 1, T] thickness (with an added mode axis) broadcasts the
+        # propagation phase to [A, B, F, T, 4] and the layer matrix to [A, B, F, T, 4, 4].
+        thickness = self.thickness
+        if np.ndim(thickness) > 0:
+            thickness = thickness[..., np.newaxis]  # [1, 1, 1, T] -> [1, 1, 1, T, 1]
+        phase = np.exp(-1.0j * eigenvalues * self.k_0[..., np.newaxis] * thickness)
 
         # Embed the per-mode phases on the diagonal of the propagation matrix.
         n = phase.shape[-1]

@@ -35,7 +35,7 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.axes import present
+from hyperbolic_optics.axes import T, present
 from hyperbolic_optics.structure import Structure
 
 # Amplitude-vector slot ordering shared by the prism and exit dynamical matrices,
@@ -385,7 +385,19 @@ class FieldProfile:
         Note:
             Intended for ``Simple`` / single-point use (the depth axis multiplies
             the batch size); see the class docstring.
+
+        Raises:
+            ValueError: If a layer thickness is being swept (canonical ``T`` axis
+                size > 1) — the depth grid of the swept layer would itself change
+                along ``T``, so a field-vs-depth profile is not well defined.
         """
+        if self.gamma.shape[T] > 1:
+            raise ValueError(
+                "field_profile is undefined while sweeping a layer thickness "
+                f"(T={self.gamma.shape[T]}); the depth grid changes along T. Profile a "
+                "single thickness, or use the power quantities (reflectance/"
+                "transmittance/layer_absorption), which support the T axis."
+            )
         _, _, c_exit, s_inc, fields = self._solve(polarization)
         cm_to_um = 1.0e4
 
@@ -397,7 +409,9 @@ class FieldProfile:
         # Interior finite layers: amplitudes from V^{-1} G_i over all four modes.
         for i in range(1, self.n_layers - 1):
             layer = self.layers[i]
-            thickness = float(layer.thickness)
+            # T == 1 here (guarded above), so a swept layer's [1,1,1,1] thickness
+            # still reduces to a single scalar depth.
+            thickness = float(np.asarray(layer.thickness).reshape(-1)[0])
             v_tan, kz = layer.profile.tangential_modes()
             w_full, _ = layer.profile.full_modes()
             amps = np.linalg.solve(v_tan, fields[i][..., np.newaxis])[..., 0]  # [..., 4]

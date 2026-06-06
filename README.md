@@ -235,6 +235,25 @@ absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
 The amplitude transmission coefficients are also available via
 `FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
 
+## Sweeping Layer Thickness
+
+A layer's `thickness` may be a **list** instead of a scalar, which sweeps it as a
+fourth canonical axis (`T`) alongside incident angle, azimuth, and frequency —
+computed in a single `execute` (the eigendecomposition is thickness-independent;
+only the propagation phase broadcasts over `T`). It composes with any scenario and
+is absent (size 1) by default:
+
+```python
+{"type": "Crystal Layer", "material": "Calcite",
+ "thickness": [0.5, 1.0, 1.5, 2.0], "rotationY": 90}   # -> appends a length-4 T axis
+```
+
+Outputs append the trailing `T` axis (e.g. `Simple` → `r_pp.shape == (4,)`,
+`Incident` → `(F, angle, 4)`). At most one layer may carry a list thickness. For a
+2-D thickness × thickness grid, combine a list thickness on one layer with the
+`ThicknessSweep` helper (`from hyperbolic_optics import ThicknessSweep`), which
+re-runs the stack and stacks results along a leading index.
+
 ## Known Issues / Limitations
 
 - **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn't yet implemented

@@ -5,6 +5,7 @@ Tests for layer creation and configuration.
 import numpy as np
 import pytest
 
+from hyperbolic_optics.axes import A, F, canonicalize
 from hyperbolic_optics.layers import (
     AirGapLayer,
     CrystalLayer,
@@ -16,14 +17,17 @@ from hyperbolic_optics.scenario import ScenarioSetup
 
 
 def _canonical_kx_k0(eps_prism, incident_angle, frequency):
-    """Build canonical kx [A, 1, 1] and k0 [1, 1, F], as Structure now does.
+    """Build canonical kx (A axis) and k0 (F axis), as Structure now does.
 
     Layers consume the canonical layout (see hyperbolic_optics.axes); these unit
-    tests construct layers directly, so they must supply canonical inputs.
+    tests construct layers directly, so they must supply canonical inputs. Using
+    ``canonicalize`` keeps them parametric in the batch rank (N_BATCH).
     """
     kx = np.sqrt(eps_prism) * np.sin(np.asarray(incident_angle, dtype=np.float64))
-    kx = np.atleast_1d(kx).reshape(-1, 1, 1)
-    k0 = np.atleast_1d(np.asarray(frequency, dtype=np.float64) * 2.0 * np.pi).reshape(1, 1, -1)
+    kx = canonicalize(np.atleast_1d(kx), batch_axes=(A,))
+    k0 = canonicalize(
+        np.atleast_1d(np.asarray(frequency, dtype=np.float64) * 2.0 * np.pi), batch_axes=(F,)
+    )
     return kx, k0
 
 
@@ -127,8 +131,8 @@ class TestPrismLayer:
         kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = PrismLayer(layer_data, simple_scenario, kx, k0)
-        # Canonical prism: [A, 1, 1, 4, 4] with A=1 for Simple
-        assert layer.matrix.shape == (1, 1, 1, 4, 4)
+        # Canonical prism: [A, 1, 1, T, 4, 4] with A=1, T=1 for Simple
+        assert layer.matrix.shape == (1, 1, 1, 1, 4, 4)
 
     def test_prism_matrix_shape_incident(self, incident_scenario):
         """Test prism matrix shape for incident scenario."""
@@ -137,8 +141,8 @@ class TestPrismLayer:
         kx, k0 = _canonical_kx_k0(50.0, incident_scenario.incident_angle, 1460.0)
 
         layer = PrismLayer(layer_data, incident_scenario, kx, k0)
-        # Canonical prism: [A, 1, 1, 4, 4] with A=360 for Incident
-        assert layer.matrix.shape == (360, 1, 1, 4, 4)
+        # Canonical prism: [A, 1, 1, T, 4, 4] with A=360, T=1 for Incident
+        assert layer.matrix.shape == (360, 1, 1, 1, 4, 4)
 
 
 class TestAirGapLayer:
@@ -183,9 +187,9 @@ class TestAirGapLayer:
 
         layer = AirGapLayer(layer_data, simple_scenario, kx, k0)
 
-        # Canonical air-gap tensors: [1, 1, 1, 3, 3]
-        assert layer.eps_tensor.shape == (1, 1, 1, 3, 3)
-        assert layer.mu_tensor.shape == (1, 1, 1, 3, 3)
+        # Canonical air-gap tensors: [1, 1, 1, T, 3, 3] with T=1
+        assert layer.eps_tensor.shape == (1, 1, 1, 1, 3, 3)
+        assert layer.mu_tensor.shape == (1, 1, 1, 1, 3, 3)
 
 
 class TestCrystalLayer:
