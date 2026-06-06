@@ -117,27 +117,6 @@ class Wave:
         self.eigenvectors = None
         self.berreman_matrix = None
 
-    def _get_matrix_calculation_shapes(
-        self, eigenvalues: np.ndarray, eigenvectors: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Get tensor shapes for transfer matrix construction.
-
-        Args:
-            eigenvalues: Eigenvalues from Berreman matrix
-            eigenvectors: Eigenvectors from Berreman matrix
-
-        Returns:
-            Tuple of (k_0, eigenvalues_diag, eigenvectors) with proper shapes
-        """
-        # Create diagonal matrix from eigenvalues - vectorized
-        n = eigenvalues.shape[-1]
-        eigenvalues_diag = np.zeros(eigenvalues.shape + (n,), dtype=eigenvalues.dtype)
-        diagonal_indices = np.arange(n)
-        eigenvalues_diag[..., diagonal_indices, diagonal_indices] = eigenvalues
-
-        # Return k_0, eigenvalues_diag, eigenvectors - shapes already compatible
-        return self.k_0, eigenvalues_diag, eigenvectors
-
     def delta_matrix_calc(self) -> None:
         """Construct 4×4 Berreman transfer matrix for anisotropic layer.
 
@@ -274,29 +253,19 @@ class Wave:
         if self.semi_infinite:
             return eigenvectors
 
-        # Get the mode shapes for matrix calculation
-        k_0, eigenvalues_diag, eigenvectors = self._get_matrix_calculation_shapes(
-            eigenvalues, eigenvectors
-        )
+        # Phase accumulated by each eigenmode through the layer: exp(-i kz k0 d).
+        # eigenvalues are the kz of the four modes [..., 4]; k_0 is canonical
+        # [1, 1, F], so a trailing axis broadcasts it over the mode axis.
+        phase = np.exp(-1.0j * eigenvalues * self.k_0[..., np.newaxis] * self.thickness)
 
-        # k_0 is canonical [1, 1, F]; add two trailing axes so it broadcasts
-        # against eigenvalues_diag [A, B, F, 4, 4] -> [1, 1, F, 1, 1].
-        k_0_broadcast = k_0[..., np.newaxis, np.newaxis]
+        # Embed the per-mode phases on the diagonal of the propagation matrix.
+        n = phase.shape[-1]
+        partial = np.zeros(phase.shape + (n,), dtype=phase.dtype)
+        diagonal = np.arange(n)
+        partial[..., diagonal, diagonal] = phase
 
-        # eigenvalues_diag is diagonal by construction, so the matrix exponential
-        # is simply exp() of the diagonal entries (no general expm needed).
-        exponent = -1.0j * eigenvalues_diag * k_0_broadcast * self.thickness
-        partial = np.zeros_like(exponent)
-        diagonal_indices = np.arange(exponent.shape[-1])
-        partial[..., diagonal_indices, diagonal_indices] = np.exp(
-            exponent[..., diagonal_indices, diagonal_indices]
-        )
-
-        # Calculate the transfer matrix
-        eigenvectors_inv = np.linalg.inv(eigenvectors)
-        transfer_matrix = np.matmul(np.matmul(eigenvectors, partial), eigenvectors_inv)
-
-        return transfer_matrix
+        # Transfer matrix: V · diag(phase) · V⁻¹.
+        return eigenvectors @ partial @ np.linalg.inv(eigenvectors)
 
     def get_poynting(
         self,
