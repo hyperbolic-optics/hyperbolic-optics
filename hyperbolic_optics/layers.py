@@ -17,7 +17,6 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.anisotropy_utils import rotate_tensor
 from hyperbolic_optics.materials import (
     Air,
     ArbitraryMaterial,
@@ -29,6 +28,49 @@ from hyperbolic_optics.materials import (
 )
 from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.waves import Wave
+
+
+def _euler_rotation_matrix(
+    theta: float | np.ndarray, phi: float | np.ndarray, beta: float | np.ndarray
+) -> np.ndarray:
+    """Build the Euler rotation matrix ``Rz(beta) · Ry(phi) · Rx(theta)``.
+
+    Each angle may be a scalar or an array of any broadcastable shape (the
+    ``ones_like``/``zeros_like`` stacking handles both); the result has shape
+    ``[*broadcast(theta, phi, beta), 3, 3]``. A material tensor is then rotated
+    by the similarity transform ``R · tensor · Rᵀ`` (see ``Layer.rotate_tensors``).
+    """
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    rotation_x = np.stack(
+        [
+            np.stack([np.ones_like(theta), np.zeros_like(theta), np.zeros_like(theta)], axis=-1),
+            np.stack([np.zeros_like(theta), cos_theta, -sin_theta], axis=-1),
+            np.stack([np.zeros_like(theta), sin_theta, cos_theta], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    cos_phi, sin_phi = np.cos(phi), np.sin(phi)
+    rotation_y = np.stack(
+        [
+            np.stack([cos_phi, np.zeros_like(phi), sin_phi], axis=-1),
+            np.stack([np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1),
+            np.stack([-sin_phi, np.zeros_like(phi), cos_phi], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    cos_beta, sin_beta = np.cos(beta), np.sin(beta)
+    rotation_z = np.stack(
+        [
+            np.stack([cos_beta, -sin_beta, np.zeros_like(beta)], axis=-1),
+            np.stack([sin_beta, cos_beta, np.zeros_like(beta)], axis=-1),
+            np.stack([np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    return (rotation_z @ rotation_y @ rotation_x).astype(np.complex128)
 
 
 class AmbientMedium:
@@ -393,8 +435,10 @@ class Layer(ABC):
         eps = self._canonical_base(self.eps_tensor)
         mu = self._canonical_base(self.mu_tensor)
         beta = self._canonical_beta(self.rotationZ)
-        self.eps_tensor = rotate_tensor(eps, self.rotationX, self.rotationY, beta)
-        self.mu_tensor = rotate_tensor(mu, self.rotationX, self.rotationY, beta)
+        rotation = _euler_rotation_matrix(self.rotationX, self.rotationY, beta)
+        rotation_t = np.swapaxes(rotation, -2, -1)
+        self.eps_tensor = rotation @ eps @ rotation_t
+        self.mu_tensor = rotation @ mu @ rotation_t
 
     @abstractmethod
     def create(self) -> None:
