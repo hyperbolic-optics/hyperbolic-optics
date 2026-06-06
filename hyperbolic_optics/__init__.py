@@ -33,18 +33,24 @@ References:
 
 __version__ = "0.2.3"
 
+# Field profiles, transmission & absorption
+from hyperbolic_optics.fields import FieldProfile
+
 # Layers
 from hyperbolic_optics.layers import LayerFactory
 
 # Materials
 from hyperbolic_optics.materials import (
     Air,
+    AluminiumNitride,
     ArbitraryMaterial,
     CalciteLower,
     CalciteUpper,
     GalliumOxide,
+    MolybdenumTrioxide,
     Quartz,
     Sapphire,
+    SiliconCarbide,
 )
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -72,6 +78,7 @@ __all__ = [
     # Core classes
     "Structure",
     "Mueller",
+    "FieldProfile",
     "ScenarioSetup",
     # Materials
     "Quartz",
@@ -79,6 +86,9 @@ __all__ = [
     "CalciteUpper",
     "CalciteLower",
     "GalliumOxide",
+    "MolybdenumTrioxide",
+    "AluminiumNitride",
+    "SiliconCarbide",
     "ArbitraryMaterial",
     "Air",
     # Layers

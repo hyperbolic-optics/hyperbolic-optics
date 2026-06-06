@@ -23,7 +23,7 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.axes import assert_canonical
+from hyperbolic_optics.axes import assert_canonical, present
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.materials import create_material
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -289,17 +289,25 @@ class Structure:
     def _present(coefficient: np.ndarray) -> np.ndarray:
         """Map a canonical [A, B, F] coefficient to its presentation shape.
 
-        Reorders axes to (F, A, B) and squeezes size-1 axes.
+        Thin wrapper over :func:`hyperbolic_optics.axes.present` (shared with
+        :mod:`hyperbolic_optics.fields` so coefficients and field-resolved
+        quantities present identically).
         """
-        return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
+        return present(coefficient)
 
     def calculate_transmissivity(self) -> None:
-        """Extract transmission coefficients from the total transfer matrix.
+        """Extract transmission *amplitude* coefficients from the transfer matrix.
 
         Computes ``t_pp, t_ps, t_sp, t_ss``. The results are returned in the same
         presentation layout as the reflection coefficients (see :meth:`_present`),
         so ``t_*`` and ``r_*`` share axis ordering. Not called by ``execute()`` by
         default — invoke explicitly after ``calculate()`` if transmission is needed.
+
+        Note:
+            These are bare amplitude coefficients. For *power* transmittance,
+            layer-resolved absorption, and field profiles computed numerically
+            from the propagated fields (energy-conserving ``R + T + ΣA = 1``), use
+            :class:`hyperbolic_optics.fields.FieldProfile`, which is the blessed path.
         """
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]

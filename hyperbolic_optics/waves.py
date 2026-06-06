@@ -69,6 +69,67 @@ class WaveProfile:
         self.reflected_Pz = profile["reflected"]["Pz_physical"]
         self.reflected_k_z = profile["reflected"]["propagation"]
 
+    def tangential_modes(self) -> tuple[np.ndarray, np.ndarray]:
+        """Stack the four partial waves' tangential fields and propagation constants.
+
+        Returns:
+            ``(V, kz)`` where ``V`` is ``[..., 4, 4]`` with rows ``[Ex, Ey, Hx, Hy]``
+            and columns ordered ``[transmitted_0, transmitted_1, reflected_0,
+            reflected_1]``, and ``kz`` is ``[..., 4]`` in the same column order.
+
+        Note:
+            ``V`` is the eigenvector ("dynamical") matrix of the layer: applying it
+            to a 4-vector of mode amplitudes yields the tangential field vector
+            ``[Ex, Ey, Hx, Hy]``. Used to build the layer transfer matrix and, in
+            :mod:`hyperbolic_optics.fields`, to recover mode amplitudes from fields.
+        """
+        transmitted = np.stack(
+            [self.transmitted_Ex, self.transmitted_Ey, self.transmitted_Hx, self.transmitted_Hy],
+            axis=-2,
+        )
+        reflected = np.stack(
+            [self.reflected_Ex, self.reflected_Ey, self.reflected_Hx, self.reflected_Hy],
+            axis=-2,
+        )
+        V = np.concatenate([transmitted, reflected], axis=-1)
+        kz = np.concatenate([self.transmitted_k_z, self.reflected_k_z], axis=-1)
+        return V, kz
+
+    def full_modes(self) -> tuple[np.ndarray, np.ndarray]:
+        """Like :meth:`tangential_modes`, but with all six field components.
+
+        Returns:
+            ``(W, kz)`` where ``W`` is ``[..., 6, 4]`` with rows
+            ``[Ex, Ey, Ez, Hx, Hy, Hz]`` (``Ez``/``Hz`` already recovered from
+            Maxwell's equations in :meth:`Wave.get_poynting`) and the same column
+            ordering as :meth:`tangential_modes`.
+        """
+        transmitted = np.stack(
+            [
+                self.transmitted_Ex,
+                self.transmitted_Ey,
+                self.transmitted_Ez,
+                self.transmitted_Hx,
+                self.transmitted_Hy,
+                self.transmitted_Hz,
+            ],
+            axis=-2,
+        )
+        reflected = np.stack(
+            [
+                self.reflected_Ex,
+                self.reflected_Ey,
+                self.reflected_Ez,
+                self.reflected_Hx,
+                self.reflected_Hy,
+                self.reflected_Hz,
+            ],
+            axis=-2,
+        )
+        W = np.concatenate([transmitted, reflected], axis=-1)
+        kz = np.concatenate([self.transmitted_k_z, self.reflected_k_z], axis=-1)
+        return W, kz
+
 
 class Wave:
     """Class representing the four partial waves in a layer of the structure."""
@@ -453,46 +514,20 @@ class Wave:
             modes (zeros for reflected components). For finite layers, combines
             transmitted and reflected modes to form complete transfer matrix.
         """
-        transmitted_new_profile = np.stack(
-            [
-                self.profile.transmitted_Ex,
-                self.profile.transmitted_Ey,
-                self.profile.transmitted_Hx,
-                self.profile.transmitted_Hy,
-            ],
-            axis=-2,
-        )
+        eigenvectors, eigenvalues = self.profile.tangential_modes()
 
         if self.semi_infinite:
+            # Keep only the two transmitted (forward) modes; the reflected
+            # columns are zeroed (no backward source in a semi-infinite medium).
+            transmitted = eigenvectors[..., :2]
+            zeros = np.zeros_like(transmitted[..., 0])
             transfer_matrix = np.stack(
-                [
-                    transmitted_new_profile[..., 0],
-                    np.zeros_like(transmitted_new_profile[..., 1]),
-                    transmitted_new_profile[..., 1],
-                    np.zeros_like(transmitted_new_profile[..., 1]),
-                ],
+                [transmitted[..., 0], zeros, transmitted[..., 1], zeros],
                 axis=-1,
             )
             return transfer_matrix
-        else:
-            reflected_new_profile = np.stack(
-                [
-                    self.profile.reflected_Ex,
-                    self.profile.reflected_Ey,
-                    self.profile.reflected_Hx,
-                    self.profile.reflected_Hy,
-                ],
-                axis=-2,
-            )
 
-            eigenvalues = np.concatenate(
-                [self.profile.transmitted_k_z, self.profile.reflected_k_z], axis=-1
-            )
-            eigenvectors = np.concatenate([transmitted_new_profile, reflected_new_profile], axis=-1)
-
-            transfer_matrix = self.get_matrix(eigenvalues, eigenvectors)
-
-            return transfer_matrix
+        return self.get_matrix(eigenvalues, eigenvectors)
 
     def execute(self) -> tuple[WaveProfile, np.ndarray]:
         """Execute complete wave calculation pipeline.

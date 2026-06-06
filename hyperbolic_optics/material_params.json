@@ -80,6 +80,87 @@
                     "gamma_ln": [1.1, 15.4]
                 }
             }
+        },
+        "aluminium_nitride": {
+            "name": "AlN",
+            "_source": "Wurtzite AlN, c-cut uniaxial. E1 (ordinary, E perp c) and A1 (extraordinary, E parallel c) IR-active phonons. Verify values against your preferred reference (e.g. Moore/Davydov).",
+            "frequency_range": {
+                "default_min": 500.0,
+                "default_max": 1050.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 4.68,
+                    "omega_tn": [669.0],
+                    "gamma_tn": [5.0],
+                    "omega_ln": [912.0],
+                    "gamma_ln": [5.0]
+                },
+                "extraordinary": {
+                    "high_freq": 4.68,
+                    "omega_tn": [608.0],
+                    "gamma_tn": [5.0],
+                    "omega_ln": [889.0],
+                    "gamma_ln": [5.0]
+                }
+            }
+        },
+        "silicon_carbide": {
+            "name": "SiC",
+            "_source": "4H-SiC, treated as c-cut uniaxial with ordinary == extraordinary (nearly isotropic single TO-LO pair). Verify values against your preferred reference (e.g. Tiwald/Engelbrecht).",
+            "frequency_range": {
+                "default_min": 500.0,
+                "default_max": 1050.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 6.56,
+                    "omega_tn": [797.5],
+                    "gamma_tn": [4.76],
+                    "omega_ln": [972.3],
+                    "gamma_ln": [4.76]
+                },
+                "extraordinary": {
+                    "high_freq": 6.56,
+                    "omega_tn": [797.5],
+                    "gamma_tn": [4.76],
+                    "omega_ln": [972.3],
+                    "gamma_ln": [4.76]
+                }
+            }
+        }
+    },
+    "biaxial_materials": {
+        "molybdenum_trioxide": {
+            "name": "MoO3",
+            "_source": "alpha-MoO3 (orthorhombic, biaxial), factorized TO-LO model. Band assignment matches Passler/Jeannin/Paarmann JOSA B 37, 1060 (2020) Fig. 2b; values from Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020). Lab axes: x,y in-plane ([100],[010]); z out-of-plane ([001]). VERIFY exact eps_inf/gamma against the source before publication.",
+            "frequency_range": {
+                "default_min": 500.0,
+                "default_max": 1050.0
+            },
+            "parameters": {
+                "x": {
+                    "high_freq": 4.0,
+                    "omega_tn": [820.0],
+                    "gamma_tn": [4.0],
+                    "omega_ln": [972.0],
+                    "gamma_ln": [4.0]
+                },
+                "y": {
+                    "high_freq": 5.2,
+                    "omega_tn": [958.0],
+                    "gamma_tn": [2.0],
+                    "omega_ln": [1004.0],
+                    "gamma_ln": [2.0]
+                },
+                "z": {
+                    "high_freq": 2.4,
+                    "omega_tn": [545.0],
+                    "gamma_tn": [4.0],
+                    "omega_ln": [851.0],
+                    "gamma_ln": [4.0]
+                }
+            }
         }
     },
     "monoclinic_materials": {

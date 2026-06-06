@@ -6,12 +6,16 @@ import numpy as np
 
 from hyperbolic_optics.materials import (
     Air,
+    AluminiumNitride,
     ArbitraryMaterial,
     CalciteLower,
     CalciteUpper,
     GalliumOxide,
+    MolybdenumTrioxide,
     Quartz,
     Sapphire,
+    SiliconCarbide,
+    create_material,
 )
 
 
@@ -89,6 +93,57 @@ class TestUniaxialMaterials:
         assert np.allclose(eps_tensor[:, 0, 1], 0)
         assert np.allclose(eps_tensor[:, 0, 2], 0)
         assert np.allclose(eps_tensor[:, 1, 2], 0)
+
+
+class TestBiaxialAndPolarMaterials:
+    """Test MoO3 (biaxial) and the AlN / SiC polar uniaxial materials."""
+
+    def test_moo3_initialization(self):
+        moo3 = MolybdenumTrioxide()
+        assert moo3.name == "MoO3"
+        assert moo3.frequency is not None
+        assert len(moo3.frequency) == 410
+
+    def test_moo3_tensor_is_diagonal_and_biaxial(self):
+        moo3 = MolybdenumTrioxide()
+        tensor = moo3.fetch_permittivity_tensor()
+        assert tensor.shape == (410, 3, 3)
+        # purely diagonal (orthorhombic, no off-diagonal coupling)
+        for i in range(3):
+            for j in range(3):
+                if i != j:
+                    assert np.allclose(tensor[:, i, j], 0.0)
+        # biaxial: all three diagonal components are distinct functions of omega
+        xx, yy, zz = tensor[:, 0, 0], tensor[:, 1, 1], tensor[:, 2, 2]
+        assert not np.allclose(xx, yy)
+        assert not np.allclose(yy, zz)
+        assert not np.allclose(xx, zz)
+
+    def test_moo3_for_freq_matches_full(self):
+        moo3 = MolybdenumTrioxide()
+        idx = 200
+        omega = float(moo3.frequency[idx])
+        single = moo3.fetch_permittivity_tensor_for_freq(omega)
+        full = moo3.fetch_permittivity_tensor()
+        assert np.allclose(single, full[idx], rtol=1e-6, atol=1e-8)
+
+    def test_aln_and_sic_uniaxial(self):
+        for material in (AluminiumNitride(), SiliconCarbide()):
+            tensor = material.fetch_permittivity_tensor()
+            assert tensor.shape == (410, 3, 3)
+            # uniaxial: xx == yy (ordinary), distinct zz allowed
+            assert np.allclose(tensor[:, 0, 0], tensor[:, 1, 1])
+
+    def test_sic_isotropic_in_band(self):
+        # SiC modeled with ordinary == extraordinary -> fully isotropic tensor
+        sic = SiliconCarbide()
+        tensor = sic.fetch_permittivity_tensor()
+        assert np.allclose(tensor[:, 0, 0], tensor[:, 2, 2])
+
+    def test_registry(self):
+        assert isinstance(create_material("MoO3"), MolybdenumTrioxide)
+        assert isinstance(create_material("AlN"), AluminiumNitride)
+        assert isinstance(create_material("SiC"), SiliconCarbide)
 
 
 class TestMonoclinicMaterials:

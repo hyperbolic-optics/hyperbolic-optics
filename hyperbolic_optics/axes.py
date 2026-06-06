@@ -35,3 +35,16 @@ def assert_canonical(arr: np.ndarray, matrix_ndim: int = 2, name: str = "array")
         raise AssertionError(
             f"{name}: expected {expected}D [A, B, F, ...], got {arr.ndim}D {arr.shape}"
         )
+
+
+def present(coefficient: np.ndarray) -> np.ndarray:
+    """Map a canonical ``[A, B, F]`` batch quantity to its presentation shape.
+
+    Reorders the batch axes to ``(F, A, B)`` and squeezes the size-1 axes. This
+    reproduces every scenario's historical output shape (Incident/Azimuthal ->
+    ``(F, angle)``; Dispersion -> ``(A, B)``; FullSweep -> ``(F, A, B)``; Simple
+    -> scalar), and is shared by reflection/transmission coefficients
+    (``structure.py``) and the field-resolved quantities (``fields.py``) so they
+    all present identically.
+    """
+    return np.squeeze(np.transpose(coefficient, (2, 0, 1)))

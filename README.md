@@ -32,7 +32,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 - **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
 - **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
 - **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
-- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide
+- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide (monoclinic), α-MoO₃ (biaxial), AlN and SiC
 - **Arbitrary Material Support:** Define custom materials with arbitrary permittivity tensor
 - **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
 - **Visualization:** Publication-quality plotting functionality for results analysis
@@ -205,10 +205,40 @@ This package was used to generate results in:
 
 ---
 
+## Transmission, Absorption & Field Profiles
+
+Reflection is computed automatically by `Structure.execute`. Power transmittance,
+layer-resolved absorption, and field profiles are computed **numerically** from
+the propagated fields (energy-conserving `R + T + ΣA = 1`) via `FieldProfile`:
+
+```python
+from hyperbolic_optics.structure import Structure
+from hyperbolic_optics.fields import FieldProfile
+
+structure = Structure()
+structure.execute(payload)
+
+fp = FieldProfile(structure)
+print(fp.summary("p"))            # R, T, per-layer absorption, conservation residual
+T = fp.transmittance("p")          # power transmittance (same shape as r_pp)
+A = fp.layer_absorption("p")       # per-interior-layer absorptance
+prof = fp.field_profile("p")       # z, Ex..Hz, S_z(z), cumulative absorption
+```
+
+For a single semi-infinite anisotropic layer there are no interior layers to
+resolve, so `T = 1 − R` is the power delivered into the bulk, and `field_profile`
+shows it being absorbed with depth.
+
+`examples/layer_resolved_absorption.py` reproduces the azimuthal layer-resolved
+absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
+(Passler, Jeannin & Paarmann, *J. Opt. Soc. Am. B* **37**, 1060 (2020)).
+The amplitude transmission coefficients are also available via
+`FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
+
 ## Known Issues / Limitations
 
-- **Transmission Coefficients:** Currently, transmission coefficients are not fully supported
 - **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn't yet implemented
+- **Field profiles over full sweeps:** `field_profile` is batched but intended for `Simple` / single-point use — a full angle/frequency sweep times the depth axis is memory-heavy.
 
 ## Testing
 

@@ -46,6 +46,24 @@ The package calculates four reflection coefficients:
 
 Reflectivity is calculated as: $R = |r|^2$
 
+## Transmission, Absorption & Field Profiles
+
+Beyond reflection, `FieldProfile` reconstructs the electromagnetic field through
+the stack and derives **power** quantities *numerically* from the time-averaged
+Poynting flux $S_z = \tfrac{1}{2}\mathrm{Re}(E_x H_y^* - E_y H_x^*)$ rather than
+from closed-form coefficients:
+
+- **Transmittance** $T = S_z^{\text{exit}}/S_z^{\text{inc}}$
+- **Layer-resolved absorption** $A_i = [S_z(\text{top}_i) - S_z(\text{bottom}_i)]/S_z^{\text{inc}}$
+- **Field profiles** $E(z), H(z), S_z(z)$ through each layer
+
+These conserve energy exactly: $R + T + \sum_i A_i = 1$. For a single
+semi-infinite anisotropic exit there are no interior layers, so $T = 1 - R$ is the
+power delivered into the bulk and the field profile shows it absorbed with depth
+(decay length set by $\mathrm{Im}(k_z)$).
+
+References: Passler, Jeannin & Paarmann, *J. Opt. Soc. Am. B* **37**, 1060 (2020).
+
 ## Coordinate System
 
 

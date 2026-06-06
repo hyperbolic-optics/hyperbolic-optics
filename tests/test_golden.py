@@ -1,9 +1,10 @@
 """Golden-master regression tests.
 
 Re-runs every payload in :mod:`tests.golden.payloads` and asserts the reflection
-coefficients and Mueller matrix are unchanged versus the committed snapshots in
-``tests/golden/data/``. This is the behaviour lock that the canonical-shape
-refactor (Phases 1-2) must keep green.
+coefficients, Mueller matrix, and the field-resolved quantities (transmittance,
+layer-resolved absorption, amplitude transmission coefficients) are unchanged
+versus the committed snapshots in ``tests/golden/data/``. This is the behaviour
+lock that the canonical-shape refactor (Phases 1-2) must keep green.
 
 Regenerate snapshots with ``python -m tests.golden.generate`` on a known-good
 commit. See ``docs/dev/phase-0-1-execution-plan.md``.
