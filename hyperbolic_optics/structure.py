@@ -26,6 +26,7 @@ import numpy as np
 from hyperbolic_optics.axes import A, F, assert_canonical, canonicalize, present
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.materials import create_material
+from hyperbolic_optics.scattering import scattering_coefficients
 from hyperbolic_optics.scenario import ScenarioSetup
 
 
@@ -353,11 +354,29 @@ class Structure:
         for layer in self.layers:
             print(layer)
 
-    def execute(self, payload: dict[str, Any]) -> None:
+    def calculate_scattering(self) -> None:
+        """Fill reflection/transmission coefficients via the scattering backend.
+
+        Uses :func:`hyperbolic_optics.scattering.scattering_coefficients` — a
+        numerically-stable Redheffer scattering-matrix cascade built from each
+        layer's eigenmodes — instead of the transfer-matrix product. Sets
+        ``r_pp … t_ss`` in the same presentation layout as
+        :meth:`calculate_reflectivity`.
+        """
+        coefficients = scattering_coefficients(self.layers, self.k_0)
+        for name, value in coefficients.items():
+            setattr(self, name, present(value))
+
+    def execute(self, payload: dict[str, Any], backend: str = "transfer") -> None:
         """Execute complete simulation from configuration payload.
 
         Args:
-            payload: Dictionary with 'ScenarioData' and 'Layers' keys
+            payload: Dictionary with 'ScenarioData' and 'Layers' keys.
+            backend: ``"transfer"`` (default) for the 4×4 transfer-matrix product,
+                or ``"scattering"`` for the numerically-stable scattering-matrix
+                backend (correct for thick / lossy / strongly-evanescent stacks
+                where the transfer product overflows). Both yield the same
+                coefficients where the transfer method is well-conditioned.
 
         Example:
             >>> payload = {
@@ -373,10 +392,24 @@ class Structure:
             >>> structure.execute(payload)
             >>> R_pp = abs(structure.r_pp)**2
         """
+        if backend not in ("transfer", "scattering"):
+            raise ValueError(f"Unknown backend {backend!r}; use 'transfer' or 'scattering'.")
+
         # Get the scenario data
         self.get_scenario(payload.get("ScenarioData"))
 
-        # Get the layers
+        if backend == "scattering":
+            # The per-layer transfer matrices built in get_layers can overflow for
+            # thick/evanescent layers -- harmless here, since the scattering
+            # backend reads each layer's eigenmodes (profile), not its matrix. The
+            # errstate silences that expected overflow (the scattering engine
+            # itself never forms a growing exponential).
+            with np.errstate(over="ignore", invalid="ignore"):
+                self.get_layers(payload.get("Layers", None))
+                self.calculate_scattering()
+            return
+
+        # Get the layers (builds each layer's eigenmodes / matrices)
         self.get_layers(payload.get("Layers", None))
 
         # Calculate the transfer matrix
