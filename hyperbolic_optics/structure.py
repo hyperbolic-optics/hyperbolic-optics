@@ -23,8 +23,9 @@ from typing import Any
 
 import numpy as np
 
+from hyperbolic_optics.axes import assert_canonical
 from hyperbolic_optics.layers import LayerFactory
-from hyperbolic_optics.materials import CalciteUpper, GalliumOxide, Quartz, Sapphire
+from hyperbolic_optics.materials import create_material
 from hyperbolic_optics.scenario import ScenarioSetup
 
 
@@ -108,6 +109,10 @@ class Structure:
         self.r_ss = None
         self.r_ps = None
         self.r_sp = None
+        self.t_pp = None
+        self.t_ss = None
+        self.t_ps = None
+        self.t_sp = None
         self.transfer_matrix = None
 
     def get_scenario(self, scenario_data: dict[str, Any]) -> None:
@@ -133,31 +138,35 @@ class Structure:
         self.azimuthal_angle = self.scenario.azimuthal_angle
         self.frequency = self.scenario.frequency
 
-    def get_frequency_range(self, last_layer: dict[str, Any]) -> None:
-        """Determine frequency range from material's default range.
+    def resolve_frequency(self, layer_data_list: list[dict[str, Any]]) -> np.ndarray:
+        """Resolve the frequency array (cm⁻¹) for the simulation.
+
+        Precedence: an explicit ``ScenarioData['frequency']`` (scalar or list)
+        wins; otherwise fall back to the default range of the *last
+        material-bearing layer* (the bulk crystal — an isotropic exit layer has
+        no dispersive range, so it is skipped automatically).
 
         Args:
-            last_layer: Dictionary containing material name
+            layer_data_list: The raw layer configuration dicts.
+
+        Returns:
+            A 1-D frequency array (length 1 for single-frequency scenarios).
 
         Raises:
-            NotImplementedError: If material is not recognized
-
-        Note:
-            Automatically uses material-specific frequency range (e.g.,
-            1300-1600 cm⁻¹ for Calcite upper band).
+            ValueError: If no frequency is given and no material can supply a range.
         """
-        material = last_layer["material"]
-
-        if material == "Quartz":
-            self.frequency = Quartz().frequency
-        elif material == "Sapphire":
-            self.frequency = Sapphire().frequency
-        elif material == "Calcite":
-            self.frequency = CalciteUpper().frequency
-        elif material == "GalliumOxide":
-            self.frequency = GalliumOxide().frequency
-        else:
-            raise NotImplementedError("Material not implemented")
+        if self.frequency is not None:
+            return np.atleast_1d(np.asarray(self.frequency, dtype=np.float64))
+        for layer in reversed(layer_data_list):
+            material = layer.get("material")
+            if material is not None:
+                freq = create_material(material).frequency
+                if freq is not None:
+                    return np.asarray(freq, dtype=np.float64)
+        raise ValueError(
+            "No frequency given and no dispersive material to derive a range from; "
+            "set ScenarioData['frequency']."
+        )
 
     def calculate_kx_k0(self) -> None:
         """Calculate parallel wavevector and free-space wavenumber.
@@ -169,10 +178,16 @@ class Structure:
         Note:
             kx is conserved across all interfaces (phase matching condition).
         """
-        self.k_x = (
-            np.sqrt(np.float64(self.eps_prism)) * np.sin(self.incident_angle.astype(np.float64))
-        ).astype(np.float64)
-        self.k_0 = self.frequency * 2.0 * m.pi
+        incident_angle = np.asarray(self.incident_angle, dtype=np.float64)
+        kx = np.sqrt(np.float64(self.eps_prism)) * np.sin(incident_angle)
+        # Canonical layout (see hyperbolic_optics.axes): kx -> [A, 1, 1],
+        # k0 -> [1, 1, F]. Un-swept scenarios collapse to size-1 axes.
+        self.k_x = np.atleast_1d(kx).astype(np.float64).reshape(-1, 1, 1)
+        k0 = np.atleast_1d(np.asarray(self.frequency, dtype=np.float64)) * 2.0 * m.pi
+        self.k_0 = k0.reshape(1, 1, -1)
+        # Boundary-in: kx and k0 enter the pipeline canonical [A, 1, 1] / [1, 1, F].
+        assert_canonical(self.k_x, matrix_ndim=0, name="kx")
+        assert_canonical(self.k_0, matrix_ndim=0, name="k0")
 
     def get_layers(self, layer_data_list: list[dict[str, Any]]) -> None:
         """Create all layers in the structure from configuration.
@@ -186,12 +201,10 @@ class Structure:
         """
         # First Layer is prism, so we parse it
         self.eps_prism = layer_data_list[0].get("permittivity", None)
-        if not self.frequency:
-            last_layer = layer_data_list[-1]
-            if last_layer.get("type") != "Semi Infinite Isotropic Layer":
-                self.get_frequency_range(last_layer)
-            else:
-                self.get_frequency_range(layer_data_list[-2])
+        # Resolve the frequency array once and share it with the scenario so
+        # every layer evaluates its material over the same frequencies.
+        self.frequency = self.resolve_frequency(layer_data_list)
+        self.scenario.frequency = self.frequency
         self.calculate_kx_k0()
 
         # Create prism layer and add it to layers list
@@ -225,8 +238,8 @@ class Structure:
             Uses functools.reduce with operator.matmul for efficient
             sequential multiplication.
         """
-        self.transfer_matrices = [layer.matrix for layer in self.layers]
-        self.transfer_matrix = functools.reduce(operator.matmul, self.transfer_matrices)
+        transfer_matrices = [layer.matrix for layer in self.layers]
+        self.transfer_matrix = functools.reduce(operator.matmul, transfer_matrices)
 
     def calculate_reflectivity(self) -> None:
         """Extract reflection coefficients from total transfer matrix.
@@ -239,6 +252,8 @@ class Structure:
             amplitudes to reflected field amplitudes:
             E_reflected = r · E_incident
         """
+        # Boundary-out: the assembled transfer matrix is canonical [A, B, F, 4, 4].
+        assert_canonical(self.transfer_matrix, matrix_ndim=2, name="transfer_matrix")
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
@@ -260,38 +275,40 @@ class Structure:
             - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]
         ) / bottom_line
 
-        # Transpose for Azimuthal and Incident to get (freq, angle) ordering
-        if self.scenario.type in ["Azimuthal", "Incident"]:
-            self.r_pp = np.swapaxes(self.r_pp, 0, 1)
-            self.r_ps = np.swapaxes(self.r_ps, 0, 1)
-            self.r_sp = np.swapaxes(self.r_sp, 0, 1)
-            self.r_ss = np.swapaxes(self.r_ss, 0, 1)
-        elif self.scenario.type == "FullSweep":
-            # Squeeze extra dimensions and reorder to [freq, incident, azim]
-            # Current: [1, 1, N_incident, N_azim, N_freq] -> [N_freq, N_incident, N_azim]
-            self.r_pp = np.moveaxis(np.squeeze(self.r_pp), -1, 0)
-            self.r_ps = np.moveaxis(np.squeeze(self.r_ps), -1, 0)
-            self.r_sp = np.moveaxis(np.squeeze(self.r_sp), -1, 0)
-            self.r_ss = np.moveaxis(np.squeeze(self.r_ss), -1, 0)
+        # Boundary-out (single presentation rule, see canonical-shape plan 4.6):
+        # coefficients are canonical [A, B, F]; reorder to (F, A, B) then squeeze
+        # the size-1 axes. This reproduces every scenario's historical output
+        # shape (Incident/Azimuthal -> (F, angle); Dispersion -> (A, B);
+        # FullSweep -> (F, A, B); Simple -> scalar).
+        self.r_pp = self._present(self.r_pp)
+        self.r_ps = self._present(self.r_ps)
+        self.r_sp = self._present(self.r_sp)
+        self.r_ss = self._present(self.r_ss)
+
+    @staticmethod
+    def _present(coefficient: np.ndarray) -> np.ndarray:
+        """Map a canonical [A, B, F] coefficient to its presentation shape.
+
+        Reorders axes to (F, A, B) and squeezes size-1 axes.
+        """
+        return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
 
     def calculate_transmissivity(self) -> None:
-        """Extract transmission coefficients from total transfer matrix.
+        """Extract transmission coefficients from the total transfer matrix.
 
-        Calculates t_pp, t_ss, t_ps, t_sp representing transmission through
-        the entire structure.
-
-        Warning:
-            Transmission coefficient support is incomplete and may not be
-            fully validated. Use with caution.
+        Computes ``t_pp, t_ps, t_sp, t_ss``. The results are returned in the same
+        presentation layout as the reflection coefficients (see :meth:`_present`),
+        so ``t_*`` and ``r_*`` share axis ordering. Not called by ``execute()`` by
+        default — invoke explicitly after ``calculate()`` if transmission is needed.
         """
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
         )
-        self.t_pp = (self.transfer_matrix[..., 0, 0]) / bottom_line
-        self.t_ps = (-self.transfer_matrix[..., 0, 2]) / bottom_line
-        self.t_sp = (-self.transfer_matrix[..., 2, 0]) / bottom_line
-        self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
+        self.t_pp = self._present(self.transfer_matrix[..., 0, 0] / bottom_line)
+        self.t_ps = self._present(-self.transfer_matrix[..., 0, 2] / bottom_line)
+        self.t_sp = self._present(-self.transfer_matrix[..., 2, 0] / bottom_line)
+        self.t_ss = self._present(self.transfer_matrix[..., 2, 2] / bottom_line)
 
     def display_layer_info(self) -> None:
         """Print information about all layers in the structure.
@@ -332,12 +349,3 @@ class Structure:
 
         # Calculate the reflectivity
         self.calculate_reflectivity()
-
-    # def plot(self):
-    #     """Plot the reflectivity for the given scenario."""
-    #     if self.scenario.type == "Incident":
-    #         contour_plot_simple_incidence(self)
-    #     elif self.scenario.type == "Azimuthal":
-    #         contour_plot_simple_azimuthal(self)
-    #     elif self.scenario.type == "Dispersion":
-    #         contour_plot_simple_dispersion(self)

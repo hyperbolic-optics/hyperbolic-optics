@@ -51,38 +51,36 @@ def main():
     structure = Structure()
     structure.execute(payload)
 
-    # Extract reflection coefficients
-    r_pp = structure.r_pp  # p-to-p polarization
-    r_ss = structure.r_ss  # s-to-s polarization
-    r_ps = structure.r_ps  # p-to-s polarization
-    r_sp = structure.r_sp  # s-to-p polarization
+    # For a Simple scenario the coefficients are 0-d complex arrays; convert to
+    # Python complex so they format cleanly.
+    r_pp, r_ss = complex(structure.r_pp), complex(structure.r_ss)
+    r_ps, r_sp = complex(structure.r_ps), complex(structure.r_sp)
 
-    # Calculate reflectivities (|r|²)
-    R_pp = abs(r_pp) ** 2
-    R_ss = abs(r_ss) ** 2
-    R_ps = abs(r_ps) ** 2
-    R_sp = abs(r_sp) ** 2
+    def fmt(z: complex) -> str:
+        return f"{z.real:+.6f} {z.imag:+.6f}j"
 
-    # Display results
+    incident_deg = float(np.degrees(structure.incident_angle))
+    frequency = float(np.squeeze(structure.frequency))
+
     print("Results:")
-    print(f"  Incident angle: {structure.scenario.incident_angle * 180/np.pi:.1f}°")
-    print(f"  Frequency: {structure.frequency:.1f} cm⁻¹")
+    print(f"  Incident angle: {incident_deg:.1f} deg")
+    print(f"  Frequency: {frequency:.1f} cm^-1")
     print("  Material: Calcite")
     print()
-    print("Reflection Coefficients:")
-    print(f"  r_pp = {r_pp:.6f}")
-    print(f"  r_ss = {r_ss:.6f}")
-    print(f"  r_ps = {r_ps:.6f}")
-    print(f"  r_sp = {r_sp:.6f}")
+    print("Reflection coefficients:")
+    print(f"  r_pp = {fmt(r_pp)}")
+    print(f"  r_ss = {fmt(r_ss)}")
+    print(f"  r_ps = {fmt(r_ps)}")
+    print(f"  r_sp = {fmt(r_sp)}")
     print()
-    print("Reflectivities (|r|²):")
-    print(f"  R_pp = {R_pp:.4f}")
-    print(f"  R_ss = {R_ss:.4f}")
-    print(f"  R_ps = {R_ps:.4f}")
-    print(f"  R_sp = {R_sp:.4f}")
+    print("Reflectivities (|r|^2):")
+    print(f"  R_pp = {abs(r_pp) ** 2:.4f}")
+    print(f"  R_ss = {abs(r_ss) ** 2:.4f}")
+    print(f"  R_ps = {abs(r_ps) ** 2:.4f}")
+    print(f"  R_sp = {abs(r_sp) ** 2:.4f}")
     print()
-    print(f"Total reflectivity for p-polarized light: {R_pp + R_ps:.4f}")
-    print(f"Total reflectivity for s-polarized light: {R_ss + R_sp:.4f}")
+    print(f"Total p-polarized reflectivity: {abs(r_pp) ** 2 + abs(r_ps) ** 2:.4f}")
+    print(f"Total s-polarized reflectivity: {abs(r_ss) ** 2 + abs(r_sp) ** 2:.4f}")
 
 
 if __name__ == "__main__":

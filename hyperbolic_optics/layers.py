@@ -17,21 +17,52 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.anisotropy_utils import (
-    anisotropy_rotation_one_axis,
-    anisotropy_rotation_one_value,
-)
-from hyperbolic_optics.materials import (
-    Air,
-    ArbitraryMaterial,
-    CalciteLower,
-    CalciteUpper,
-    GalliumOxide,
-    Quartz,
-    Sapphire,
-)
+from hyperbolic_optics.materials import Air, create_material
 from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.waves import Wave
+
+
+def _euler_rotation_matrix(
+    theta: float | np.ndarray, phi: float | np.ndarray, beta: float | np.ndarray
+) -> np.ndarray:
+    """Build the Euler rotation matrix ``Rz(beta) · Ry(phi) · Rx(theta)``.
+
+    Each angle may be a scalar or an array of any broadcastable shape (the
+    ``ones_like``/``zeros_like`` stacking handles both); the result has shape
+    ``[*broadcast(theta, phi, beta), 3, 3]``. A material tensor is then rotated
+    by the similarity transform ``R · tensor · Rᵀ`` (see ``Layer.rotate_tensors``).
+    """
+    cos_theta, sin_theta = np.cos(theta), np.sin(theta)
+    rotation_x = np.stack(
+        [
+            np.stack([np.ones_like(theta), np.zeros_like(theta), np.zeros_like(theta)], axis=-1),
+            np.stack([np.zeros_like(theta), cos_theta, -sin_theta], axis=-1),
+            np.stack([np.zeros_like(theta), sin_theta, cos_theta], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    cos_phi, sin_phi = np.cos(phi), np.sin(phi)
+    rotation_y = np.stack(
+        [
+            np.stack([cos_phi, np.zeros_like(phi), sin_phi], axis=-1),
+            np.stack([np.zeros_like(phi), np.ones_like(phi), np.zeros_like(phi)], axis=-1),
+            np.stack([-sin_phi, np.zeros_like(phi), cos_phi], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    cos_beta, sin_beta = np.cos(beta), np.sin(beta)
+    rotation_z = np.stack(
+        [
+            np.stack([cos_beta, -sin_beta, np.zeros_like(beta)], axis=-1),
+            np.stack([sin_beta, cos_beta, np.zeros_like(beta)], axis=-1),
+            np.stack([np.zeros_like(beta), np.zeros_like(beta), np.ones_like(beta)], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    return (rotation_z @ rotation_y @ rotation_x).astype(np.complex128)
 
 
 class AmbientMedium:
@@ -115,29 +146,6 @@ class AmbientIncidentMedium(AmbientMedium):
             ],
             axis=-1,
         )
-
-        matrix = np.stack([element1, element2, element3, element4], axis=-2)
-        return 0.5 * matrix.astype(np.complex128)
-
-    def construct_tensor_singular(self) -> np.ndarray:
-        """Construct transfer matrix for single-point (simple) scenarios.
-
-        Returns:
-            Transfer matrix with shape [4, 4] for scalar incident angle
-
-        Note:
-            This is a specialized version of construct_tensor for cases where
-            only a single incident angle is calculated.
-        """
-
-        n = np.sqrt(self.permittivity)
-        cos_theta = np.cos(self.theta)
-        n_cos_theta = n * cos_theta
-
-        element1 = np.stack([0.0, 1.0, -1.0 / n_cos_theta, 0.0])
-        element2 = np.stack([0.0, 1.0, 1.0 / n_cos_theta, 0.0])
-        element3 = np.stack([1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
-        element4 = np.stack([-1.0 / cos_theta, 0.0, 0.0, 1.0 / n])
 
         matrix = np.stack([element1, element2, element3, element4], axis=-2)
         return 0.5 * matrix.astype(np.complex128)
@@ -281,8 +289,7 @@ class Layer(ABC):
         self.incident_angle = scenario.incident_angle
         self.azimuthal_angle = scenario.azimuthal_angle
 
-        # CHANGED: Remove the default non_magnetic_tensor assignment
-        # We'll get both tensors from materials now
+        # Populated later from the material (see calculate_tensors).
         self.eps_tensor = None
         self.mu_tensor = None
 
@@ -291,33 +298,12 @@ class Layer(ABC):
             self.thickness = float(self.thickness) * 1e-4
 
     def material_factory(self) -> None:
-        """Create the material object based on material name or specifications.
-
-        Instantiates the appropriate material class (Quartz, Calcite, etc.) or
-        creates an ArbitraryMaterial from custom parameters.
+        """Resolve ``self.material`` (a name or arbitrary-tensor dict) to an instance.
 
         Raises:
-            NotImplementedError: If the material name is not recognized
-
-        Note:
-            For arbitrary materials, expects a dictionary with permittivity
-            and optionally permeability tensor components.
+            NotImplementedError: If the material name is not recognized.
         """
-        if isinstance(self.material, dict):
-            # Create an ArbitraryMaterial instance instead of returning the dict
-            self.material = ArbitraryMaterial(self.material)
-        elif self.material == "Quartz":
-            self.material = Quartz()
-        elif self.material == "Sapphire":
-            self.material = Sapphire()
-        elif self.material == "Calcite":
-            self.material = CalciteUpper()
-        elif self.material == "CalciteLower":
-            self.material = CalciteLower()
-        elif self.material == "GalliumOxide":
-            self.material = GalliumOxide()
-        else:
-            raise NotImplementedError(f"Material {self.material} not implemented")
+        self.material = create_material(self.material)
 
     def calculate_z_rotation(self) -> None:
         """Calculate the z-axis rotation based on scenario type and rotation mode.
@@ -361,55 +347,60 @@ class Layer(ABC):
         for the appropriate frequency or frequency range based on scenario type.
 
         Note:
-            For Incident/Azimuthal scenarios, tensors span the full frequency
-            range. For Dispersion/Simple scenarios, tensors are calculated for
-            a single frequency.
+            The material is evaluated over the scenario's frequency array
+            (length 1 for single-frequency scenarios, length F otherwise), so
+            eps/mu and k0 always share the same frequencies. Scenario-agnostic.
         """
         self.material_factory()
+        self.material.frequency = np.atleast_1d(np.asarray(self.frequency, dtype=np.float64))
+        self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
+        self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
 
-        if self.scenario in ["Incident", "Azimuthal", "FullSweep"]:
-            self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
-            self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
-        elif self.scenario in ["Dispersion", "Simple"]:
-            self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(
-                self.frequency
-            ).astype(np.complex128)
-            self.mu_tensor = self.material.fetch_magnetic_tensor_for_freq(self.frequency).astype(
-                np.complex128
-            )
+    @staticmethod
+    def _canonical_base(tensor: np.ndarray) -> np.ndarray:
+        """Insert size-1 A/B axes so a fetched ``[..., 3, 3]`` tensor is canonical.
+
+        ``[3, 3] -> [1, 1, 1, 3, 3]`` (single frequency) and
+        ``[F, 3, 3] -> [1, 1, F, 3, 3]`` (frequency-resolved).
+        """
+        if tensor.ndim == 2:
+            return tensor[np.newaxis, np.newaxis, np.newaxis, ...]
+        if tensor.ndim == 3:
+            return tensor[np.newaxis, np.newaxis, ...]
+        raise ValueError(f"Unexpected base tensor shape {tensor.shape}")
+
+    @staticmethod
+    def _canonical_beta(beta: np.ndarray) -> np.ndarray:
+        """Shape the z-rotation angle to broadcast as a canonical ``[A, B, 1]`` batch.
+
+        ``scalar -> [1, 1, 1]`` (Incident/Simple), ``[B] -> [1, B, 1]``
+        (Azimuthal/Dispersion), ``[A, B] -> [A, B, 1]`` (FullSweep).
+        """
+        beta = np.asarray(beta, dtype=np.float64)
+        if beta.ndim == 0:
+            return beta.reshape(1, 1, 1)
+        if beta.ndim == 1:
+            return beta[np.newaxis, :, np.newaxis]
+        if beta.ndim == 2:
+            return beta[..., np.newaxis]
+        raise ValueError(f"Unexpected rotationZ shape {beta.shape}")
 
     def rotate_tensors(self) -> None:
-        """Apply Euler angle rotations to permittivity and permeability tensors.
+        """Rotate ε/μ by the Euler angles and emit canonical ``[A, B, F, 3, 3]``.
 
-        Rotates both ε and μ tensors according to the specified Euler angles
-        (rotationX, rotationY, rotationZ) to account for crystal orientation.
-
-        Note:
-            The rotation function used depends on the scenario type to handle
-            proper broadcasting across angle arrays.
+        Scenario-agnostic: the fetched tensors and the z-rotation angle are
+        normalised to the canonical layout by rank, then a single broadcasting
+        rotation (``hyperbolic_optics.anisotropy_utils.rotate_tensor``) produces
+        canonical output. rotationX/Y are scalar crystal orientations and
+        broadcast for free.
         """
-        if self.scenario in ["Incident", "Dispersion"]:
-            rotation_func = anisotropy_rotation_one_value
-        elif self.scenario == "Azimuthal":
-            rotation_func = anisotropy_rotation_one_axis
-        elif self.scenario == "FullSweep":
-            from hyperbolic_optics.anisotropy_utils import anisotropy_rotation_two_axes
-
-            rotation_func = anisotropy_rotation_two_axes
-        elif self.scenario == "Simple":
-            rotation_func = anisotropy_rotation_one_value
-
-        self.eps_tensor = rotation_func(
-            self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ
-        )
-        self.mu_tensor = rotation_func(
-            self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ
-        )
-
-        # For Azimuthal, rotation produces [freq, azim, 3, 3], transpose to [azim, freq, 3, 3]
-        if self.scenario == "Azimuthal":
-            self.eps_tensor = np.swapaxes(self.eps_tensor, 0, 1)
-            self.mu_tensor = np.swapaxes(self.mu_tensor, 0, 1)
+        eps = self._canonical_base(self.eps_tensor)
+        mu = self._canonical_base(self.mu_tensor)
+        beta = self._canonical_beta(self.rotationZ)
+        rotation = _euler_rotation_matrix(self.rotationX, self.rotationY, beta)
+        rotation_t = np.swapaxes(rotation, -2, -1)
+        self.eps_tensor = rotation @ eps @ rotation_t
+        self.mu_tensor = rotation @ mu @ rotation_t
 
     @abstractmethod
     def create(self) -> None:
@@ -443,34 +434,16 @@ class PrismLayer(Layer):
         self.create()
 
     def create(self) -> None:
-        """Create the prism transfer matrix.
+        """Create the prism transfer matrix in canonical ``[A, 1, 1, 4, 4]`` form.
 
-        Constructs the appropriate transfer matrix based on scenario type,
-        handling different array shapes for Simple, Incident, Azimuthal, and
-        Dispersion scenarios.
+        The prism varies with incident angle only; the size-1 azimuth/frequency
+        axes broadcast against the rest of the stack during the matrix product.
         """
-        # Ensure kx is 1D for prism calculation
-        kx_1d = self.kx.flatten() if self.kx.ndim > 1 else self.kx
+        # Canonical kx is [A, 1, 1]; the ambient medium wants a 1D angle array.
+        kx_1d = np.asarray(self.kx, dtype=np.float64).reshape(-1)
         prism = AmbientIncidentMedium(self.eps_prism, kx_1d)
-
-        if self.scenario == "Incident":
-            # Add frequency dimension: [N_angles, 4, 4] -> [N_angles, 1, 4, 4]
-            self.matrix = prism.construct_tensor()[:, np.newaxis, ...]
-        elif self.scenario == "Azimuthal":
-            # Add dimensions for azimuthal and frequency: [4,4] -> [1, N_freq, 4, 4]
-            base_matrix = prism.construct_tensor_singular()
-            n_freq = self.k0.shape[0] if hasattr(self.k0, "shape") else 1
-            self.matrix = np.broadcast_to(
-                base_matrix[np.newaxis, np.newaxis, ...], (1, n_freq, 4, 4)
-            )
-        elif self.scenario == "Dispersion":
-            self.matrix = prism.construct_tensor()[:, np.newaxis, ...]
-        elif self.scenario == "FullSweep":
-            # Prism varies with incident angle, broadcast over azim and freq
-            # [N_incident, 4, 4] -> [N_incident, 1, 1, 4, 4]
-            self.matrix = prism.construct_tensor()[:, np.newaxis, np.newaxis, ...]
-        elif self.scenario == "Simple":
-            self.matrix = prism.construct_tensor_singular()
+        # construct_tensor -> [A, 4, 4]; add size-1 azimuth + frequency axes.
+        self.matrix = prism.construct_tensor()[:, np.newaxis, np.newaxis, :, :]
 
 
 class AirGapLayer(Layer):
@@ -507,7 +480,7 @@ class AirGapLayer(Layer):
         else:
             self.permittivity = complex(perm, 0)
 
-        # CHANGED: Handle magnetic permeability input
+        # Handle complex permeability input
         mu = data.get("permeability", 1.0)
         if isinstance(mu, dict):
             if "real" in mu or "imag" in mu:
@@ -521,61 +494,36 @@ class AirGapLayer(Layer):
         else:
             self.permeability = complex(mu, 0)
 
-        # CHANGED: Create the isotropic material with both eps and mu
         self.isotropic_material = Air(
             permittivity=self.permittivity, permeability=self.permeability
         )
 
-        # CHANGED: Get both tensors from the material
-        self.eps_tensor = self.isotropic_material.fetch_permittivity_tensor()
-        self.mu_tensor = self.isotropic_material.fetch_magnetic_tensor()
+        # An air gap is dispersionless and angle-independent in its tensors;
+        # canonicalise to [1, 1, 1, 3, 3]. The angle/frequency dependence of the
+        # layer matrix enters through kx and k0 inside Wave.
+        self.eps_tensor = self.isotropic_material.fetch_permittivity_tensor()[
+            np.newaxis, np.newaxis, np.newaxis, ...
+        ]
+        self.mu_tensor = self.isotropic_material.fetch_magnetic_tensor()[
+            np.newaxis, np.newaxis, np.newaxis, ...
+        ]
 
-        self.calculate_mode()
         self.create()
-
-    def calculate_mode(self) -> None:
-        """Determine the calculation mode based on scenario type.
-
-        Sets the internal mode string used by the Wave class to determine
-        appropriate tensor shapes and broadcasting patterns.
-        """
-        if self.scenario == "Incident":
-            self.mode = "airgap"
-        elif self.scenario == "Azimuthal":
-            self.mode = "azimuthal_airgap"
-        elif self.scenario == "Dispersion":
-            self.mode = "simple_airgap"
-        elif self.scenario == "FullSweep":
-            self.mode = "full_sweep_airgap"
-        elif self.scenario == "Simple":
-            self.mode = "simple_scalar_airgap"
 
     def create(self) -> None:
         """Create the air gap layer transfer matrix and wave profile.
 
-        Constructs the transfer matrix by solving the wave equation for the
-        isotropic layer with specified thickness.
+        An air gap is just an isotropic finite layer; with canonical inputs the
+        Wave produces a canonical ``[A, 1, F, 4, 4]`` matrix directly, so no
+        per-scenario reshaping is needed.
         """
         self.profile, self.matrix = Wave(
             self.kx,
             self.eps_tensor,
-            self.mu_tensor,  # Now passing the actual magnetic tensor
-            self.mode,
+            self.mu_tensor,
             k_0=self.k0,
             thickness=self.thickness,
         ).execute()
-
-        # Add dimensions for broadcasting with crystal layers
-        if self.scenario == "Dispersion":
-            # Add azimuthal dimension: [180, 4, 4] -> [180, 1, 4, 4]
-            self.matrix = self.matrix[:, np.newaxis, ...]
-        elif self.scenario == "Azimuthal":
-            # Add azimuthal dimension: [410, 4, 4] -> [1, 410, 4, 4]
-            self.matrix = self.matrix[np.newaxis, ...]
-        elif self.scenario == "FullSweep":
-            # Airgap doesn't vary with incident angle, only with frequency
-            # Add incident and azimuthal dimensions: [410, 4, 4] -> [1, 1, 410, 4, 4]
-            self.matrix = self.matrix[np.newaxis, np.newaxis, ...]
 
 
 class CrystalLayer(Layer):
@@ -597,9 +545,9 @@ class CrystalLayer(Layer):
             Euler angles specified in degrees.
         """
         super().__init__(data, scenario, kx, k0)
-        self.calculate_tensors()  # Get both eps and mu tensors
+        self.calculate_tensors()
         self.calculate_z_rotation()
-        self.rotate_tensors()  # Rotate both tensors
+        self.rotate_tensors()
         self.create()
 
     def create(self) -> None:
@@ -611,8 +559,7 @@ class CrystalLayer(Layer):
         self.profile, self.matrix = Wave(
             self.kx,
             self.eps_tensor,
-            self.mu_tensor,  # Now using the actual magnetic tensor from material
-            self.scenario,
+            self.mu_tensor,
             k_0=self.k0,
             thickness=self.thickness,
         ).execute()
@@ -638,9 +585,8 @@ class SemiInfiniteCrystalLayer(Layer):
         """
         super().__init__(data, scenario, kx, k0)
         self.calculate_z_rotation()
-        # CHANGED: Use the new unified tensor calculation methods
-        self.calculate_tensors()  # Get both eps and mu tensors
-        self.rotate_tensors()  # Rotate both tensors
+        self.calculate_tensors()
+        self.rotate_tensors()
         self.create()
 
     def create(self) -> None:
@@ -652,8 +598,7 @@ class SemiInfiniteCrystalLayer(Layer):
         self.profile, self.matrix = Wave(
             self.kx,
             self.eps_tensor,
-            self.mu_tensor,  # Now using the actual magnetic tensor from material
-            self.scenario,
+            self.mu_tensor,
             semi_infinite=True,
         ).execute()
 
@@ -676,7 +621,12 @@ class IsotropicSemiInfiniteLayer(Layer):
             ValueError: If exit permittivity is not provided
         """
         super().__init__(data, scenario, kx, k0)
-        self.eps_incident = (kx.astype(np.float64) / np.sin(self.incident_angle)) ** 2
+        # eps_incident equals the prism permittivity (kx = sqrt(eps)*sin(theta)),
+        # constant across the angle sweep; recover it as a scalar from canonical
+        # kx [A, 1, 1] and the incident angle.
+        kx_flat = np.atleast_1d(np.asarray(kx, dtype=np.float64)).reshape(-1)
+        inc_flat = np.atleast_1d(np.asarray(self.incident_angle, dtype=np.float64)).reshape(-1)
+        self.eps_incident = float((kx_flat[0] / np.sin(inc_flat[0])) ** 2)
         self.eps_exit = np.float64(data.get("permittivity"))
 
         if self.eps_exit is None:
@@ -685,22 +635,21 @@ class IsotropicSemiInfiniteLayer(Layer):
         self.create()
 
     def create(self) -> None:
-        """Create the isotropic exit layer transfer matrix.
+        """Create the isotropic exit layer transfer matrix in canonical form.
 
-        Constructs the transfer matrix for the semi-infinite isotropic exit
-        medium, accounting for refraction at the final interface.
+        Emits ``[A, 1, 1, 4, 4]`` (the exit medium varies with incident angle
+        only); the size-1 azimuth/frequency axes broadcast against the stack.
+        This works for every scenario, including FullSweep, via broadcasting.
         """
         exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
-
-        if self.scenario == "Incident":
-            self.matrix = exit_medium.construct_tensor()
-        elif self.scenario == "Azimuthal":
-            self.matrix = exit_medium.construct_tensor()[np.newaxis, np.newaxis, ...]
-        elif self.scenario == "Dispersion":
-            self.matrix = exit_medium.construct_tensor()[:, np.newaxis, ...]
-        elif self.scenario == "Simple":
-            # For simple scenario, just get the scalar tensor without additional dimensions
-            self.matrix = exit_medium.construct_tensor_singular()
+        if np.ndim(self.incident_angle) == 0:
+            # scalar incident angle (Simple) -> [4, 4]
+            matrix = exit_medium.construct_tensor_singular()
+            self.matrix = matrix[np.newaxis, np.newaxis, np.newaxis, :, :]
+        else:
+            # array incident angle -> [A, 4, 4]
+            matrix = exit_medium.construct_tensor()
+            self.matrix = matrix[:, np.newaxis, np.newaxis, :, :]
 
 
 class LayerFactory:

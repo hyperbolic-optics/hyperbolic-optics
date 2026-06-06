@@ -924,3 +924,31 @@ class Air(IsotropicMaterial):
 
         super().__init__(permittivity=permittivity, permeability=permeability)
         self.name = "Air"
+
+
+def create_material(material: str | dict[str, Any]) -> BaseMaterial:
+    """Instantiate a material from a name string or an arbitrary-tensor dict.
+
+    Single source of truth for the material name -> class mapping, shared by the
+    layer factory and by frequency-range resolution.
+
+    Args:
+        material: A registered material name, or a dict of permittivity/
+            permeability components for an :class:`ArbitraryMaterial`.
+
+    Raises:
+        NotImplementedError: If the name is not recognised.
+    """
+    if isinstance(material, dict):
+        return ArbitraryMaterial(material)
+    registry = {
+        "Quartz": Quartz,
+        "Sapphire": Sapphire,
+        "Calcite": CalciteUpper,
+        "CalciteLower": CalciteLower,
+        "GalliumOxide": GalliumOxide,
+    }
+    try:
+        return registry[material]()
+    except KeyError:
+        raise NotImplementedError(f"Material {material} not implemented") from None

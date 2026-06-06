@@ -129,7 +129,7 @@ The `examples/` folder contains simple scripts demonstrating various capabilitie
 
 Run any example with:
 ```bash
-python examples/basic_calcite_example.py
+python examples/calcite.py
 ```
 
 ---
@@ -212,10 +212,12 @@ This package was used to generate results in:
 
 ## Testing
 
-This package includes a comprehensive test suite with 93+ tests covering all major functionality. Run tests locally with:
+This package includes a comprehensive test suite covering all major functionality. Run tests locally with:
+
 ```bash
 pytest
-pytest --cov=hyperbolic_optics --cov-report=html  # With coverage report
+pytest --cov=hyperbolic_optics --cov-report=html  # with coverage report
+```
 
 *Please open an [issue](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) if you encounter any bugs or have suggestions for improvements.*
 

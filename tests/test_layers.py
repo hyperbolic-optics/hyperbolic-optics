@@ -15,6 +15,18 @@ from hyperbolic_optics.layers import (
 from hyperbolic_optics.scenario import ScenarioSetup
 
 
+def _canonical_kx_k0(eps_prism, incident_angle, frequency):
+    """Build canonical kx [A, 1, 1] and k0 [1, 1, F], as Structure now does.
+
+    Layers consume the canonical layout (see hyperbolic_optics.axes); these unit
+    tests construct layers directly, so they must supply canonical inputs.
+    """
+    kx = np.sqrt(eps_prism) * np.sin(np.asarray(incident_angle, dtype=np.float64))
+    kx = np.atleast_1d(kx).reshape(-1, 1, 1)
+    k0 = np.atleast_1d(np.asarray(frequency, dtype=np.float64) * 2.0 * np.pi).reshape(1, 1, -1)
+    return kx, k0
+
+
 @pytest.fixture
 def simple_scenario():
     """Create a simple scenario for testing."""
@@ -42,8 +54,7 @@ class TestLayerFactory:
         factory = LayerFactory()
         layer_data = {"type": "Ambient Incident Layer", "permittivity": 50.0}
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = factory.create_layer(layer_data, simple_scenario, kx, k0)
         assert isinstance(layer, PrismLayer)
@@ -57,8 +68,7 @@ class TestLayerFactory:
             "permittivity": 1.0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = factory.create_layer(layer_data, simple_scenario, kx, k0)
         assert isinstance(layer, AirGapLayer)
@@ -75,8 +85,7 @@ class TestLayerFactory:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = factory.create_layer(layer_data, simple_scenario, kx, k0)
         assert isinstance(layer, CrystalLayer)
@@ -92,8 +101,7 @@ class TestLayerFactory:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = factory.create_layer(layer_data, simple_scenario, kx, k0)
         assert isinstance(layer, SemiInfiniteCrystalLayer)
@@ -106,8 +114,7 @@ class TestPrismLayer:
         """Test prism layer initializes correctly."""
         layer_data = {"type": "Ambient Incident Layer", "permittivity": 50.0}
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = PrismLayer(layer_data, simple_scenario, kx, k0)
         assert layer.eps_prism == 50.0
@@ -117,23 +124,21 @@ class TestPrismLayer:
         """Test prism matrix shape for simple scenario."""
         layer_data = {"type": "Ambient Incident Layer", "permittivity": 50.0}
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = PrismLayer(layer_data, simple_scenario, kx, k0)
-        # For simple scenario, should be [4, 4]
-        assert layer.matrix.shape == (4, 4)
+        # Canonical prism: [A, 1, 1, 4, 4] with A=1 for Simple
+        assert layer.matrix.shape == (1, 1, 1, 4, 4)
 
     def test_prism_matrix_shape_incident(self, incident_scenario):
         """Test prism matrix shape for incident scenario."""
         layer_data = {"type": "Ambient Incident Layer", "permittivity": 50.0}
 
-        kx = np.sqrt(50.0) * np.sin(incident_scenario.incident_angle)
-        k0 = 1460.0 * 2.0 * np.pi  # Use a fixed frequency
+        kx, k0 = _canonical_kx_k0(50.0, incident_scenario.incident_angle, 1460.0)
 
         layer = PrismLayer(layer_data, incident_scenario, kx, k0)
-        # For incident scenario, should be [360, 1, 4, 4]
-        assert layer.matrix.shape == (360, 1, 4, 4)
+        # Canonical prism: [A, 1, 1, 4, 4] with A=360 for Incident
+        assert layer.matrix.shape == (360, 1, 1, 4, 4)
 
 
 class TestAirGapLayer:
@@ -147,8 +152,7 @@ class TestAirGapLayer:
             "permittivity": 1.0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = AirGapLayer(layer_data, simple_scenario, kx, k0)
         assert layer.thickness == 0.5 * 1e-4  # Converted to cm
@@ -162,8 +166,7 @@ class TestAirGapLayer:
             "permittivity": {"real": 2.5, "imag": 0.1},
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = AirGapLayer(layer_data, simple_scenario, kx, k0)
         assert layer.permittivity == complex(2.5, 0.1)
@@ -176,14 +179,13 @@ class TestAirGapLayer:
             "permittivity": 2.0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = AirGapLayer(layer_data, simple_scenario, kx, k0)
 
-        # Check that tensors are diagonal
-        assert layer.eps_tensor.shape == (3, 3)
-        assert layer.mu_tensor.shape == (3, 3)
+        # Canonical air-gap tensors: [1, 1, 1, 3, 3]
+        assert layer.eps_tensor.shape == (1, 1, 1, 3, 3)
+        assert layer.mu_tensor.shape == (1, 1, 1, 3, 3)
 
 
 class TestCrystalLayer:
@@ -200,8 +202,7 @@ class TestCrystalLayer:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = CrystalLayer(layer_data, simple_scenario, kx, k0)
         assert layer.material.name == "Calcite-Upper"
@@ -218,8 +219,7 @@ class TestCrystalLayer:
             "rotationZ": 90,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = CrystalLayer(layer_data, simple_scenario, kx, k0)
 
@@ -238,8 +238,7 @@ class TestCrystalLayer:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = CrystalLayer(layer_data, simple_scenario, kx, k0)
 
@@ -262,8 +261,7 @@ class TestSemiInfiniteCrystalLayer:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = SemiInfiniteCrystalLayer(layer_data, simple_scenario, kx, k0)
         assert layer.material.name == "Calcite-Upper"
@@ -279,8 +277,7 @@ class TestSemiInfiniteCrystalLayer:
             "rotationZ": 0,
         }
 
-        kx = np.sqrt(50.0) * np.sin(simple_scenario.incident_angle)
-        k0 = simple_scenario.frequency * 2.0 * np.pi
+        kx, k0 = _canonical_kx_k0(50.0, simple_scenario.incident_angle, simple_scenario.frequency)
 
         layer = SemiInfiniteCrystalLayer(layer_data, simple_scenario, kx, k0)
         assert layer.matrix is not None
