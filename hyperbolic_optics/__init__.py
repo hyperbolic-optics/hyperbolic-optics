@@ -46,7 +46,9 @@ from hyperbolic_optics.materials import (
     ArbitraryMaterial,
     CalciteLower,
     CalciteUpper,
+    GalliumNitride,
     GalliumOxide,
+    HexagonalBoronNitride,
     MolybdenumTrioxide,
     Quartz,
     Sapphire,
@@ -93,6 +95,8 @@ __all__ = [
     "MolybdenumTrioxide",
     "AluminiumNitride",
     "SiliconCarbide",
+    "HexagonalBoronNitride",
+    "GalliumNitride",
     "ArbitraryMaterial",
     "Air",
     # Layers

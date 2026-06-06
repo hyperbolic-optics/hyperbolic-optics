@@ -481,6 +481,34 @@ class SiliconCarbide(ParameterizedUniaxialMaterial):
         super().__init__("silicon_carbide", freq_min, freq_max, mu_r)
 
 
+class HexagonalBoronNitride(ParameterizedUniaxialMaterial):
+    """hBN — the benchmark natural hyperbolic material (c-cut uniaxial, two bands)."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize natural hexagonal boron nitride.
+
+        Two reststrahlen bands give type-I (out-of-plane, ~760-825 cm⁻¹) and
+        type-II (in-plane, ~1360-1614 cm⁻¹) hyperbolic dispersion. See
+        ``material_params.json`` for the phonon parameters and their provenance.
+        """
+        super().__init__("hexagonal_boron_nitride", freq_min, freq_max, mu_r)
+
+
+class GalliumNitride(ParameterizedUniaxialMaterial):
+    """Wurtzite GaN — c-cut uniaxial polar semiconductor."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize GaN (gallium nitride), a wurtzite polar semiconductor.
+
+        See ``material_params.json`` for the E1/A1 phonon parameters.
+        """
+        super().__init__("gallium_nitride", freq_min, freq_max, mu_r)
+
+
 class BiaxialMaterial(UniaxialMaterial):
     """Orthorhombic biaxial material: a diagonal ε tensor with three distinct axes.
 
@@ -1079,6 +1107,8 @@ def create_material(material: str | dict[str, Any]) -> BaseMaterial:
         "MoO3": MolybdenumTrioxide,
         "AlN": AluminiumNitride,
         "SiC": SiliconCarbide,
+        "hBN": HexagonalBoronNitride,
+        "GaN": GalliumNitride,
     }
     try:
         return registry[material]()
