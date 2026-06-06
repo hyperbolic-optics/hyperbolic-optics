@@ -109,6 +109,10 @@ class Structure:
         self.r_ss = None
         self.r_ps = None
         self.r_sp = None
+        self.t_pp = None
+        self.t_ss = None
+        self.t_ps = None
+        self.t_sp = None
         self.transfer_matrix = None
 
     def get_scenario(self, scenario_data: dict[str, Any]) -> None:
@@ -288,6 +292,23 @@ class Structure:
         Reorders axes to (F, A, B) and squeezes size-1 axes.
         """
         return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
+
+    def calculate_transmissivity(self) -> None:
+        """Extract transmission coefficients from the total transfer matrix.
+
+        Computes ``t_pp, t_ps, t_sp, t_ss``. The results are returned in the same
+        presentation layout as the reflection coefficients (see :meth:`_present`),
+        so ``t_*`` and ``r_*`` share axis ordering. Not called by ``execute()`` by
+        default — invoke explicitly after ``calculate()`` if transmission is needed.
+        """
+        bottom_line = (
+            self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
+            - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
+        )
+        self.t_pp = self._present(self.transfer_matrix[..., 0, 0] / bottom_line)
+        self.t_ps = self._present(-self.transfer_matrix[..., 0, 2] / bottom_line)
+        self.t_sp = self._present(-self.transfer_matrix[..., 2, 0] / bottom_line)
+        self.t_ss = self._present(self.transfer_matrix[..., 2, 2] / bottom_line)
 
     def display_layer_info(self) -> None:
         """Print information about all layers in the structure.
