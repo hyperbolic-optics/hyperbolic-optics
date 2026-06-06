@@ -29,6 +29,8 @@ References:
 
 import numpy as np
 
+from hyperbolic_optics.axes import assert_canonical
+
 
 class WaveProfile:
     """Class representing the wave profile."""
@@ -76,75 +78,44 @@ class Wave:
         kx: np.ndarray,
         eps_tensor: np.ndarray,
         mu_tensor: np.ndarray,
-        mode: str,
         k_0: np.ndarray | None = None,
         thickness: float | None = None,
         semi_infinite: bool = False,
-        magnet: bool = False,
     ) -> None:
         """Initialize wave calculation for a layer.
 
+        All batched inputs follow the canonical convention (see
+        ``hyperbolic_optics.axes``): ``kx`` is ``[A, 1, 1]``, ``k_0`` is
+        ``[1, 1, F]`` and the tensors are ``[A, B, F, 3, 3]`` (un-swept axes
+        size 1). The physics here is then pure trailing-axis broadcasting and
+        knows nothing about scenarios.
+
         Args:
-            kx: Parallel wavevector component(s)
-            eps_tensor: Permittivity tensor [3, 3] or [N, 3, 3]
-            mu_tensor: Permeability tensor [3, 3] or [N, 3, 3]
-            mode: Calculation mode ('Incident', 'Azimuthal', 'Dispersion', 'Simple',
-                'airgap', 'simple_airgap', 'azimuthal_airgap', 'simple_scalar_airgap')
-            k_0: Free-space wavenumber (required for finite layers)
-            thickness: Layer thickness in cm (None for semi-infinite)
-            semi_infinite: Whether layer is semi-infinite
-            magnet: Whether material is magnetic (currently unused)
-
-        Note:
-            The mode parameter determines array broadcasting patterns for
-            efficient batch processing of different scenario types.
+            kx: Parallel wavevector, canonical ``[A, 1, 1]``.
+            eps_tensor: Permittivity tensor, canonical ``[A, B, F, 3, 3]``.
+            mu_tensor: Permeability tensor, canonical ``[A, B, F, 3, 3]``.
+            k_0: Free-space wavenumber ``[1, 1, F]`` (required for finite layers).
+            thickness: Layer thickness in cm (None for semi-infinite).
+            semi_infinite: Whether the layer is semi-infinite.
         """
-        self.k_x = kx.astype(np.complex128) if hasattr(kx, "astype") else np.complex128(kx)
-        self.eps_tensor = eps_tensor  # Now pre-shaped from materials
-        self.mu_tensor = mu_tensor  # Now pre-shaped from materials
+        self.k_x = np.asarray(kx, dtype=np.complex128)
+        self.eps_tensor = np.asarray(eps_tensor, dtype=np.complex128)
+        self.mu_tensor = np.asarray(mu_tensor, dtype=np.complex128)
 
-        self.mode = mode
+        # Enforce the canonical [A, B, F, ...] layout at the engine boundary.
+        assert_canonical(self.k_x, matrix_ndim=0, name="kx")
+        assert_canonical(self.eps_tensor, matrix_ndim=2, name="eps_tensor")
+        assert_canonical(self.mu_tensor, matrix_ndim=2, name="mu_tensor")
 
         self.k_0 = k_0
+        if k_0 is not None:
+            assert_canonical(np.asarray(k_0), matrix_ndim=0, name="k0")
         self.thickness = thickness
         self.semi_infinite = semi_infinite
-        self.magnet = magnet
 
         self.eigenvalues = None
         self.eigenvectors = None
         self.berreman_matrix = None
-
-        # CHANGED: Ensure tensors have proper shapes and determine batch dimensions
-        self._setup_tensor_shapes()
-
-    def _setup_tensor_shapes(self) -> None:
-        """Setup and validate tensor shapes based on mode.
-
-        Ensures kx, eps_tensor, and mu_tensor have compatible shapes for
-        the specified calculation mode and determines batch dimensions.
-
-        Raises:
-            NotImplementedError: If mode is not recognized
-        """
-        # Ensure k_x is complex
-        self.k_x = (
-            self.k_x.astype(np.complex128)
-            if hasattr(self.k_x, "astype")
-            else np.complex128(self.k_x)
-        )
-
-        # Ensure tensors are complex
-        self.eps_tensor = self.eps_tensor.astype(np.complex128)
-        self.mu_tensor = self.mu_tensor.astype(np.complex128)
-
-        # Standardize tensor shapes based on mode
-        if self.mode == "Simple":
-            # Simple: scalar kx, [3,3] tensors
-            if len(self.eps_tensor.shape) > 2:
-                self.eps_tensor = np.squeeze(self.eps_tensor)
-                self.mu_tensor = np.squeeze(self.mu_tensor)
-        # For all other modes, keep natural shapes
-        # kx reshaping will happen in delta_matrix_calc if needed
 
     def _get_matrix_calculation_shapes(
         self, eigenvalues: np.ndarray, eigenvectors: np.ndarray
@@ -180,17 +151,9 @@ class Wave:
 
             Reference: N.C. Passler & A. Paarmann, JOSA B 34, 2128 (2017)
         """
+        # Canonical inputs: kx=[A,1,1], tensors=[A,B,F,3,3]. The tensor components
+        # below are [A,B,F] and kx broadcasts against them with no reshaping.
         k_x, eps_tensor, mu_tensor = self.k_x, self.eps_tensor, self.mu_tensor
-
-        # Reshape kx for proper broadcasting with tensors
-        if self.mode in ["Incident", "Dispersion"]:
-            # Need kx as [N_angles, 1] to broadcast with [N_freq/N_azim, 3, 3] tensors
-            if k_x.ndim == 1:
-                k_x = k_x[:, np.newaxis]
-        elif self.mode == "FullSweep":
-            # Need kx as [N_angles, 1, 1] to broadcast with [N_angles, N_azim, N_freq, 3, 3] tensors
-            if k_x.ndim == 1:
-                k_x = k_x[:, np.newaxis, np.newaxis]
 
         # Extract relevant tensor components
         eps_20, eps_21, eps_22 = (
@@ -316,41 +279,9 @@ class Wave:
             eigenvalues, eigenvectors
         )
 
-        # For airgap modes, add dimensions to match k_0 frequency dimension
-        if self.mode == "azimuthal_airgap" and k_0.ndim > 0:
-            # k_0 is [N_freq], eigenvalues_diag is [4, 4]
-            # Reshape eigenvalues_diag to [N_freq, 4, 4]
-            eigenvalues_diag = eigenvalues_diag[np.newaxis, ...]
-            eigenvectors = eigenvectors[np.newaxis, ...]
-            # Reshape k_0 to [N_freq, 1, 1]
-            k_0_broadcast = k_0[:, np.newaxis, np.newaxis]
-        elif self.mode == "airgap" and k_0.ndim > 0:
-            # k_0 is [N_freq], eigenvalues_diag is [N_angles, 4, 4]
-            # Reshape eigenvalues_diag to [N_angles, N_freq, 4, 4]
-            eigenvalues_diag = eigenvalues_diag[:, np.newaxis, ...]
-            eigenvectors = eigenvectors[:, np.newaxis, ...]
-            # Reshape k_0 to [1, N_freq, 1, 1]
-            k_0_broadcast = k_0[np.newaxis, :, np.newaxis, np.newaxis]
-        elif self.mode == "Incident" and k_0.ndim > 0:
-            # k_0 is [N_freq], eigenvalues_diag is [N_angles, N_freq, 4, 4]
-            # Reshape k_0 to [1, N_freq, 1, 1]
-            k_0_broadcast = k_0[np.newaxis, :, np.newaxis, np.newaxis]
-        elif self.mode == "FullSweep" and k_0.ndim > 0:
-            # k_0 is [N_freq], eigenvalues_diag is [N_angles, N_azim, N_freq, 4, 4]
-            # Reshape k_0 to [1, 1, N_freq, 1, 1]
-            k_0_broadcast = k_0[np.newaxis, np.newaxis, :, np.newaxis, np.newaxis]
-        elif self.mode == "full_sweep_airgap" and k_0.ndim > 0:
-            # k_0 is [N_freq], eigenvalues_diag is [N_angles, 4, 4]
-            # Reshape eigenvalues_diag to [N_angles, N_freq, 4, 4]
-            eigenvalues_diag = eigenvalues_diag[:, np.newaxis, np.newaxis, ...]
-            eigenvectors = eigenvectors[:, np.newaxis, np.newaxis, ...]
-            # Reshape k_0 to [1, 1, N_freq, 1, 1]
-            k_0_broadcast = k_0[np.newaxis, np.newaxis, :, np.newaxis, np.newaxis]
-        else:
-            # Reshape k_0 for proper broadcasting with eigenvalues_diag [..., 4, 4]
-            k_0_broadcast = k_0 if isinstance(k_0, np.ndarray) else np.array(k_0)
-            while k_0_broadcast.ndim < eigenvalues_diag.ndim:
-                k_0_broadcast = k_0_broadcast[..., np.newaxis]
+        # k_0 is canonical [1, 1, F]; add two trailing axes so it broadcasts
+        # against eigenvalues_diag [A, B, F, 4, 4] -> [1, 1, F, 1, 1].
+        k_0_broadcast = k_0[..., np.newaxis, np.newaxis]
 
         # eigenvalues_diag is diagonal by construction, so the matrix exponential
         # is simply exp() of the diagonal entries (no general expm needed).
@@ -649,15 +580,13 @@ class Wave:
 
         Process:
             1. Calculate Berreman matrix
-            2. Apply axis permutations
-            3. Solve eigenvalue problem and sort modes
-            4. Calculate fields and Poynting vectors
-            5. Sort modes by polarization
-            6. Construct transfer matrix
+            2. Solve eigenvalue problem and sort modes
+            3. Calculate fields and Poynting vectors
+            4. Sort modes by polarization
+            5. Construct transfer matrix
 
         Example:
-            >>> wave = Wave(kx, eps_tensor, mu_tensor, mode='Simple',
-            ...            k_0=k0, thickness=0.5e-4)
+            >>> wave = Wave(kx, eps_tensor, mu_tensor, k_0=k0, thickness=0.5e-4)
             >>> profile, matrix = wave.execute()
         """
         self.delta_matrix_calc()

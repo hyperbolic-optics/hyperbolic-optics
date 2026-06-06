@@ -23,6 +23,7 @@ from typing import Any
 
 import numpy as np
 
+from hyperbolic_optics.axes import assert_canonical
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.materials import CalciteUpper, GalliumOxide, Quartz, Sapphire
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -169,10 +170,16 @@ class Structure:
         Note:
             kx is conserved across all interfaces (phase matching condition).
         """
-        self.k_x = (
-            np.sqrt(np.float64(self.eps_prism)) * np.sin(self.incident_angle.astype(np.float64))
-        ).astype(np.float64)
-        self.k_0 = self.frequency * 2.0 * m.pi
+        incident_angle = np.asarray(self.incident_angle, dtype=np.float64)
+        kx = np.sqrt(np.float64(self.eps_prism)) * np.sin(incident_angle)
+        # Canonical layout (see hyperbolic_optics.axes): kx -> [A, 1, 1],
+        # k0 -> [1, 1, F]. Un-swept scenarios collapse to size-1 axes.
+        self.k_x = np.atleast_1d(kx).astype(np.float64).reshape(-1, 1, 1)
+        k0 = np.atleast_1d(np.asarray(self.frequency, dtype=np.float64)) * 2.0 * m.pi
+        self.k_0 = k0.reshape(1, 1, -1)
+        # Boundary-in: kx and k0 enter the pipeline canonical [A, 1, 1] / [1, 1, F].
+        assert_canonical(self.k_x, matrix_ndim=0, name="kx")
+        assert_canonical(self.k_0, matrix_ndim=0, name="k0")
 
     def get_layers(self, layer_data_list: list[dict[str, Any]]) -> None:
         """Create all layers in the structure from configuration.
@@ -239,6 +246,8 @@ class Structure:
             amplitudes to reflected field amplitudes:
             E_reflected = r · E_incident
         """
+        # Boundary-out: the assembled transfer matrix is canonical [A, B, F, 4, 4].
+        assert_canonical(self.transfer_matrix, matrix_ndim=2, name="transfer_matrix")
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
             - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
@@ -260,19 +269,23 @@ class Structure:
             - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]
         ) / bottom_line
 
-        # Transpose for Azimuthal and Incident to get (freq, angle) ordering
-        if self.scenario.type in ["Azimuthal", "Incident"]:
-            self.r_pp = np.swapaxes(self.r_pp, 0, 1)
-            self.r_ps = np.swapaxes(self.r_ps, 0, 1)
-            self.r_sp = np.swapaxes(self.r_sp, 0, 1)
-            self.r_ss = np.swapaxes(self.r_ss, 0, 1)
-        elif self.scenario.type == "FullSweep":
-            # Squeeze extra dimensions and reorder to [freq, incident, azim]
-            # Current: [1, 1, N_incident, N_azim, N_freq] -> [N_freq, N_incident, N_azim]
-            self.r_pp = np.moveaxis(np.squeeze(self.r_pp), -1, 0)
-            self.r_ps = np.moveaxis(np.squeeze(self.r_ps), -1, 0)
-            self.r_sp = np.moveaxis(np.squeeze(self.r_sp), -1, 0)
-            self.r_ss = np.moveaxis(np.squeeze(self.r_ss), -1, 0)
+        # Boundary-out (single presentation rule, see canonical-shape plan 4.6):
+        # coefficients are canonical [A, B, F]; reorder to (F, A, B) then squeeze
+        # the size-1 axes. This reproduces every scenario's historical output
+        # shape (Incident/Azimuthal -> (F, angle); Dispersion -> (A, B);
+        # FullSweep -> (F, A, B); Simple -> scalar).
+        self.r_pp = self._present(self.r_pp)
+        self.r_ps = self._present(self.r_ps)
+        self.r_sp = self._present(self.r_sp)
+        self.r_ss = self._present(self.r_ss)
+
+    @staticmethod
+    def _present(coefficient: np.ndarray) -> np.ndarray:
+        """Map a canonical [A, B, F] coefficient to its presentation shape.
+
+        Reorders axes to (F, A, B) and squeezes size-1 axes.
+        """
+        return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
 
     def calculate_transmissivity(self) -> None:
         """Extract transmission coefficients from total transfer matrix.
