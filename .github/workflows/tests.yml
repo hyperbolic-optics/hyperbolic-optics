@@ -53,17 +53,12 @@ jobs:
       run: |
         uv sync --all-extras
 
-    - name: Check code formatting with black
+    - name: Lint with ruff
       run: |
-        uv run black --check hyperbolic_optics tests
+        uv run ruff check hyperbolic_optics tests
       continue-on-error: true
 
-    - name: Check import sorting with isort
+    - name: Check formatting with ruff
       run: |
-        uv run isort --check-only hyperbolic_optics tests
-      continue-on-error: true
-
-    - name: Lint with flake8
-      run: |
-        uv run flake8 hyperbolic_optics tests --max-line-length=100 --extend-ignore=E203,W503
+        uv run ruff format --check hyperbolic_optics tests
       continue-on-error: true

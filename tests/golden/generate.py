@@ -19,7 +19,6 @@ import numpy as np
 
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
-
 from tests.golden.payloads import PAYLOADS
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -98,10 +97,7 @@ def main(names: list[str]) -> int:
             print(f"FAIL  {name}: {type(exc).__name__}: {exc}")
             traceback.print_exc()
 
-    print(
-        f"\nGenerated {len(selected) - len(failures)}/{len(selected)} "
-        f"snapshots into {DATA_DIR}"
-    )
+    print(f"\nGenerated {len(selected) - len(failures)}/{len(selected)} snapshots into {DATA_DIR}")
     if failures:
         print(f"Failures: {failures}")
     return 1 if failures else 0

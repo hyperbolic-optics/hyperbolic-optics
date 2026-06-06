@@ -34,9 +34,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov",
-    "black",
-    "isort",
-    "flake8",
+    "ruff",
 ]
 
 docs = [
@@ -107,32 +105,18 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E203", "W503"]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "*.egg-info",
-    "htmlcov",
-]
-
-[tool.black]
+[tool.ruff]
 line-length = 100
-target-version = ["py312"]
+target-version = "py312"
+extend-exclude = [".venv", "venv", "build", "dist", "htmlcov"]
 
-[tool.isort]
-profile = "black"
-line_length = 100
+[tool.ruff.lint]
+# pyflakes (F) + pycodestyle errors (E) + isort (I); E203/W503 are not ruff rules.
+select = ["E", "F", "I"]
 
 [dependency-groups]
 dev = [
     "autoflake>=2.3.1",
-    "flake8-pyproject>=1.2.3",
     "toml>=0.10.2",
 ]
 
