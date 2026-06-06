@@ -251,6 +251,25 @@ absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
 The amplitude transmission coefficients are also available via
 `FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
 
+## Numerical backends
+
+`execute` defaults to the 4×4 **transfer-matrix** method, which is fast but
+numerically unstable for thick / lossy / strongly-evanescent layers (the
+propagation terms grow exponentially and the matrix product overflows to `NaN`).
+For those cases, opt into the numerically-stable **scattering-matrix** backend:
+
+```python
+structure.execute(payload, backend="scattering")
+```
+
+It cascades per-layer scattering matrices with the Redheffer star product so only
+*decaying* exponentials ever appear. It returns the same reflection/transmission
+coefficients as the transfer method where that is well-conditioned, and correct
+ones where the transfer matrix is (near-)singular — e.g. a thick evanescent Otto
+gap, where `backend="transfer"` gives `NaN` but `backend="scattering"` correctly
+gives total reflection. Method/conventions follow PyLlama (Bay *et al.*,
+*J. Opt. Soc. Am. A* **39**, 1431 (2022)).
+
 ## Sweeping Layer Thickness
 
 A layer's `thickness` may be a **list** instead of a scalar, which sweeps it as a
