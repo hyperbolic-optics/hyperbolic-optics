@@ -234,8 +234,8 @@ class Structure:
             Uses functools.reduce with operator.matmul for efficient
             sequential multiplication.
         """
-        self.transfer_matrices = [layer.matrix for layer in self.layers]
-        self.transfer_matrix = functools.reduce(operator.matmul, self.transfer_matrices)
+        transfer_matrices = [layer.matrix for layer in self.layers]
+        self.transfer_matrix = functools.reduce(operator.matmul, transfer_matrices)
 
     def calculate_reflectivity(self) -> None:
         """Extract reflection coefficients from total transfer matrix.
@@ -289,25 +289,6 @@ class Structure:
         """
         return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
 
-    def calculate_transmissivity(self) -> None:
-        """Extract transmission coefficients from total transfer matrix.
-
-        Calculates t_pp, t_ss, t_ps, t_sp representing transmission through
-        the entire structure.
-
-        Warning:
-            Transmission coefficient support is incomplete and may not be
-            fully validated. Use with caution.
-        """
-        bottom_line = (
-            self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
-            - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
-        )
-        self.t_pp = (self.transfer_matrix[..., 0, 0]) / bottom_line
-        self.t_ps = (-self.transfer_matrix[..., 0, 2]) / bottom_line
-        self.t_sp = (-self.transfer_matrix[..., 2, 0]) / bottom_line
-        self.t_ss = (self.transfer_matrix[..., 2, 2]) / bottom_line
-
     def display_layer_info(self) -> None:
         """Print information about all layers in the structure.
 
@@ -347,12 +328,3 @@ class Structure:
 
         # Calculate the reflectivity
         self.calculate_reflectivity()
-
-    # def plot(self):
-    #     """Plot the reflectivity for the given scenario."""
-    #     if self.scenario.type == "Incident":
-    #         contour_plot_simple_incidence(self)
-    #     elif self.scenario.type == "Azimuthal":
-    #         contour_plot_simple_azimuthal(self)
-    #     elif self.scenario.type == "Dispersion":
-    #         contour_plot_simple_dispersion(self)
