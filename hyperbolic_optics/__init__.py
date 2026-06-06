@@ -53,6 +53,7 @@ from hyperbolic_optics.materials import (
     Quartz,
     Sapphire,
     SiliconCarbide,
+    list_materials,
 )
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -97,6 +98,7 @@ __all__ = [
     "SiliconCarbide",
     "HexagonalBoronNitride",
     "GalliumNitride",
+    "list_materials",
     "ArbitraryMaterial",
     "Air",
     # Layers

@@ -19,6 +19,7 @@ from hyperbolic_optics.materials import (
     Sapphire,
     SiliconCarbide,
     create_material,
+    list_materials,
 )
 
 
@@ -149,6 +150,19 @@ class TestBiaxialAndPolarMaterials:
         assert isinstance(create_material("SiC"), SiliconCarbide)
         assert isinstance(create_material("hBN"), HexagonalBoronNitride)
         assert isinstance(create_material("GaN"), GalliumNitride)
+
+    def test_list_materials(self):
+        catalogue = list_materials()
+        # every registered name resolves and reports a sane summary
+        assert {"MoO3", "hBN", "GaN", "Calcite", "GalliumOxide"} <= set(catalogue)
+        assert catalogue["MoO3"]["type"] == "biaxial"
+        assert catalogue["GalliumOxide"]["type"] == "monoclinic"
+        assert catalogue["hBN"]["type"] == "uniaxial"
+        lo, hi = catalogue["hBN"]["frequency_range"]
+        assert lo < hi
+        # the keys are exactly what create_material accepts
+        for name in catalogue:
+            assert create_material(name) is not None
 
     def test_hbn_and_gan_uniaxial(self):
         for material in (HexagonalBoronNitride(), GalliumNitride()):

@@ -1083,34 +1083,73 @@ class Air(IsotropicMaterial):
         self.name = "Air"
 
 
+# Single source of truth for the material name -> class mapping, shared by the
+# layer factory, frequency-range resolution, and list_materials().
+_MATERIAL_REGISTRY: dict[str, type[BaseMaterial]] = {
+    "Quartz": Quartz,
+    "Sapphire": Sapphire,
+    "Calcite": CalciteUpper,
+    "CalciteLower": CalciteLower,
+    "GalliumOxide": GalliumOxide,
+    "MoO3": MolybdenumTrioxide,
+    "AlN": AluminiumNitride,
+    "SiC": SiliconCarbide,
+    "hBN": HexagonalBoronNitride,
+    "GaN": GalliumNitride,
+}
+
+
 def create_material(material: str | dict[str, Any]) -> BaseMaterial:
     """Instantiate a material from a name string or an arbitrary-tensor dict.
 
-    Single source of truth for the material name -> class mapping, shared by the
-    layer factory and by frequency-range resolution.
-
     Args:
-        material: A registered material name, or a dict of permittivity/
-            permeability components for an :class:`ArbitraryMaterial`.
+        material: A registered material name (see :func:`list_materials`), or a
+            dict of permittivity/permeability components for an
+            :class:`ArbitraryMaterial`.
 
     Raises:
         NotImplementedError: If the name is not recognised.
     """
     if isinstance(material, dict):
         return ArbitraryMaterial(material)
-    registry = {
-        "Quartz": Quartz,
-        "Sapphire": Sapphire,
-        "Calcite": CalciteUpper,
-        "CalciteLower": CalciteLower,
-        "GalliumOxide": GalliumOxide,
-        "MoO3": MolybdenumTrioxide,
-        "AlN": AluminiumNitride,
-        "SiC": SiliconCarbide,
-        "hBN": HexagonalBoronNitride,
-        "GaN": GalliumNitride,
-    }
     try:
-        return registry[material]()
+        return _MATERIAL_REGISTRY[material]()
     except KeyError:
         raise NotImplementedError(f"Material {material} not implemented") from None
+
+
+def list_materials() -> dict[str, dict[str, Any]]:
+    """Summarize the registered (named) materials.
+
+    Returns:
+        A dict keyed by the registry name a payload would use (e.g. ``"hBN"``),
+        each value giving the implementing ``class`` name, the optical ``type``
+        (``"uniaxial"``, ``"biaxial"``, ``"monoclinic"`` or ``"isotropic"``), and
+        the default ``frequency_range`` ``(min, max)`` in cm⁻¹ (``None`` if the
+        material has no intrinsic range).
+
+    Example:
+        >>> for name, info in list_materials().items():
+        ...     print(name, info["type"], info["frequency_range"])
+    """
+    summary: dict[str, dict[str, Any]] = {}
+    for name, cls in _MATERIAL_REGISTRY.items():
+        material = cls()
+        if isinstance(material, BiaxialMaterial):  # subclass of UniaxialMaterial
+            material_type = "biaxial"
+        elif isinstance(material, MonoclinicMaterial):
+            material_type = "monoclinic"
+        elif isinstance(material, UniaxialMaterial):
+            material_type = "uniaxial"
+        else:
+            material_type = "isotropic"
+        frequency = material.frequency
+        frequency_range = (
+            (float(np.min(frequency)), float(np.max(frequency))) if frequency is not None else None
+        )
+        summary[name] = {
+            "class": cls.__name__,
+            "type": material_type,
+            "frequency_range": frequency_range,
+        }
+    return summary
