@@ -74,6 +74,21 @@ Two variants available:
 - **Type**: Uniaxial negative
 - **Applications**: Wide-band phonon polaritons
 
+#### AlN and SiC
+
+Polar uniaxial crystals used (with MoO₃) in the layer-resolved absorption example.
+Both are modeled c-cut; SiC is treated as effectively isotropic in its
+reststrahlen band.
+
+```python
+{"type": "Semi Infinite Anisotropic Layer", "material": "SiC", "rotationY": 0}
+{"type": "Crystal Layer", "material": "AlN", "thickness": 1.0, "rotationY": 0}
+```
+
+- **Type**: Uniaxial (AlN), near-isotropic (SiC)
+- **Note**: phonon parameters in `material_params.json` are literature values
+  flagged for verification.
+
 ### Monoclinic Materials
 
 #### Gallium Oxide (β-Ga₂O₃)
@@ -91,6 +106,27 @@ Two variants available:
 - **Frequency range**: 350-800 cm⁻¹
 - **Type**: Monoclinic (non-zero off-diagonal elements)
 - **Special**: Has xy coupling (ε_xy ≠ 0)
+
+### Biaxial Materials
+
+#### α-MoO₃ (molybdenum trioxide)
+
+```python
+{
+    "type": "Crystal Layer",
+    "material": "MoO3",
+    "thickness": 1.2,
+    "rotationY": 0,
+    "rotationZ": 0  # azimuthal rotation exposes the in-plane anisotropy
+}
+```
+
+- **Type**: Orthorhombic biaxial — a **diagonal** tensor with three distinct
+  principal permittivities (no off-diagonal coupling, unlike monoclinic Ga₂O₃).
+- **Special**: strong in-plane anisotropy supports azimuth-dependent hyperbolic
+  phonon polaritons (see `examples/layer_resolved_absorption.py`).
+- **Note**: parameters in `material_params.json` are literature values flagged
+  for verification.
 
 ## Isotropic Materials
 
@@ -218,5 +254,8 @@ plot_permittivity(calcite, eps_ext, eps_ord, save_name="calcite_permittivity")
 | Calcite Lower | Uniaxial | 860-920 cm⁻¹ | Yes |
 | Sapphire | Uniaxial | 210-1000 cm⁻¹ | Yes |
 | Gallium Oxide | Monoclinic | 350-800 cm⁻¹ | Yes |
+| α-MoO₃ | Biaxial | 500-1050 cm⁻¹ | Yes |
+| AlN | Uniaxial | 500-1050 cm⁻¹ | Yes |
+| SiC | Uniaxial (≈isotropic) | 500-1050 cm⁻¹ | Yes |
 
 **Note**: A material is "hyperbolic" when the real parts of permittivity components have opposite signs.

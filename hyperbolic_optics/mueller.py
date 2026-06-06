@@ -270,47 +270,41 @@ class Mueller:
             dtype=np.float64,
         )
 
-    def calculate_mueller_matrix(self) -> None:
-        """Calculate Mueller matrix from reflection coefficients.
+    @staticmethod
+    def _mueller_from_jones(
+        c_pp: np.ndarray, c_ps: np.ndarray, c_sp: np.ndarray, c_ss: np.ndarray
+    ) -> np.ndarray:
+        """Real 4×4 Mueller matrix from a complex 2×2 Jones matrix.
 
-        Converts the complex 2×2 Jones matrix to a real 4×4 Mueller matrix
-        using the transformation: M = A·F·A⁻¹ where F is formed from
-        r_pp, r_ss, r_ps, r_sp.
-
-        Note:
-            The Mueller matrix fully describes how the sample transforms
-            arbitrary incident polarization states to reflected states.
+        Applies ``M = A·F·A⁻¹`` where ``F`` is the coherency (Jones ⊗ Jones*)
+        matrix built from the four amplitude coefficients (``pp, ps, sp, ss``).
+        Shared by the reflection and transmission Mueller paths.
         """
-        r_pp = self.structure.r_pp
-        r_ps = self.structure.r_ps
-        r_sp = self.structure.r_sp
-        r_ss = self.structure.r_ss
-
         f_matrix = np.array(
             [
                 [
-                    r_pp * np.conj(r_pp),
-                    r_pp * np.conj(r_ps),
-                    r_ps * np.conj(r_pp),
-                    r_ps * np.conj(r_ps),
+                    c_pp * np.conj(c_pp),
+                    c_pp * np.conj(c_ps),
+                    c_ps * np.conj(c_pp),
+                    c_ps * np.conj(c_ps),
                 ],
                 [
-                    r_pp * np.conj(r_sp),
-                    r_pp * np.conj(r_ss),
-                    r_ps * np.conj(r_sp),
-                    r_ps * np.conj(r_ss),
+                    c_pp * np.conj(c_sp),
+                    c_pp * np.conj(c_ss),
+                    c_ps * np.conj(c_sp),
+                    c_ps * np.conj(c_ss),
                 ],
                 [
-                    r_sp * np.conj(r_pp),
-                    r_sp * np.conj(r_ps),
-                    r_ss * np.conj(r_pp),
-                    r_ss * np.conj(r_ps),
+                    c_sp * np.conj(c_pp),
+                    c_sp * np.conj(c_ps),
+                    c_ss * np.conj(c_pp),
+                    c_ss * np.conj(c_ps),
                 ],
                 [
-                    r_sp * np.conj(r_sp),
-                    r_sp * np.conj(r_ss),
-                    r_ss * np.conj(r_sp),
-                    r_ss * np.conj(r_ss),
+                    c_sp * np.conj(c_sp),
+                    c_sp * np.conj(c_ss),
+                    c_ss * np.conj(c_sp),
+                    c_ss * np.conj(c_ss),
                 ],
             ],
             dtype=np.complex128,
@@ -327,7 +321,56 @@ class Mueller:
             dtype=np.complex128,
         )
         # The Mueller matrix is real-valued (A·F·A⁻¹); take the real part directly.
-        self.mueller_matrix = np.real(a_matrix @ f_matrix @ np.linalg.inv(a_matrix))
+        return np.real(a_matrix @ f_matrix @ np.linalg.inv(a_matrix))
+
+    def calculate_mueller_matrix(self) -> None:
+        """Calculate Mueller matrix from reflection coefficients.
+
+        Converts the complex 2×2 Jones matrix to a real 4×4 Mueller matrix
+        using the transformation: M = A·F·A⁻¹ where F is formed from
+        r_pp, r_ss, r_ps, r_sp.
+
+        Note:
+            The Mueller matrix fully describes how the sample transforms
+            arbitrary incident polarization states to reflected states.
+        """
+        self.mueller_matrix = self._mueller_from_jones(
+            self.structure.r_pp,
+            self.structure.r_ps,
+            self.structure.r_sp,
+            self.structure.r_ss,
+        )
+
+    def calculate_transmission_mueller_matrix(self) -> np.ndarray:
+        """Mueller matrix of the *transmitted* light, from the t-coefficients.
+
+        Builds ``M = A·F·A⁻¹`` from ``t_pp, t_ps, t_sp, t_ss`` (computing them via
+        ``Structure.calculate_transmissivity`` if needed). This describes the
+        polarization transformation on transmission and is set as
+        ``self.mueller_matrix`` so the usual Stokes/DOP/ellipse helpers apply.
+
+        Important:
+            This treats ``|t|²`` as transmitted intensity, which equals the
+            physical *power* transmittance only for a **symmetric system where the
+            prism and substrate permittivities are equal**. For transmission into a
+            lower-index medium (e.g. air) it breaks down in the
+            evanescent / total-internal-reflection regime — the impedance and
+            ``cos θ`` factors no longer cancel and an evanescent wave carries no real
+            power despite a non-zero ``t``. Use
+            :meth:`hyperbolic_optics.fields.FieldProfile.transmittance` (Poynting
+            flux) for correct power transmittance in the general case; this Mueller
+            matrix is for the polarization transformation of a transmitting,
+            index-matched stack.
+        """
+        if self.structure.t_pp is None:
+            self.structure.calculate_transmissivity()
+        self.mueller_matrix = self._mueller_from_jones(
+            self.structure.t_pp,
+            self.structure.t_ps,
+            self.structure.t_sp,
+            self.structure.t_ss,
+        )
+        return self.mueller_matrix
 
     def add_optical_component(self, component_type: str, *args: Any) -> None:
         """Add optical component to the propagation path.

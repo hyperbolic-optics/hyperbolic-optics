@@ -17,6 +17,7 @@ from typing import Any
 
 import numpy as np
 
+from hyperbolic_optics.axes import A, B, F, T, canonicalize
 from hyperbolic_optics.materials import Air, create_material
 from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.waves import Wave
@@ -293,9 +294,18 @@ class Layer(ABC):
         self.eps_tensor = None
         self.mu_tensor = None
 
-        self.thickness = data.get("thickness", None)
-        if self.thickness:
-            self.thickness = float(self.thickness) * 1e-4
+        # Thickness may be a scalar (no sweep) or a list/array (swept on the
+        # canonical T axis). An array is shaped to [1, 1, 1, T] (cm) so it
+        # broadcasts as the thickness batch axis inside Wave.get_matrix; a scalar
+        # is kept as a Python float. Microns -> cm via the 1e-4 factor.
+        thickness = data.get("thickness", None)
+        if thickness is None:
+            self.thickness = None
+        elif np.isscalar(thickness):
+            self.thickness = float(thickness) * 1e-4
+        else:
+            array = np.asarray(thickness, dtype=np.float64) * 1e-4
+            self.thickness = canonicalize(array, batch_axes=(T,))
 
     def material_factory(self) -> None:
         """Resolve ``self.material`` (a name or arbitrary-tensor dict) to an instance.
@@ -358,31 +368,35 @@ class Layer(ABC):
 
     @staticmethod
     def _canonical_base(tensor: np.ndarray) -> np.ndarray:
-        """Insert size-1 A/B axes so a fetched ``[..., 3, 3]`` tensor is canonical.
+        """Insert size-1 A/B/T axes so a fetched ``[..., 3, 3]`` tensor is canonical.
 
-        ``[3, 3] -> [1, 1, 1, 3, 3]`` (single frequency) and
-        ``[F, 3, 3] -> [1, 1, F, 3, 3]`` (frequency-resolved).
+        A fetched ``[3, 3]`` (single frequency) or ``[F, 3, 3]``
+        (frequency-resolved) tensor becomes canonical via
+        :func:`hyperbolic_optics.axes.canonicalize`; the frequency axis lands on
+        the ``F`` position and every other batch axis (incl. thickness) is size 1.
         """
         if tensor.ndim == 2:
-            return tensor[np.newaxis, np.newaxis, np.newaxis, ...]
+            return canonicalize(tensor, batch_axes=(), matrix_ndim=2)
         if tensor.ndim == 3:
-            return tensor[np.newaxis, np.newaxis, ...]
+            return canonicalize(tensor, batch_axes=(F,), matrix_ndim=2)
         raise ValueError(f"Unexpected base tensor shape {tensor.shape}")
 
     @staticmethod
     def _canonical_beta(beta: np.ndarray) -> np.ndarray:
-        """Shape the z-rotation angle to broadcast as a canonical ``[A, B, 1]`` batch.
+        """Shape the z-rotation angle to a canonical batch (no matrix axes).
 
-        ``scalar -> [1, 1, 1]`` (Incident/Simple), ``[B] -> [1, B, 1]``
-        (Azimuthal/Dispersion), ``[A, B] -> [A, B, 1]`` (FullSweep).
+        ``scalar`` (Incident/Simple), ``[B]`` (Azimuthal/Dispersion), and
+        ``[A, B]`` (FullSweep) map onto the ``A``/``B`` positions via
+        :func:`hyperbolic_optics.axes.canonicalize`; frequency and thickness stay
+        size 1.
         """
         beta = np.asarray(beta, dtype=np.float64)
         if beta.ndim == 0:
-            return beta.reshape(1, 1, 1)
+            return canonicalize(beta, batch_axes=())
         if beta.ndim == 1:
-            return beta[np.newaxis, :, np.newaxis]
+            return canonicalize(beta, batch_axes=(B,))
         if beta.ndim == 2:
-            return beta[..., np.newaxis]
+            return canonicalize(beta, batch_axes=(A, B))
         raise ValueError(f"Unexpected rotationZ shape {beta.shape}")
 
     def rotate_tensors(self) -> None:
@@ -439,11 +453,11 @@ class PrismLayer(Layer):
         The prism varies with incident angle only; the size-1 azimuth/frequency
         axes broadcast against the rest of the stack during the matrix product.
         """
-        # Canonical kx is [A, 1, 1]; the ambient medium wants a 1D angle array.
+        # Canonical kx lives on the A axis; the ambient medium wants a 1D angle array.
         kx_1d = np.asarray(self.kx, dtype=np.float64).reshape(-1)
         prism = AmbientIncidentMedium(self.eps_prism, kx_1d)
-        # construct_tensor -> [A, 4, 4]; add size-1 azimuth + frequency axes.
-        self.matrix = prism.construct_tensor()[:, np.newaxis, np.newaxis, :, :]
+        # construct_tensor -> [A, 4, 4]; lift the angle axis to A, rest size 1.
+        self.matrix = canonicalize(prism.construct_tensor(), batch_axes=(A,), matrix_ndim=2)
 
 
 class AirGapLayer(Layer):
@@ -501,12 +515,12 @@ class AirGapLayer(Layer):
         # An air gap is dispersionless and angle-independent in its tensors;
         # canonicalise to [1, 1, 1, 3, 3]. The angle/frequency dependence of the
         # layer matrix enters through kx and k0 inside Wave.
-        self.eps_tensor = self.isotropic_material.fetch_permittivity_tensor()[
-            np.newaxis, np.newaxis, np.newaxis, ...
-        ]
-        self.mu_tensor = self.isotropic_material.fetch_magnetic_tensor()[
-            np.newaxis, np.newaxis, np.newaxis, ...
-        ]
+        self.eps_tensor = canonicalize(
+            self.isotropic_material.fetch_permittivity_tensor(), batch_axes=(), matrix_ndim=2
+        )
+        self.mu_tensor = canonicalize(
+            self.isotropic_material.fetch_magnetic_tensor(), batch_axes=(), matrix_ndim=2
+        )
 
         self.create()
 
@@ -643,13 +657,13 @@ class IsotropicSemiInfiniteLayer(Layer):
         """
         exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
         if np.ndim(self.incident_angle) == 0:
-            # scalar incident angle (Simple) -> [4, 4]
+            # scalar incident angle (Simple) -> [4, 4]; no swept batch axes.
             matrix = exit_medium.construct_tensor_singular()
-            self.matrix = matrix[np.newaxis, np.newaxis, np.newaxis, :, :]
+            self.matrix = canonicalize(matrix, batch_axes=(), matrix_ndim=2)
         else:
-            # array incident angle -> [A, 4, 4]
+            # array incident angle -> [A, 4, 4]; lift the angle axis to A.
             matrix = exit_medium.construct_tensor()
-            self.matrix = matrix[:, np.newaxis, np.newaxis, :, :]
+            self.matrix = canonicalize(matrix, batch_axes=(A,), matrix_ndim=2)
 
 
 class LayerFactory:

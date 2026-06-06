@@ -6,9 +6,12 @@ Run on a known-good commit::
     python -m tests.golden.generate simple_calcite incident_calcite   # a subset
 
 For each payload this runs ``Structure().execute(...)``, captures the four
-reflection coefficients and the 4x4 Mueller matrix, and writes
-``tests/golden/data/<name>.npz``. Failures are reported but do not abort the run,
-so a single non-composing payload never blocks the rest of the battery.
+reflection coefficients, the 4x4 Mueller matrix, and the field-resolved
+quantities from :class:`~hyperbolic_optics.fields.FieldProfile` (p-pol
+reflectance/transmittance/total + per-layer absorption and the four amplitude
+transmission coefficients), and writes ``tests/golden/data/<name>.npz``. Failures
+are reported but do not abort the run, so a single non-composing payload never
+blocks the rest of the battery.
 """
 
 import sys
@@ -17,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
+from hyperbolic_optics.fields import FieldProfile
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
 from tests.golden.payloads import PAYLOADS
@@ -71,6 +75,27 @@ def compute_outputs(payload: dict) -> dict[str, np.ndarray]:
         outputs["mueller"] = _subsample(np.asarray(mueller.mueller_matrix), matrix_ndim=2)
     except Exception as exc:  # noqa: BLE001 - Mueller lacks FullSweep support
         print(f"  (mueller skipped: {type(exc).__name__}: {exc})")
+
+    # Field-resolved quantities (numerical transmission / absorption / field
+    # profiles). FullSweep is skipped -- its full field arrays are too heavy to
+    # snapshot, mirroring the Mueller omission. The skip is deterministic per
+    # payload, so generation and the test agree on the key set.
+    if getattr(structure.scenario, "type", None) != "FullSweep":
+        try:
+            fp = FieldProfile(structure)
+            summary = fp.summary("p")
+            outputs["fp_reflectance_p"] = _subsample(np.asarray(summary["R"]), matrix_ndim=0)
+            outputs["fp_transmittance_p"] = _subsample(np.asarray(summary["T"]), matrix_ndim=0)
+            outputs["fp_total_absorption_p"] = _subsample(
+                np.asarray(summary["total_absorption"]), matrix_ndim=0
+            )
+            for entry in summary["layers"]:
+                key = f"fp_absorption_layer{entry['index']}"
+                outputs[key] = _subsample(np.asarray(entry["absorptance"]), matrix_ndim=0)
+            for name, value in fp.transmission_coefficients().items():
+                outputs[f"fp_{name}"] = _subsample(np.asarray(value), matrix_ndim=0)
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            print(f"  (field profile skipped: {type(exc).__name__}: {exc})")
 
     return outputs
 

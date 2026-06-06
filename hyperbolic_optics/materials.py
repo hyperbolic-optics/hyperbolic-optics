@@ -453,6 +453,135 @@ class CalciteUpper(Calcite):
         super().__init__(freq_min, freq_max, variant="upper", mu_r=mu_r)
 
 
+class AluminiumNitride(ParameterizedUniaxialMaterial):
+    """Wurtzite AlN — c-cut uniaxial (E1 ordinary, A1 extraordinary phonons)."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize AlN (aluminium nitride), a c-cut uniaxial polar crystal.
+
+        Used (with SiC and MoO₃) in the layer-resolved absorption example. See
+        ``material_params.json`` for the phonon parameters and their provenance.
+        """
+        super().__init__("aluminium_nitride", freq_min, freq_max, mu_r)
+
+
+class SiliconCarbide(ParameterizedUniaxialMaterial):
+    """4H-SiC — modeled as a c-cut uniaxial crystal (ordinary ≈ extraordinary)."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize SiC (silicon carbide), a polar crystal with a single TO-LO pair.
+
+        SiC is nearly isotropic in its reststrahlen band; the parameters use equal
+        ordinary/extraordinary oscillators (see ``material_params.json``).
+        """
+        super().__init__("silicon_carbide", freq_min, freq_max, mu_r)
+
+
+class BiaxialMaterial(UniaxialMaterial):
+    """Orthorhombic biaxial material: a diagonal ε tensor with three distinct axes.
+
+    Generalizes :class:`UniaxialMaterial` from two principal values (ordinary,
+    extraordinary) to three (x, y, z). It reuses the factorized TO-LO
+    ``permittivity_calc`` per axis — the same Lowndes/Gervais form the α-MoO₃
+    literature uses — and only changes how the diagonal tensor is assembled. There
+    is no off-diagonal coupling (unlike monoclinic :class:`MonoclinicMaterial`).
+    """
+
+    def _create_permittivity_tensor(  # type: ignore[override]
+        self,
+        eps_x: complex | np.ndarray,
+        eps_y: complex | np.ndarray,
+        eps_z: complex | np.ndarray,
+    ) -> np.ndarray:
+        """Assemble a diagonal tensor ``diag(eps_x, eps_y, eps_z)`` (scalar or batched)."""
+        if np.isscalar(eps_x):
+            return np.diag([eps_x, eps_y, eps_z]).astype(np.complex128)
+        diag = np.stack([eps_x, eps_y, eps_z], axis=-1)
+        result = np.zeros(diag.shape[:-1] + (3, 3), dtype=np.complex128)
+        indices = np.arange(3)
+        result[..., indices, indices] = diag
+        return result
+
+    def permittivity_fetch(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:  # type: ignore[override]
+        """Return ``(eps_x, eps_y, eps_z)`` over the full frequency range."""
+        params = self.permittivity_parameters()
+        eps_x = self.permittivity_calc(**params["x"])
+        eps_y = self.permittivity_calc(**params["y"])
+        eps_z = self.permittivity_calc(**params["z"])
+        return eps_x, eps_y, eps_z
+
+    def fetch_permittivity_tensor(self) -> np.ndarray:
+        """Fetch the full diagonal permittivity tensor for all frequencies."""
+        eps_x, eps_y, eps_z = self.permittivity_fetch()
+        return self._create_permittivity_tensor(eps_x, eps_y, eps_z)
+
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
+        """Fetch the diagonal permittivity tensor at a single frequency."""
+        params = self.permittivity_parameters()
+        eps_x = self.permittivity_calc_for_freq(requested_frequency, **params["x"])
+        eps_y = self.permittivity_calc_for_freq(requested_frequency, **params["y"])
+        eps_z = self.permittivity_calc_for_freq(requested_frequency, **params["z"])
+        return self._create_permittivity_tensor(eps_x, eps_y, eps_z)
+
+
+class ParameterizedBiaxialMaterial(BiaxialMaterial):
+    """Base class for biaxial materials with parameters from configuration."""
+
+    def __init__(
+        self,
+        material_type: str,
+        freq_min: float | None = None,
+        freq_max: float | None = None,
+        mu_r: float = 1.0,
+    ) -> None:
+        """Initialize a biaxial material from the ``biaxial_materials`` config block.
+
+        Args:
+            material_type: Key in ``material_params.json`` ``biaxial_materials``.
+            freq_min: Override minimum frequency in cm⁻¹.
+            freq_max: Override maximum frequency in cm⁻¹.
+            mu_r: Relative magnetic permeability (default: 1.0, non-magnetic).
+        """
+        BaseMaterial.__init__(self)
+        params = load_material_parameters()["biaxial_materials"][material_type]
+        self.name = params.get("name", "Unnamed Biaxial Material")
+        self.material_type = material_type
+        self.mu_r = mu_r
+
+        if "frequency_range" in params:
+            self._initialize_frequency_range(params, freq_min, freq_max)
+        else:
+            self.frequency = None
+
+    def permittivity_parameters(self) -> dict[str, dict[str, np.ndarray]]:
+        """Get per-axis (x, y, z) oscillator parameters from configuration."""
+        params = load_material_parameters()["biaxial_materials"][self.material_type]["parameters"]
+        return {
+            axis: {key: np.array(value, dtype=np.complex128) for key, value in axis_params.items()}
+            for axis, axis_params in params.items()
+        }
+
+
+class MolybdenumTrioxide(ParameterizedBiaxialMaterial):
+    """α-MoO₃ — biaxial van der Waals crystal supporting in-plane hyperbolic polaritons."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize α-MoO₃ (orthorhombic, biaxial).
+
+        Three distinct reststrahlen bands give strong in-plane anisotropy, the
+        origin of the azimuth-dependent hyperbolic phonon polariton in the
+        layer-resolved absorption example. Parameters and provenance are in
+        ``material_params.json``.
+        """
+        super().__init__("molybdenum_trioxide", freq_min, freq_max, mu_r)
+
+
 class MonoclinicMaterial(BaseMaterial):
     """Base class for monoclinic materials with more complex permittivity tensors."""
 
@@ -947,6 +1076,9 @@ def create_material(material: str | dict[str, Any]) -> BaseMaterial:
         "Calcite": CalciteUpper,
         "CalciteLower": CalciteLower,
         "GalliumOxide": GalliumOxide,
+        "MoO3": MolybdenumTrioxide,
+        "AlN": AluminiumNitride,
+        "SiC": SiliconCarbide,
     }
     try:
         return registry[material]()

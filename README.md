@@ -32,7 +32,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 - **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
 - **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
 - **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
-- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide
+- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide (monoclinic), α-MoO₃ (biaxial), AlN and SiC
 - **Arbitrary Material Support:** Define custom materials with arbitrary permittivity tensor
 - **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
 - **Visualization:** Publication-quality plotting functionality for results analysis
@@ -205,10 +205,75 @@ This package was used to generate results in:
 
 ---
 
+## Transmission, Absorption & Field Profiles
+
+Reflection is computed automatically by `Structure.execute`. Power transmittance,
+layer-resolved absorption, and field profiles are computed **numerically** from
+the propagated fields (energy-conserving `R + T + ΣA = 1`) via `FieldProfile`:
+
+```python
+from hyperbolic_optics.structure import Structure
+from hyperbolic_optics.fields import FieldProfile
+
+structure = Structure()
+structure.execute(payload)
+
+fp = FieldProfile(structure)
+print(fp.summary("p"))            # R, T, per-layer absorption, conservation residual
+T = fp.transmittance("p")          # power transmittance (same shape as r_pp)
+A = fp.layer_absorption("p")       # per-interior-layer absorptance
+prof = fp.field_profile("p")       # z, Ex..Hz, S_z(z), cumulative absorption
+```
+
+For a single semi-infinite anisotropic layer there are no interior layers to
+resolve, so `T = 1 − R` is the power delivered into the bulk, and `field_profile`
+shows it being absorbed with depth.
+
+### Polarization conversion
+
+Cross-polarization (the `r_ps`/`t_ps` channels) can be analysed several ways:
+
+- `FieldProfile.polarization_resolved("p")` *(experimental)* — splits `R` and `T`
+  into co- and cross-polarized power and reports the conversion fractions. The
+  transmitted s/p split is rigorous for an isotropic exit.
+- `FieldProfile.stokes_from_field_profile("p")` — the Stokes vector and
+  polarization ellipse (azimuth ψ, ellipticity χ) of the transverse field *versus
+  depth*, so you can watch the state evolve through a birefringent layer.
+- `Mueller.calculate_transmission_mueller_matrix()` — the transmission Mueller
+  matrix from the `t` coefficients. Its `|t|²` intensity equals true power
+  transmittance only for a **symmetric prism = substrate** system; into a
+  lower-index medium it breaks in the evanescent regime (use
+  `FieldProfile.transmittance` for power there).
+
+`examples/layer_resolved_absorption.py` reproduces the azimuthal layer-resolved
+absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
+(Passler, Jeannin & Paarmann, *J. Opt. Soc. Am. B* **37**, 1060 (2020)).
+The amplitude transmission coefficients are also available via
+`FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
+
+## Sweeping Layer Thickness
+
+A layer's `thickness` may be a **list** instead of a scalar, which sweeps it as a
+fourth canonical axis (`T`) alongside incident angle, azimuth, and frequency —
+computed in a single `execute` (the eigendecomposition is thickness-independent;
+only the propagation phase broadcasts over `T`). It composes with any scenario and
+is absent (size 1) by default:
+
+```python
+{"type": "Crystal Layer", "material": "Calcite",
+ "thickness": [0.5, 1.0, 1.5, 2.0], "rotationY": 90}   # -> appends a length-4 T axis
+```
+
+Outputs append the trailing `T` axis (e.g. `Simple` → `r_pp.shape == (4,)`,
+`Incident` → `(F, angle, 4)`). At most one layer may carry a list thickness. For a
+2-D thickness × thickness grid, combine a list thickness on one layer with the
+`ThicknessSweep` helper (`from hyperbolic_optics import ThicknessSweep`), which
+re-runs the stack and stacks results along a leading index.
+
 ## Known Issues / Limitations
 
-- **Transmission Coefficients:** Currently, transmission coefficients are not fully supported
 - **Multiple Optical Components:** While you can place multiple Mueller matrix components in series, matching incident angles between them isn't yet implemented
+- **Field profiles over full sweeps:** `field_profile` is batched but intended for `Simple` / single-point use — a full angle/frequency sweep times the depth axis is memory-heavy.
 
 ## Testing
 

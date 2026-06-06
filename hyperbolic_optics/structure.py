@@ -23,7 +23,7 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.axes import assert_canonical
+from hyperbolic_optics.axes import A, F, assert_canonical, canonicalize, present
 from hyperbolic_optics.layers import LayerFactory
 from hyperbolic_optics.materials import create_material
 from hyperbolic_optics.scenario import ScenarioSetup
@@ -180,11 +180,13 @@ class Structure:
         """
         incident_angle = np.asarray(self.incident_angle, dtype=np.float64)
         kx = np.sqrt(np.float64(self.eps_prism)) * np.sin(incident_angle)
-        # Canonical layout (see hyperbolic_optics.axes): kx -> [A, 1, 1],
-        # k0 -> [1, 1, F]. Un-swept scenarios collapse to size-1 axes.
-        self.k_x = np.atleast_1d(kx).astype(np.float64).reshape(-1, 1, 1)
+        # Canonical layout (see hyperbolic_optics.axes): kx lives on the A axis,
+        # k0 on the F axis; all other batch axes (incl. thickness T) are size 1.
+        # A swept layer introduces T>1 via broadcasting, so neither needs to know
+        # about it here.
+        self.k_x = canonicalize(np.atleast_1d(kx).astype(np.float64), batch_axes=(A,))
         k0 = np.atleast_1d(np.asarray(self.frequency, dtype=np.float64)) * 2.0 * m.pi
-        self.k_0 = k0.reshape(1, 1, -1)
+        self.k_0 = canonicalize(k0, batch_axes=(F,))
         # Boundary-in: kx and k0 enter the pipeline canonical [A, 1, 1] / [1, 1, F].
         assert_canonical(self.k_x, matrix_ndim=0, name="kx")
         assert_canonical(self.k_0, matrix_ndim=0, name="k0")
@@ -201,6 +203,7 @@ class Structure:
         """
         # First Layer is prism, so we parse it
         self.eps_prism = layer_data_list[0].get("permittivity", None)
+        self._validate_thickness_sweep(layer_data_list)
         # Resolve the frequency array once and share it with the scenario so
         # every layer evaluates its material over the same frequencies.
         self.frequency = self.resolve_frequency(layer_data_list)
@@ -226,6 +229,30 @@ class Structure:
                     self.k_x,
                     self.k_0,
                 )
+            )
+
+    @staticmethod
+    def _validate_thickness_sweep(layer_data_list: list[dict[str, Any]]) -> None:
+        """Allow at most one layer with a list-valued ``thickness`` (the T axis).
+
+        A single swept layer defines the canonical thickness axis; multiple list
+        thicknesses would need independent axes, which is out of scope. Scalars
+        are unaffected.
+
+        Raises:
+            ValueError: If more than one layer carries a list/array ``thickness``.
+        """
+        swept = [
+            i
+            for i, layer in enumerate(layer_data_list)
+            if layer.get("thickness") is not None and not np.isscalar(layer.get("thickness"))
+        ]
+        if len(swept) > 1:
+            raise ValueError(
+                "Only one layer may have a list-valued 'thickness' (the canonical T "
+                f"axis); got swept layers at indices {swept}. For a 2-D thickness x "
+                "thickness grid, put a list thickness on one layer and use "
+                "hyperbolic_optics.sweep.ThicknessSweep for the other."
             )
 
     def calculate(self) -> None:
@@ -289,17 +316,25 @@ class Structure:
     def _present(coefficient: np.ndarray) -> np.ndarray:
         """Map a canonical [A, B, F] coefficient to its presentation shape.
 
-        Reorders axes to (F, A, B) and squeezes size-1 axes.
+        Thin wrapper over :func:`hyperbolic_optics.axes.present` (shared with
+        :mod:`hyperbolic_optics.fields` so coefficients and field-resolved
+        quantities present identically).
         """
-        return np.squeeze(np.transpose(coefficient, (2, 0, 1)))
+        return present(coefficient)
 
     def calculate_transmissivity(self) -> None:
-        """Extract transmission coefficients from the total transfer matrix.
+        """Extract transmission *amplitude* coefficients from the transfer matrix.
 
         Computes ``t_pp, t_ps, t_sp, t_ss``. The results are returned in the same
         presentation layout as the reflection coefficients (see :meth:`_present`),
         so ``t_*`` and ``r_*`` share axis ordering. Not called by ``execute()`` by
         default — invoke explicitly after ``calculate()`` if transmission is needed.
+
+        Note:
+            These are bare amplitude coefficients. For *power* transmittance,
+            layer-resolved absorption, and field profiles computed numerically
+            from the propagated fields (energy-conserving ``R + T + ΣA = 1``), use
+            :class:`hyperbolic_optics.fields.FieldProfile`, which is the blessed path.
         """
         bottom_line = (
             self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]

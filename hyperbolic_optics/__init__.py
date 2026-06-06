@@ -33,24 +33,33 @@ References:
 
 __version__ = "0.2.3"
 
+# Field profiles, transmission & absorption
+from hyperbolic_optics.fields import FieldProfile
+
 # Layers
 from hyperbolic_optics.layers import LayerFactory
 
 # Materials
 from hyperbolic_optics.materials import (
     Air,
+    AluminiumNitride,
     ArbitraryMaterial,
     CalciteLower,
     CalciteUpper,
     GalliumOxide,
+    MolybdenumTrioxide,
     Quartz,
     Sapphire,
+    SiliconCarbide,
 )
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.scenario import ScenarioSetup
 
 # Core classes
 from hyperbolic_optics.structure import Structure
+
+# Thickness sweep helper
+from hyperbolic_optics.sweep import ThicknessSweep
 
 # Type hints (for users who want them)
 from hyperbolic_optics.types import (
@@ -72,6 +81,8 @@ __all__ = [
     # Core classes
     "Structure",
     "Mueller",
+    "FieldProfile",
+    "ThicknessSweep",
     "ScenarioSetup",
     # Materials
     "Quartz",
@@ -79,6 +90,9 @@ __all__ = [
     "CalciteUpper",
     "CalciteLower",
     "GalliumOxide",
+    "MolybdenumTrioxide",
+    "AluminiumNitride",
+    "SiliconCarbide",
     "ArbitraryMaterial",
     "Air",
     # Layers
