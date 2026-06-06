@@ -316,27 +316,18 @@ class Mueller:
             dtype=np.complex128,
         )
 
-        # Handle different scenario types
-        if self.structure.scenario.type == "Simple":
-            # For Simple scenario, f_matrix is just [4, 4], no need to transpose
-            pass
-        else:
-            # For other scenarios, transpose as before
-            f_matrix = np.transpose(f_matrix, axes=[2, 3, 0, 1])
-
+        # f_matrix is built with the 4x4 as the leading axes; move them to the
+        # trailing axes so it broadcasts for any batch rank -- scalar (Simple),
+        # 2-D (Incident/Azimuthal/Dispersion) or 3-D (FullSweep). a_matrix [4, 4]
+        # then broadcasts against [*batch, 4, 4] in the matmul, so no scenario
+        # branching (and FullSweep now works).
+        f_matrix = np.moveaxis(f_matrix, (0, 1), (-2, -1))
         a_matrix = np.array(
             [[1, 0, 0, 1], [1, 0, 0, -1], [0, 1, 1, 0], [0, 1j, -1j, 0]],
             dtype=np.complex128,
         )
-
-        # Add batch dimensions if needed
-        if self.structure.scenario.type == "Simple":
-            # For Simple scenario, just compute matrix multiplication directly
-            self.mueller_matrix = (a_matrix @ f_matrix @ np.linalg.inv(a_matrix)).astype(np.float64)
-        else:
-            # For other scenarios, add batch dimensions
-            a_matrix = a_matrix[np.newaxis, np.newaxis, ...]
-            self.mueller_matrix = (a_matrix @ f_matrix @ np.linalg.inv(a_matrix)).astype(np.float64)
+        # The Mueller matrix is real-valued (A·F·A⁻¹); take the real part directly.
+        self.mueller_matrix = np.real(a_matrix @ f_matrix @ np.linalg.inv(a_matrix))
 
     def add_optical_component(self, component_type: str, *args: Any) -> None:
         """Add optical component to the propagation path.
@@ -386,28 +377,12 @@ class Mueller:
             S2 = +45° vs -45° linear polarization
             S3 = right vs left circular polarization
         """
-        if self.structure.scenario.type == "Simple":
-            # For Simple scenario, start with just the incident vector [4,]
-            stokes_vector = self.incident_stokes.reshape([4, 1])
-        else:
-            # For other scenarios, add batch dimensions
-            stokes_vector = self.incident_stokes.reshape([1, 1, 4, 1])
-
-        for i, component in enumerate(self.optical_components):
-            if self.structure.scenario.type == "Simple":
-                # For Simple scenario, component should be [4, 4]
-                stokes_vector = component @ stokes_vector
-            else:
-                # For other scenarios, component has batch dimensions
-                stokes_vector = component @ stokes_vector
-
-        if self.structure.scenario.type == "Simple":
-            # For Simple scenario, remove the last dimension [4, 1] -> [4]
-            self.stokes_parameters = stokes_vector[:, 0]
-        else:
-            # For other scenarios, remove the last dimension [..., 4, 1] -> [..., 4]
-            self.stokes_parameters = stokes_vector[..., 0]
-
+        # Incident Stokes as a column vector [4, 1]; it broadcasts against any
+        # batched component matrix [*batch, 4, 4], so this is scenario-agnostic.
+        stokes_vector = self.incident_stokes.reshape(4, 1)
+        for component in self.optical_components:
+            stokes_vector = component @ stokes_vector
+        self.stokes_parameters = stokes_vector[..., 0]
         return self.stokes_parameters
 
     def get_reflectivity(self) -> np.ndarray:
