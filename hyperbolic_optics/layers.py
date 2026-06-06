@@ -17,11 +17,7 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.anisotropy_utils import (
-    anisotropy_rotation_one_axis,
-    anisotropy_rotation_one_value,
-    anisotropy_rotation_two_axes,
-)
+from hyperbolic_optics.anisotropy_utils import rotate_tensor
 from hyperbolic_optics.materials import (
     Air,
     ArbitraryMaterial,
@@ -356,52 +352,49 @@ class Layer(ABC):
                 np.complex128
             )
 
-    def _to_canonical_tensor(self, tensor: np.ndarray) -> np.ndarray:
-        """Map a rotated tensor to canonical ``[A, B, F, 3, 3]`` for its scenario.
+    @staticmethod
+    def _canonical_base(tensor: np.ndarray) -> np.ndarray:
+        """Insert size-1 A/B axes so a fetched ``[..., 3, 3]`` tensor is canonical.
 
-        Each scenario's rotation produces a different axis order with the
-        un-swept axes absent; this inserts the missing size-1 axes so every
-        tensor shares the ``[A, B, F, 3, 3]`` layout (see
-        ``hyperbolic_optics.axes``). This is the single boundary-in point where
-        scenario-specific axis knowledge is allowed to live.
+        ``[3, 3] -> [1, 1, 1, 3, 3]`` (single frequency) and
+        ``[F, 3, 3] -> [1, 1, F, 3, 3]`` (frequency-resolved).
         """
-        if self.scenario == "Incident":
-            # [F, 3, 3] -> [1, 1, F, 3, 3]
-            return tensor[np.newaxis, np.newaxis, ...]
-        if self.scenario == "Azimuthal":
-            # one_axis gives [F, B, 3, 3] -> [1, B, F, 3, 3]
-            return np.swapaxes(tensor, 0, 1)[np.newaxis, ...]
-        if self.scenario == "Dispersion":
-            # azimuth folds into rotationZ: [B, 3, 3] -> [1, B, 1, 3, 3]
-            return tensor[np.newaxis, :, np.newaxis, ...]
-        if self.scenario == "Simple":
-            # [3, 3] -> [1, 1, 1, 3, 3]
+        if tensor.ndim == 2:
             return tensor[np.newaxis, np.newaxis, np.newaxis, ...]
-        if self.scenario == "FullSweep":
-            # two_axes already gives [A, B, F, 3, 3]
-            return tensor
-        raise NotImplementedError(f"Scenario {self.scenario} not implemented")
+        if tensor.ndim == 3:
+            return tensor[np.newaxis, np.newaxis, ...]
+        raise ValueError(f"Unexpected base tensor shape {tensor.shape}")
+
+    @staticmethod
+    def _canonical_beta(beta: np.ndarray) -> np.ndarray:
+        """Shape the z-rotation angle to broadcast as a canonical ``[A, B, 1]`` batch.
+
+        ``scalar -> [1, 1, 1]`` (Incident/Simple), ``[B] -> [1, B, 1]``
+        (Azimuthal/Dispersion), ``[A, B] -> [A, B, 1]`` (FullSweep).
+        """
+        beta = np.asarray(beta, dtype=np.float64)
+        if beta.ndim == 0:
+            return beta.reshape(1, 1, 1)
+        if beta.ndim == 1:
+            return beta[np.newaxis, :, np.newaxis]
+        if beta.ndim == 2:
+            return beta[..., np.newaxis]
+        raise ValueError(f"Unexpected rotationZ shape {beta.shape}")
 
     def rotate_tensors(self) -> None:
-        """Apply Euler angle rotations and emit canonical ``[A, B, F, 3, 3]`` tensors.
+        """Rotate ε/μ by the Euler angles and emit canonical ``[A, B, F, 3, 3]``.
 
-        Rotates both ε and μ tensors according to the specified Euler angles
-        (rotationX, rotationY, rotationZ), then normalises the axis layout so
-        the downstream physics never needs to know the scenario.
+        Scenario-agnostic: the fetched tensors and the z-rotation angle are
+        normalised to the canonical layout by rank, then a single broadcasting
+        rotation (``hyperbolic_optics.anisotropy_utils.rotate_tensor``) produces
+        canonical output. rotationX/Y are scalar crystal orientations and
+        broadcast for free.
         """
-        if self.scenario in ["Incident", "Dispersion", "Simple"]:
-            rotation_func = anisotropy_rotation_one_value
-        elif self.scenario == "Azimuthal":
-            rotation_func = anisotropy_rotation_one_axis
-        elif self.scenario == "FullSweep":
-            rotation_func = anisotropy_rotation_two_axes
-
-        self.eps_tensor = self._to_canonical_tensor(
-            rotation_func(self.eps_tensor, self.rotationX, self.rotationY, self.rotationZ)
-        )
-        self.mu_tensor = self._to_canonical_tensor(
-            rotation_func(self.mu_tensor, self.rotationX, self.rotationY, self.rotationZ)
-        )
+        eps = self._canonical_base(self.eps_tensor)
+        mu = self._canonical_base(self.mu_tensor)
+        beta = self._canonical_beta(self.rotationZ)
+        self.eps_tensor = rotate_tensor(eps, self.rotationX, self.rotationY, beta)
+        self.mu_tensor = rotate_tensor(mu, self.rotationX, self.rotationY, beta)
 
     @abstractmethod
     def create(self) -> None:
