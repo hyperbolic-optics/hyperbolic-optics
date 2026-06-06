@@ -17,15 +17,7 @@ from typing import Any
 
 import numpy as np
 
-from hyperbolic_optics.materials import (
-    Air,
-    ArbitraryMaterial,
-    CalciteLower,
-    CalciteUpper,
-    GalliumOxide,
-    Quartz,
-    Sapphire,
-)
+from hyperbolic_optics.materials import Air, create_material
 from hyperbolic_optics.scenario import ScenarioSetup
 from hyperbolic_optics.waves import Wave
 
@@ -307,33 +299,12 @@ class Layer(ABC):
             self.thickness = float(self.thickness) * 1e-4
 
     def material_factory(self) -> None:
-        """Create the material object based on material name or specifications.
-
-        Instantiates the appropriate material class (Quartz, Calcite, etc.) or
-        creates an ArbitraryMaterial from custom parameters.
+        """Resolve ``self.material`` (a name or arbitrary-tensor dict) to an instance.
 
         Raises:
-            NotImplementedError: If the material name is not recognized
-
-        Note:
-            For arbitrary materials, expects a dictionary with permittivity
-            and optionally permeability tensor components.
+            NotImplementedError: If the material name is not recognized.
         """
-        if isinstance(self.material, dict):
-            # Create an ArbitraryMaterial instance instead of returning the dict
-            self.material = ArbitraryMaterial(self.material)
-        elif self.material == "Quartz":
-            self.material = Quartz()
-        elif self.material == "Sapphire":
-            self.material = Sapphire()
-        elif self.material == "Calcite":
-            self.material = CalciteUpper()
-        elif self.material == "CalciteLower":
-            self.material = CalciteLower()
-        elif self.material == "GalliumOxide":
-            self.material = GalliumOxide()
-        else:
-            raise NotImplementedError(f"Material {self.material} not implemented")
+        self.material = create_material(self.material)
 
     def calculate_z_rotation(self) -> None:
         """Calculate the z-axis rotation based on scenario type and rotation mode.
@@ -377,22 +348,14 @@ class Layer(ABC):
         for the appropriate frequency or frequency range based on scenario type.
 
         Note:
-            For Incident/Azimuthal scenarios, tensors span the full frequency
-            range. For Dispersion/Simple scenarios, tensors are calculated for
-            a single frequency.
+            The material is evaluated over the scenario's frequency array
+            (length 1 for single-frequency scenarios, length F otherwise), so
+            eps/mu and k0 always share the same frequencies. Scenario-agnostic.
         """
         self.material_factory()
-
-        if self.scenario in ["Incident", "Azimuthal", "FullSweep"]:
-            self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
-            self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
-        elif self.scenario in ["Dispersion", "Simple"]:
-            self.eps_tensor = self.material.fetch_permittivity_tensor_for_freq(
-                self.frequency
-            ).astype(np.complex128)
-            self.mu_tensor = self.material.fetch_magnetic_tensor_for_freq(self.frequency).astype(
-                np.complex128
-            )
+        self.material.frequency = np.atleast_1d(np.asarray(self.frequency, dtype=np.float64))
+        self.eps_tensor = self.material.fetch_permittivity_tensor().astype(np.complex128)
+        self.mu_tensor = self.material.fetch_magnetic_tensor().astype(np.complex128)
 
     @staticmethod
     def _canonical_base(tensor: np.ndarray) -> np.ndarray:

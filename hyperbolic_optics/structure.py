@@ -25,7 +25,7 @@ import numpy as np
 
 from hyperbolic_optics.axes import assert_canonical
 from hyperbolic_optics.layers import LayerFactory
-from hyperbolic_optics.materials import CalciteUpper, GalliumOxide, Quartz, Sapphire
+from hyperbolic_optics.materials import create_material
 from hyperbolic_optics.scenario import ScenarioSetup
 
 
@@ -134,31 +134,35 @@ class Structure:
         self.azimuthal_angle = self.scenario.azimuthal_angle
         self.frequency = self.scenario.frequency
 
-    def get_frequency_range(self, last_layer: dict[str, Any]) -> None:
-        """Determine frequency range from material's default range.
+    def resolve_frequency(self, layer_data_list: list[dict[str, Any]]) -> np.ndarray:
+        """Resolve the frequency array (cm⁻¹) for the simulation.
+
+        Precedence: an explicit ``ScenarioData['frequency']`` (scalar or list)
+        wins; otherwise fall back to the default range of the *last
+        material-bearing layer* (the bulk crystal — an isotropic exit layer has
+        no dispersive range, so it is skipped automatically).
 
         Args:
-            last_layer: Dictionary containing material name
+            layer_data_list: The raw layer configuration dicts.
+
+        Returns:
+            A 1-D frequency array (length 1 for single-frequency scenarios).
 
         Raises:
-            NotImplementedError: If material is not recognized
-
-        Note:
-            Automatically uses material-specific frequency range (e.g.,
-            1300-1600 cm⁻¹ for Calcite upper band).
+            ValueError: If no frequency is given and no material can supply a range.
         """
-        material = last_layer["material"]
-
-        if material == "Quartz":
-            self.frequency = Quartz().frequency
-        elif material == "Sapphire":
-            self.frequency = Sapphire().frequency
-        elif material == "Calcite":
-            self.frequency = CalciteUpper().frequency
-        elif material == "GalliumOxide":
-            self.frequency = GalliumOxide().frequency
-        else:
-            raise NotImplementedError("Material not implemented")
+        if self.frequency is not None:
+            return np.atleast_1d(np.asarray(self.frequency, dtype=np.float64))
+        for layer in reversed(layer_data_list):
+            material = layer.get("material")
+            if material is not None:
+                freq = create_material(material).frequency
+                if freq is not None:
+                    return np.asarray(freq, dtype=np.float64)
+        raise ValueError(
+            "No frequency given and no dispersive material to derive a range from; "
+            "set ScenarioData['frequency']."
+        )
 
     def calculate_kx_k0(self) -> None:
         """Calculate parallel wavevector and free-space wavenumber.
@@ -193,12 +197,10 @@ class Structure:
         """
         # First Layer is prism, so we parse it
         self.eps_prism = layer_data_list[0].get("permittivity", None)
-        if not self.frequency:
-            last_layer = layer_data_list[-1]
-            if last_layer.get("type") != "Semi Infinite Isotropic Layer":
-                self.get_frequency_range(last_layer)
-            else:
-                self.get_frequency_range(layer_data_list[-2])
+        # Resolve the frequency array once and share it with the scenario so
+        # every layer evaluates its material over the same frequencies.
+        self.frequency = self.resolve_frequency(layer_data_list)
+        self.scenario.frequency = self.frequency
         self.calculate_kx_k0()
 
         # Create prism layer and add it to layers list
