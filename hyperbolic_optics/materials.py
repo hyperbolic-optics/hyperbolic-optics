@@ -481,6 +481,34 @@ class SiliconCarbide(ParameterizedUniaxialMaterial):
         super().__init__("silicon_carbide", freq_min, freq_max, mu_r)
 
 
+class HexagonalBoronNitride(ParameterizedUniaxialMaterial):
+    """hBN — the benchmark natural hyperbolic material (c-cut uniaxial, two bands)."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize natural hexagonal boron nitride.
+
+        Two reststrahlen bands give type-I (out-of-plane, ~760-825 cm⁻¹) and
+        type-II (in-plane, ~1360-1614 cm⁻¹) hyperbolic dispersion. See
+        ``material_params.json`` for the phonon parameters and their provenance.
+        """
+        super().__init__("hexagonal_boron_nitride", freq_min, freq_max, mu_r)
+
+
+class GalliumNitride(ParameterizedUniaxialMaterial):
+    """Wurtzite GaN — c-cut uniaxial polar semiconductor."""
+
+    def __init__(
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
+    ) -> None:
+        """Initialize GaN (gallium nitride), a wurtzite polar semiconductor.
+
+        See ``material_params.json`` for the E1/A1 phonon parameters.
+        """
+        super().__init__("gallium_nitride", freq_min, freq_max, mu_r)
+
+
 class BiaxialMaterial(UniaxialMaterial):
     """Orthorhombic biaxial material: a diagonal ε tensor with three distinct axes.
 
@@ -1055,32 +1083,73 @@ class Air(IsotropicMaterial):
         self.name = "Air"
 
 
+# Single source of truth for the material name -> class mapping, shared by the
+# layer factory, frequency-range resolution, and list_materials().
+_MATERIAL_REGISTRY: dict[str, type[BaseMaterial]] = {
+    "Quartz": Quartz,
+    "Sapphire": Sapphire,
+    "Calcite": CalciteUpper,
+    "CalciteLower": CalciteLower,
+    "GalliumOxide": GalliumOxide,
+    "MoO3": MolybdenumTrioxide,
+    "AlN": AluminiumNitride,
+    "SiC": SiliconCarbide,
+    "hBN": HexagonalBoronNitride,
+    "GaN": GalliumNitride,
+}
+
+
 def create_material(material: str | dict[str, Any]) -> BaseMaterial:
     """Instantiate a material from a name string or an arbitrary-tensor dict.
 
-    Single source of truth for the material name -> class mapping, shared by the
-    layer factory and by frequency-range resolution.
-
     Args:
-        material: A registered material name, or a dict of permittivity/
-            permeability components for an :class:`ArbitraryMaterial`.
+        material: A registered material name (see :func:`list_materials`), or a
+            dict of permittivity/permeability components for an
+            :class:`ArbitraryMaterial`.
 
     Raises:
         NotImplementedError: If the name is not recognised.
     """
     if isinstance(material, dict):
         return ArbitraryMaterial(material)
-    registry = {
-        "Quartz": Quartz,
-        "Sapphire": Sapphire,
-        "Calcite": CalciteUpper,
-        "CalciteLower": CalciteLower,
-        "GalliumOxide": GalliumOxide,
-        "MoO3": MolybdenumTrioxide,
-        "AlN": AluminiumNitride,
-        "SiC": SiliconCarbide,
-    }
     try:
-        return registry[material]()
+        return _MATERIAL_REGISTRY[material]()
     except KeyError:
         raise NotImplementedError(f"Material {material} not implemented") from None
+
+
+def list_materials() -> dict[str, dict[str, Any]]:
+    """Summarize the registered (named) materials.
+
+    Returns:
+        A dict keyed by the registry name a payload would use (e.g. ``"hBN"``),
+        each value giving the implementing ``class`` name, the optical ``type``
+        (``"uniaxial"``, ``"biaxial"``, ``"monoclinic"`` or ``"isotropic"``), and
+        the default ``frequency_range`` ``(min, max)`` in cm⁻¹ (``None`` if the
+        material has no intrinsic range).
+
+    Example:
+        >>> for name, info in list_materials().items():
+        ...     print(name, info["type"], info["frequency_range"])
+    """
+    summary: dict[str, dict[str, Any]] = {}
+    for name, cls in _MATERIAL_REGISTRY.items():
+        material = cls()
+        if isinstance(material, BiaxialMaterial):  # subclass of UniaxialMaterial
+            material_type = "biaxial"
+        elif isinstance(material, MonoclinicMaterial):
+            material_type = "monoclinic"
+        elif isinstance(material, UniaxialMaterial):
+            material_type = "uniaxial"
+        else:
+            material_type = "isotropic"
+        frequency = material.frequency
+        frequency_range = (
+            (float(np.min(frequency)), float(np.max(frequency))) if frequency is not None else None
+        )
+        summary[name] = {
+            "class": cls.__name__,
+            "type": material_type,
+            "frequency_range": frequency_range,
+        }
+    return summary

@@ -3,6 +3,7 @@ Tests for material classes and permittivity calculations.
 """
 
 import numpy as np
+import pytest
 
 from hyperbolic_optics.materials import (
     Air,
@@ -10,12 +11,15 @@ from hyperbolic_optics.materials import (
     ArbitraryMaterial,
     CalciteLower,
     CalciteUpper,
+    GalliumNitride,
     GalliumOxide,
+    HexagonalBoronNitride,
     MolybdenumTrioxide,
     Quartz,
     Sapphire,
     SiliconCarbide,
     create_material,
+    list_materials,
 )
 
 
@@ -144,6 +148,43 @@ class TestBiaxialAndPolarMaterials:
         assert isinstance(create_material("MoO3"), MolybdenumTrioxide)
         assert isinstance(create_material("AlN"), AluminiumNitride)
         assert isinstance(create_material("SiC"), SiliconCarbide)
+        assert isinstance(create_material("hBN"), HexagonalBoronNitride)
+        assert isinstance(create_material("GaN"), GalliumNitride)
+
+    def test_list_materials(self):
+        catalogue = list_materials()
+        # every registered name resolves and reports a sane summary
+        assert {"MoO3", "hBN", "GaN", "Calcite", "GalliumOxide"} <= set(catalogue)
+        assert catalogue["MoO3"]["type"] == "biaxial"
+        assert catalogue["GalliumOxide"]["type"] == "monoclinic"
+        assert catalogue["hBN"]["type"] == "uniaxial"
+        lo, hi = catalogue["hBN"]["frequency_range"]
+        assert lo < hi
+        # the keys are exactly what create_material accepts
+        for name in catalogue:
+            assert create_material(name) is not None
+
+    def test_hbn_and_gan_uniaxial(self):
+        for material in (HexagonalBoronNitride(), GalliumNitride()):
+            tensor = material.fetch_permittivity_tensor()
+            assert tensor.shape[-2:] == (3, 3)
+            assert np.allclose(tensor[:, 0, 0], tensor[:, 1, 1])  # ordinary xx == yy
+
+    def test_hbn_is_hyperbolic_in_upper_band(self):
+        # In the upper (type-II) reststrahlen band ~1370-1610 cm-1, the in-plane
+        # (ordinary, xx) permittivity is negative while out-of-plane (zz) is
+        # positive -- the signature of natural hyperbolic dispersion.
+        tensor = HexagonalBoronNitride().fetch_permittivity_tensor_for_freq(1450.0)
+        assert np.real(tensor[0, 0]) < 0  # in-plane
+        assert np.real(tensor[2, 2]) > 0  # out-of-plane
+
+    def test_moo3_eps_inf_corrected(self):
+        # eps_inf set to the Alvarez-Perez values (x=5.78, y=6.07, z=2.47), not
+        # the earlier 4.0/5.2/2.4 guess.
+        params = MolybdenumTrioxide().permittivity_parameters()
+        assert complex(params["x"]["high_freq"]).real == pytest.approx(5.78)
+        assert complex(params["y"]["high_freq"]).real == pytest.approx(6.07)
+        assert complex(params["z"]["high_freq"]).real == pytest.approx(2.47)
 
 
 class TestMonoclinicMaterials:

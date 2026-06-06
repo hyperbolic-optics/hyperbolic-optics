@@ -254,6 +254,87 @@ def plot_permittivity(
     _save_and_show(save_name)
 
 
+def plot_permittivity_tensor(material: BaseMaterial, save_name: str | None = None) -> None:
+    """Plot Re/Im of the diagonal permittivity components for any material.
+
+    General over crystal class: uniaxial (xx == yy, distinct zz), biaxial (xx, yy,
+    zz all distinct) and monoclinic (diagonal shown; off-diagonal coupling not
+    drawn). Uses the material's own frequency grid.
+
+    Args:
+        material: A material with its ``frequency`` array set (e.g. any entry from
+            :func:`hyperbolic_optics.materials.list_materials`).
+        save_name: Optional filename for saving (without extension).
+
+    Raises:
+        ValueError: If the material has no intrinsic frequency range.
+    """
+    if material.frequency is None:
+        raise ValueError("Material has no frequency range; set material.frequency first.")
+    PlotStyle.initialize()
+
+    frequency = material.frequency
+    tensor = material.fetch_permittivity_tensor()  # [F, 3, 3]
+    components = {
+        r"$\varepsilon_{xx}$": tensor[:, 0, 0],
+        r"$\varepsilon_{yy}$": tensor[:, 1, 1],
+        r"$\varepsilon_{zz}$": tensor[:, 2, 2],
+    }
+
+    fig, axs = plt.subplots(2, figsize=(9, 7), sharex=True, gridspec_kw={"hspace": 0.1})
+    for label, eps in components.items():
+        axs[0].plot(frequency, eps.real, label=label)
+        axs[1].plot(frequency, eps.imag, label=label)
+    axs[0].axhline(y=0, color="black", linewidth=1)
+    axs[0].set(ylabel=r"$\mathrm{Re}(\epsilon)$", title=getattr(material, "name", ""))
+    axs[0].legend()
+    PlotStyle.style_axis(axs[0])
+    axs[1].set(xlabel=r"Wavenumber (cm$^{-1}$)", ylabel=r"$\mathrm{Im}(\epsilon)$")
+    axs[1].set_xlim(frequency[0], frequency[-1])
+    axs[1].legend()
+    PlotStyle.style_axis(axs[1])
+
+    _save_and_show(save_name)
+
+
+def plot_materials_gallery(save_name: str | None = None) -> None:
+    """Grid of Re(ε) vs frequency for every built-in material.
+
+    A quick visual check of the phonon parameters across the catalogue
+    (:func:`hyperbolic_optics.materials.list_materials`) — e.g. hBN's two bands,
+    MoO₃'s three, and the hyperbolic sign flips. ε_xx, ε_yy, ε_zz are drawn over
+    each material's default frequency range.
+
+    Args:
+        save_name: Optional filename for saving (without extension).
+    """
+    from hyperbolic_optics.materials import create_material, list_materials
+
+    PlotStyle.initialize()
+    names = list(list_materials())
+    ncols = 3
+    nrows = -(-len(names) // ncols)  # ceil
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 3 * nrows))
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, name in zip(axes, names):
+        material = create_material(name)
+        tensor = material.fetch_permittivity_tensor()
+        for idx, comp in enumerate(("xx", "yy", "zz")):
+            ax.plot(
+                material.frequency, tensor[:, idx, idx].real, label=rf"$\varepsilon_{{{comp}}}$"
+            )
+        ax.axhline(0, color="0.6", lw=0.8)
+        ax.set_title(name)
+        ax.set(xlabel=r"$\omega$ (cm$^{-1}$)", ylabel=r"$\mathrm{Re}(\epsilon)$")
+        ax.legend(fontsize=8, ncol=3)
+    for ax in axes[len(names) :]:
+        ax.axis("off")
+
+    fig.tight_layout()
+    _save_and_show(save_name)
+
+
 def plot_mueller_azimuthal(
     structure: Structure,
     param: np.ndarray,

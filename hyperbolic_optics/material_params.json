@@ -128,33 +128,81 @@
                     "gamma_ln": [4.76]
                 }
             }
+        },
+        "hexagonal_boron_nitride": {
+            "name": "hBN",
+            "_source": "Natural hBN, c-cut uniaxial. ordinary = in-plane E1u (E perp c), extraordinary = out-of-plane A2u (E parallel c). Standard values (Cai et al., Solid State Commun. 141, 262 (2007); Caldwell et al., Nat. Commun. 5, 5221 (2014)). Exact TO/LO/gamma/eps_inf vary slightly between references -- sanity-check for quantitative work.",
+            "frequency_range": {
+                "default_min": 700.0,
+                "default_max": 1700.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 4.87,
+                    "omega_tn": [1370.0],
+                    "gamma_tn": [5.0],
+                    "omega_ln": [1610.0],
+                    "gamma_ln": [5.0]
+                },
+                "extraordinary": {
+                    "high_freq": 2.95,
+                    "omega_tn": [780.0],
+                    "gamma_tn": [4.0],
+                    "omega_ln": [830.0],
+                    "gamma_ln": [4.0]
+                }
+            }
+        },
+        "gallium_nitride": {
+            "name": "GaN",
+            "_source": "Wurtzite GaN, c-cut uniaxial. ordinary = E1 (E perp c), extraordinary = A1 (E parallel c). Standard values (Barker & Ilegems, Phys. Rev. B 7, 743 (1973); Caldwell et al. 2015). Sanity-check for quantitative work.",
+            "frequency_range": {
+                "default_min": 450.0,
+                "default_max": 800.0
+            },
+            "parameters": {
+                "ordinary": {
+                    "high_freq": 5.35,
+                    "omega_tn": [560.0],
+                    "gamma_tn": [4.0],
+                    "omega_ln": [743.0],
+                    "gamma_ln": [4.0]
+                },
+                "extraordinary": {
+                    "high_freq": 5.35,
+                    "omega_tn": [533.0],
+                    "gamma_tn": [4.0],
+                    "omega_ln": [735.0],
+                    "gamma_ln": [4.0]
+                }
+            }
         }
     },
     "biaxial_materials": {
         "molybdenum_trioxide": {
             "name": "MoO3",
-            "_source": "alpha-MoO3 (orthorhombic, biaxial), factorized TO-LO model. Band assignment matches Passler/Jeannin/Paarmann JOSA B 37, 1060 (2020) Fig. 2b; values from Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020). Lab axes: x,y in-plane ([100],[010]); z out-of-plane ([001]). VERIFY exact eps_inf/gamma against the source before publication.",
+            "_source": "alpha-MoO3 (orthorhombic, biaxial), factorized TO-LO model from Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020). Lab axes: x=[100], y=[010] in-plane; z=[001] out-of-plane (band assignment per Passler/Jeannin/Paarmann JOSA B 37, 1060 (2020) Fig. 2b). eps_inf corrected to the Alvarez-Perez values (was an earlier guess). Sanity-check exact eps_inf/gamma against the source for quantitative work.",
             "frequency_range": {
                 "default_min": 500.0,
                 "default_max": 1050.0
             },
             "parameters": {
                 "x": {
-                    "high_freq": 4.0,
+                    "high_freq": 5.78,
                     "omega_tn": [820.0],
                     "gamma_tn": [4.0],
                     "omega_ln": [972.0],
                     "gamma_ln": [4.0]
                 },
                 "y": {
-                    "high_freq": 5.2,
+                    "high_freq": 6.07,
                     "omega_tn": [958.0],
                     "gamma_tn": [2.0],
                     "omega_ln": [1004.0],
                     "gamma_ln": [2.0]
                 },
                 "z": {
-                    "high_freq": 2.4,
+                    "high_freq": 2.47,
                     "omega_tn": [545.0],
                     "gamma_tn": [4.0],
                     "omega_ln": [851.0],
