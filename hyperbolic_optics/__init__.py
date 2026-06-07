@@ -35,7 +35,7 @@ __version__ = "0.2.3"
 
 # Field profiles, transmission & absorption
 from hyperbolic_optics.fields import FieldProfile
-from hyperbolic_optics.jones import Jones
+from hyperbolic_optics.jones import Jones, compose_jones
 
 # Layers
 from hyperbolic_optics.layers import LayerFactory
@@ -86,6 +86,7 @@ __all__ = [
     "Structure",
     "Mueller",
     "Jones",
+    "compose_jones",
     "FieldProfile",
     "ThicknessSweep",
     "ScenarioSetup",

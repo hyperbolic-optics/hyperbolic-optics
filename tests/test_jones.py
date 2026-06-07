@@ -9,7 +9,7 @@ machinery already validates, and behave correctly for textbook optical elements
 import numpy as np
 import pytest
 
-from hyperbolic_optics.jones import Jones
+from hyperbolic_optics.jones import Jones, compose_jones
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
 
@@ -225,3 +225,49 @@ class TestBroadcastingCompose:
         intensity = jones.get_intensity()
         assert intensity.shape == structure.r_pp.shape  # (410, 360)
         assert np.all(np.isfinite(intensity))
+
+
+class TestComposeJones:
+    """compose_jones: multiple elements in series with a kx/omega physics guard."""
+
+    def test_crossed_ideal_polarizers_give_zero(self):
+        helper = Jones(_simple([_CALCITE]))
+        composed = compose_jones(helper.linear_polarizer(0), helper.linear_polarizer(90))
+        assert np.allclose(composed, 0.0, atol=1e-12)
+
+    def test_beam_order_and_structure_plus_component(self):
+        # compose(structure, polarizer) == J_polarizer @ J_sample (last element left)
+        structure = _converting()
+        polarizer = Jones(structure).linear_polarizer(90)
+        composed = compose_jones(structure, polarizer)
+        expected = polarizer @ Jones(structure).calculate_jones_matrix()
+        assert np.allclose(composed, expected)
+
+    def test_two_structures_same_grid(self):
+        # same scenario (angle/freq/prism) -> shared kx & omega -> composes
+        a, b = _simple([_CALCITE]), _converting()
+        composed = compose_jones(a, b)
+        expected = Jones(b).calculate_jones_matrix() @ Jones(a).calculate_jones_matrix()
+        assert np.allclose(composed, expected)
+
+    def test_mismatched_kx_raises(self):
+        a = _simple([_CALCITE], angle=30)
+        b = _simple([_CALCITE], angle=55)  # different incident angle -> different kx
+        with pytest.raises(ValueError, match="kx"):
+            compose_jones(a, b)
+
+    def test_ideal_broadcasts_over_swept_structure(self):
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {"type": "Azimuthal", "incidentAngle": 40},
+                "Layers": [{"type": "Ambient Incident Layer", "permittivity": 12.5}, _CALCITE],
+            }
+        )
+        polarizer = Jones(structure).linear_polarizer(90)
+        composed = compose_jones(structure, polarizer)  # [F, B, 2, 2]
+        assert composed.shape == structure.r_pp.shape + (2, 2)
+
+    def test_empty_raises(self):
+        with pytest.raises(ValueError):
+            compose_jones()

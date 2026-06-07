@@ -345,3 +345,77 @@ class Jones:
             "near_ep": overlap >= overlap_threshold,
             "ep_index": np.unravel_index(np.argmin(magnitude), magnitude.shape),
         }
+
+
+def _grids_match(a: np.ndarray, b: np.ndarray) -> bool:
+    """True if two canonical grids are equal under broadcasting (e.g. kx, k0)."""
+    try:
+        broadcast_a, broadcast_b = np.broadcast_arrays(a, b)
+    except ValueError:
+        return False
+    return np.allclose(broadcast_a, broadcast_b)
+
+
+def compose_jones(*elements: Structure | np.ndarray) -> np.ndarray:
+    """Compose optical elements in series at the Jones (amplitude) level.
+
+    Multiplies the 2×2 Jones matrices of the elements in **beam order** (the first
+    argument is the element the light meets first), so the returned matrix is
+    ``J_last · … · J_first``. Heterogeneous scenario sweeps broadcast, so a fixed
+    sample composes with a swept one (and ideal components broadcast over any
+    sweep).
+
+    Each element is either:
+
+    - a :class:`Structure` — its reflection Jones matrix ``[[r_pp, r_ps],
+      [r_sp, r_ss]]`` is used; or
+    - a 2×2 array — an ideal component (polarizer / wave plate / rotator) or any
+      precomputed Jones matrix, e.g.
+      ``Jones(s).calculate_jones_matrix(transmission=True)``.
+
+    Physics guard: ideal components are angle-independent and compose freely, but
+    two angle/frequency-dependent structures are only physical when they share the
+    conserved in-plane wavevector ``kx`` *and* frequency. This raises if two
+    :class:`Structure` elements disagree on ``k_x`` or ``k_0`` (their sample
+    azimuth/thickness axes may still differ and broadcast).
+
+    Args:
+        *elements: The optical elements in beam order.
+
+    Returns:
+        The composed Jones matrix ``[..., 2, 2]``.
+
+    Raises:
+        ValueError: If no elements are given, or two structures have incompatible
+            ``kx`` / frequency grids.
+
+    Note:
+        Both structures must currently resolve to broadcast-compatible
+        presentation shapes (e.g. a scalar ``Simple`` sample with a swept one).
+        Composing two *different* multi-axis sweeps whose squeezed shapes do not
+        align is not yet supported (it needs canonical-axis composition).
+    """
+    if not elements:
+        raise ValueError("compose_jones requires at least one element.")
+
+    reference_kx = reference_k0 = None
+    matrices = []
+    for element in elements:
+        if isinstance(element, Structure):
+            if reference_kx is None:
+                reference_kx, reference_k0 = element.k_x, element.k_0
+            elif not _grids_match(reference_kx, element.k_x):
+                raise ValueError(
+                    "Cannot compose structures evaluated at different kx "
+                    "(in-plane wavevector is conserved along the beam)."
+                )
+            elif not _grids_match(reference_k0, element.k_0):
+                raise ValueError("Cannot compose structures evaluated at different frequencies.")
+            matrices.append(Jones(element).calculate_jones_matrix())
+        else:
+            matrices.append(np.asarray(element, dtype=np.complex128))
+
+    composed = matrices[0]
+    for matrix in matrices[1:]:  # beam order -> left-multiply each next element
+        composed = matrix @ composed
+    return composed
