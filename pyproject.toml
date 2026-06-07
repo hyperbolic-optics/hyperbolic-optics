@@ -13,7 +13,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.12"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -26,7 +26,6 @@ keywords = ["optics", "physics", "simulation", "anisotropic", "hyperbolic", "mue
 
 dependencies = [
     "numpy>=1.20.0",
-    "scipy>=1.7.0",
     "matplotlib>=3.5.0",
 ]
 
@@ -45,10 +44,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/MarkCunningham0410/hyperbolic_optics"
-Repository = "https://github.com/MarkCunningham0410/hyperbolic_optics"
-Issues = "https://github.com/MarkCunningham0410/hyperbolic_optics/issues"
-Documentation = "https://github.com/MarkCunningham0410/hyperbolic_optics"
+Homepage = "https://github.com/hyperbolic-optics/hyperbolic-optics"
+Repository = "https://github.com/hyperbolic-optics/hyperbolic-optics"
+Issues = "https://github.com/hyperbolic-optics/hyperbolic-optics/issues"
+Documentation = "https://github.com/hyperbolic-optics/hyperbolic-optics"
 
 [tool.hatch.build.targets.wheel]
 packages = ["hyperbolic_optics"]
@@ -114,12 +113,6 @@ extend-exclude = [".venv", "venv", "build", "dist", "htmlcov"]
 [tool.ruff.lint]
 # pyflakes (F) + pycodestyle errors (E) + isort (I); E203/W503 are not ruff rules.
 select = ["E", "F", "I"]
-
-[dependency-groups]
-dev = [
-    "autoflake>=2.3.1",
-    "toml>=0.10.2",
-]
 
 [tool.mypy]
 python_version = "3.12"

@@ -10,7 +10,7 @@ Calculate basic reflection coefficients for a Calcite crystal.
 --8<-- "examples/calcite.py"
 ```
 
-[Download calcite.py](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/examples/calcite.py){ .md-button }
+[Download calcite.py](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/examples/calcite.py){ .md-button }
 
 ---
 
@@ -22,7 +22,7 @@ Generate dispersion plots showing frequency vs kx.
 --8<-- "examples/frequency_vs_kx.py"
 ```
 
-[Download frequency_vs_kx.py](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/examples/frequency_vs_kx.py){ .md-button }
+[Download frequency_vs_kx.py](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/examples/frequency_vs_kx.py){ .md-button }
 
 ---
 
@@ -34,7 +34,7 @@ Visualize polariton dispersion in momentum space (kx vs ky).
 --8<-- "examples/kx_vs_ky.py"
 ```
 
-[Download kx_vs_ky.py](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/examples/kx_vs_ky.py){ .md-button }
+[Download kx_vs_ky.py](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/examples/kx_vs_ky.py){ .md-button }
 
 ---
 
@@ -46,7 +46,7 @@ Study how reflectivity changes with sample rotation.
 --8<-- "examples/azimuthal_variation.py"
 ```
 
-[Download azimuthal_variation.py](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/examples/azimuthal_variation.py){ .md-button }
+[Download azimuthal_variation.py](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/examples/azimuthal_variation.py){ .md-button }
 
 ---
 
@@ -55,7 +55,7 @@ Study how reflectivity changes with sample rotation.
 Clone the repository and run any example:
 
 ```bash
-git clone https://github.com/MarkCunningham0410/hyperbolic_optics.git
+git clone https://github.com/hyperbolic-optics/hyperbolic-optics.git
 cd hyperbolic_optics
 python examples/calcite.py
 ```

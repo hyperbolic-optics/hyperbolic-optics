@@ -25,14 +25,23 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
     - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.footer
+    - toc.follow
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
     - content.code.annotate
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
 
 plugins:
   - search
@@ -50,6 +59,11 @@ plugins:
             docstring_section_style: list
             show_symbol_type_heading: true
             show_symbol_type_toc: true
+            show_root_full_path: false
+            show_bases: true
+            signature_crossrefs: true
+            summary: true
+            filters: ["!^_"]
       enable_inventory: true
 
 markdown_extensions:
@@ -71,6 +85,19 @@ markdown_extensions:
   - def_list
   - tables
   - mdx_truly_sane_lists
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.caret
+  - pymdownx.tilde
+  - pymdownx.smartsymbols
+  - abbr
+  - toc:
+      permalink: true
 
 extra_css:
   - stylesheets/extra.css
@@ -79,6 +106,17 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+copyright: Copyright &copy; 2025 Mark Cunningham
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/hyperbolic-optics/hyperbolic-optics
+      name: Source on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/hyperbolic-optics/
+      name: hyperbolic-optics on PyPI
 
 nav:
   - Home: index.md
@@ -96,7 +134,11 @@ nav:
     - api/structure.md
     - api/materials.md
     - api/layers.md
+    - api/fields.md
+    - api/scattering.md
+    - api/sweep.md
     - api/mueller.md
+    - api/jones.md
     - api/scenario.md
     - api/plots.md
   - Contributing: contributing.md

@@ -31,7 +31,7 @@ References:
     - Berreman, JOSA 62, 502-510 (1972)
 """
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 
 # Field profiles, transmission & absorption
 from hyperbolic_optics.fields import FieldProfile

@@ -25,7 +25,7 @@ If you want to contribute or modify the source code:
 
 ```bash
 # Clone the repository
-git clone https://github.com/MarkCunningham0410/hyperbolic_optics.git
+git clone https://github.com/hyperbolic-optics/hyperbolic-optics.git
 cd hyperbolic_optics
 
 # Install with all extras

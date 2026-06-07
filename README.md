@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://badge.fury.io/py/hyperbolic-optics.svg)](https://badge.fury.io/py/hyperbolic-optics)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml/badge.svg)](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml)
-[![Issues](https://img.shields.io/github/issues/MarkCunningham0410/hyperbolic_optics)](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+[![Tests](https://github.com/hyperbolic-optics/hyperbolic-optics/actions/workflows/tests.yml/badge.svg)](https://github.com/hyperbolic-optics/hyperbolic-optics/actions/workflows/tests.yml)
+[![Issues](https://img.shields.io/github/issues/hyperbolic-optics/hyperbolic-optics)](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 
 This package provides a comprehensive suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
 
@@ -28,15 +28,13 @@ This package provides a comprehensive suite of tools to study the reflective pro
 
 ## Features
 
-- **Simulation of Reflective Properties:** Analyze how hyperbolic materials and anisotropic structures reflect light
-- **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
-- **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
-- **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
-- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide (monoclinic), α-MoO₃ (biaxial), AlN and SiC
-- **Arbitrary Material Support:** Define custom materials with arbitrary permittivity tensor
-- **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
-- **Visualization:** Publication-quality plotting functionality for results analysis
-- **Extensible Architecture:** Modular design for easy extension with new materials and optical components
+- **4×4 transfer-matrix engine** for reflection coefficients of arbitrary anisotropic multilayers, plus an opt-in **numerically-stable scattering-matrix backend** for thick / lossy / evanescent stacks
+- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux — energy-conserving `R + T + ΣA = 1`
+- **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
+- **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors
+- **Scenarios:** incident-angle, azimuthal, k-space dispersion (kₓ–k_y), full 3-D sweep, single-point — and a swept **layer-thickness** axis
+- **Fully vectorized** over angle, azimuth, frequency, and thickness via a canonical batch convention
+- **Publication-quality plotting** for spectra, k-space maps, and polarization
 
 ---
 
@@ -61,7 +59,7 @@ uv add hyperbolic-optics
 For development or to get the latest features:
 
 ```bash
-git clone https://github.com/MarkCunningham0410/hyperbolic_optics.git
+git clone https://github.com/hyperbolic-optics/hyperbolic-optics.git
 cd hyperbolic_optics
 pip install -e .
 ```
@@ -190,7 +188,7 @@ If you use this package in your research, please cite:
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
   year={2025},
-  version={0.2.3},
+  version={0.3.0},
   doi={10.5281/zenodo.14946556},
   url={https://pypi.org/project/hyperbolic-optics/},
   howpublished={PyPI},
@@ -303,7 +301,7 @@ pytest
 pytest --cov=hyperbolic_optics --cov-report=html  # with coverage report
 ```
 
-*Please open an [issue](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) if you encounter any bugs or have suggestions for improvements.*
+*Please open an [issue](https://github.com/hyperbolic-optics/hyperbolic-optics/issues) if you encounter any bugs or have suggestions for improvements.*
 
 ---
 
@@ -328,7 +326,7 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 ## Getting Help
 
 - **Documentation:** Check the [examples/](examples/) folder and docstrings
-- **Issues:** Report bugs or request features via [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+- **Issues:** Report bugs or request features via [GitHub Issues](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 - **Discussions:** Start a discussion for usage questions or feature ideas
 
 ---
