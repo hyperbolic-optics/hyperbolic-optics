@@ -1,28 +1,10 @@
 """Material definitions and permittivity/permeability calculations.
 
-This module provides material classes for various crystal types.
-
-Uniaxial materials (single optical axis):
-
-- Quartz (α-SiO₂)
-- Sapphire (α-Al₂O₃)
-- Calcite (CaCO₃) - upper and lower reststrahlen bands
-
-Monoclinic materials (non-zero off-diagonal components):
-
-- Gallium Oxide (β-Ga₂O₃)
-
-Arbitrary materials:
-
-- User-defined permittivity and permeability tensors
-
-Isotropic materials:
-
-- Air/vacuum
-
-Note:
-    All materials implement frequency-dependent permittivity using Lorentz
-    oscillator models with parameters loaded from material_params.json.
+Crystal classes are modelled with frequency-dependent Lorentz-oscillator
+permittivity (parameters in ``material_params.json``): uniaxial, biaxial,
+monoclinic (non-zero off-diagonal components), isotropic, and arbitrary
+user-defined permittivity/permeability tensors. Use :func:`list_materials` for
+the current built-in catalogue and :func:`create_material` to instantiate one.
 """
 
 import json
