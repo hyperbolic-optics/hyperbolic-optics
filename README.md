@@ -28,15 +28,13 @@ This package provides a comprehensive suite of tools to study the reflective pro
 
 ## Features
 
-- **Simulation of Reflective Properties:** Analyze how hyperbolic materials and anisotropic structures reflect light
-- **Multilayer Configuration:** Configure multilayer systems with customizable materials and layer properties
-- **4×4 Transfer Matrix Method:** Compute reflection coefficients accurately for anisotropic media
-- **Mueller Matrix Analysis:** Convert reflection coefficients into Mueller matrices and simulate optical component interactions
-- **Built-in Materials Library:** Pre-configured materials including Quartz, Calcite, Sapphire, Gallium Oxide (monoclinic), α-MoO₃ (biaxial), AlN and SiC
-- **Arbitrary Material Support:** Define custom materials with arbitrary permittivity tensor
-- **Multiple Scenario Types:** Support for incident angle sweeps, azimuthal rotations, dispersion analysis, and single-point calculations
-- **Visualization:** Publication-quality plotting functionality for results analysis
-- **Extensible Architecture:** Modular design for easy extension with new materials and optical components
+- **4×4 transfer-matrix engine** for reflection coefficients of arbitrary anisotropic multilayers, plus an opt-in **numerically-stable scattering-matrix backend** for thick / lossy / evanescent stacks
+- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux — energy-conserving `R + T + ΣA = 1`
+- **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
+- **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors
+- **Scenarios:** incident-angle, azimuthal, k-space dispersion (kₓ–k_y), full 3-D sweep, single-point — and a swept **layer-thickness** axis
+- **Fully vectorized** over angle, azimuth, frequency, and thickness via a canonical batch convention
+- **Publication-quality plotting** for spectra, k-space maps, and polarization
 
 ---
 
