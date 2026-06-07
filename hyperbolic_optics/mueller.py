@@ -372,6 +372,94 @@ class Mueller:
         )
         return self.mueller_matrix
 
+    @staticmethod
+    def _assemble_mueller(top_row: np.ndarray, left_col: np.ndarray, sub: np.ndarray) -> np.ndarray:
+        """Build a normalized Mueller matrix ``[[1, top_rowᵀ], [left_col, sub]]``."""
+        out = np.zeros(sub.shape[:-2] + (4, 4), dtype=np.float64)
+        out[..., 0, 0] = 1.0
+        out[..., 0, 1:] = top_row
+        out[..., 1:, 0] = left_col
+        out[..., 1:, 1:] = sub
+        return out
+
+    def decompose(self) -> dict[str, np.ndarray]:
+        """Lu-Chipman polar decomposition of the Mueller matrix.
+
+        Factorizes the (normalized) Mueller matrix as ``M = M_Δ · M_R · M_D``
+        (depolarizer · retarder · diattenuator; Lu & Chipman, *J. Opt. Soc. Am. A*
+        **13**, 1106 (1996)) and extracts the physical polarization metrics. Uses
+        ``self.mueller_matrix`` (computed via :meth:`calculate_mueller_matrix` if
+        needed), batched over the scenario presentation shape.
+
+        Returns:
+            Dict with scalar-field metrics ``diattenuation``, ``polarizance``,
+            ``retardance`` (radians), ``depolarization`` (0 = none, 1 = total) and
+            ``transmittance`` (the ``M₀₀`` factor), plus the normalized component
+            matrices ``diattenuator``, ``retarder``, ``depolarizer`` (``[..., 4, 4]``).
+        """
+        if self.mueller_matrix is None:
+            self.calculate_mueller_matrix()
+        matrix = np.asarray(self.mueller_matrix, dtype=np.float64)
+        eye3 = np.eye(3)
+        m00 = matrix[..., 0, 0]
+        m00_safe = np.where(np.abs(m00) > 1e-12, m00, 1.0)
+        normalized = matrix / m00_safe[..., np.newaxis, np.newaxis]
+
+        # Diattenuation and polarizance vectors (top row / left column).
+        d_vec = normalized[..., 0, 1:]
+        p_vec = normalized[..., 1:, 0]
+        diattenuation = np.linalg.norm(d_vec, axis=-1)
+        polarizance = np.linalg.norm(p_vec, axis=-1)
+
+        # Diattenuator M_D = [[1, Dᵀ], [D, m_D]], m_D = √(1−D²) I + (1−√(1−D²)) D̂D̂ᵀ.
+        d_safe = np.where(diattenuation > 1e-12, diattenuation, 1.0)
+        d_hat = d_vec / d_safe[..., np.newaxis]
+        root = np.sqrt(np.clip(1.0 - diattenuation**2, 0.0, None))
+        outer = d_hat[..., :, np.newaxis] * d_hat[..., np.newaxis, :]
+        m_d = (
+            root[..., np.newaxis, np.newaxis] * eye3
+            + (1.0 - root)[..., np.newaxis, np.newaxis] * outer
+        )
+        m_d = np.where((diattenuation > 1e-12)[..., np.newaxis, np.newaxis], m_d, eye3)
+        diattenuator = self._assemble_mueller(d_vec, d_vec, m_d)
+
+        # Strip the diattenuator: M' = M_norm · M_D⁻¹ = M_Δ · M_R.
+        m_prime = normalized @ np.linalg.inv(diattenuator)
+        mp = m_prime[..., 1:, 1:]
+        p_delta = m_prime[..., 1:, 0]
+
+        # Depolarizer 3×3 from the eigenvalues of G = m' m'ᵀ (Lu-Chipman closed form).
+        g = mp @ np.swapaxes(mp, -1, -2)
+        s = np.sqrt(np.clip(np.linalg.eigvalsh(g), 0.0, None))
+        s0, s1, s2 = s[..., 0], s[..., 1], s[..., 2]
+        c1 = (s0 + s1 + s2)[..., np.newaxis, np.newaxis]
+        c2 = (s0 * s1 + s1 * s2 + s2 * s0)[..., np.newaxis, np.newaxis]
+        c3 = (s0 * s1 * s2)[..., np.newaxis, np.newaxis]
+        sign = np.sign(np.linalg.det(mp))
+        sign = np.where(sign == 0, 1.0, sign)[..., np.newaxis, np.newaxis]
+        m_depol = sign * (np.linalg.inv(g + c2 * eye3) @ (c1 * g + c3 * eye3))
+        depolarizer = self._assemble_mueller(np.zeros_like(d_vec), p_delta, m_depol)
+
+        # Retarder is what remains: m_R = m_Δ⁻¹ m'.
+        m_ret = np.linalg.inv(m_depol) @ mp
+        retarder = self._assemble_mueller(np.zeros_like(d_vec), np.zeros_like(d_vec), m_ret)
+
+        trace_ret = m_ret[..., 0, 0] + m_ret[..., 1, 1] + m_ret[..., 2, 2]
+        retardance = np.arccos(np.clip((trace_ret - 1.0) / 2.0, -1.0, 1.0))
+        trace_depol = np.abs(m_depol[..., 0, 0] + m_depol[..., 1, 1] + m_depol[..., 2, 2])
+        depolarization = 1.0 - trace_depol / 3.0
+
+        return {
+            "diattenuation": diattenuation,
+            "polarizance": polarizance,
+            "retardance": retardance,
+            "depolarization": depolarization,
+            "transmittance": m00,
+            "diattenuator": diattenuator,
+            "retarder": retarder,
+            "depolarizer": depolarizer,
+        }
+
     def add_optical_component(self, component_type: str, *args: Any) -> None:
         """Add optical component to the propagation path.
 

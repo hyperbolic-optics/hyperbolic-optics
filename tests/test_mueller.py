@@ -3,6 +3,7 @@ Tests for Mueller matrix calculations and Stokes parameters.
 """
 
 import numpy as np
+import pytest
 
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
@@ -269,3 +270,54 @@ class TestPhysicalConstraints:
         # Reflectivity should be between 0 and 1
         assert np.all(reflectivity >= 0)
         assert np.all(reflectivity <= 1)
+
+
+class TestLuChipmanDecomposition:
+    """Lu-Chipman polar decomposition: M = M_depol . M_retarder . M_diattenuator."""
+
+    _CALCITE = {
+        "type": "Semi Infinite Anisotropic Layer",
+        "material": "Calcite",
+        "rotationY": 90,
+    }
+
+    def _incident(self):
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {"type": "Incident"},
+                "Layers": [
+                    {"type": "Ambient Incident Layer", "permittivity": 12.5},
+                    self._CALCITE,
+                ],
+            }
+        )
+        return structure
+
+    def test_reconstruction(self, simple_payload):
+        structure = Structure()
+        structure.execute(simple_payload)
+        mueller = Mueller(structure)
+        result = mueller.decompose()
+        # M_depol @ M_retarder @ M_diattenuator == normalized Mueller matrix
+        reconstructed = result["depolarizer"] @ result["retarder"] @ result["diattenuator"]
+        normalized = mueller.mueller_matrix / mueller.mueller_matrix[..., 0:1, 0:1]
+        assert np.allclose(reconstructed, normalized, atol=1e-9)
+
+    def test_pure_sample_is_non_depolarizing(self, simple_payload):
+        # a Mueller matrix built from a single Jones matrix is non-depolarizing
+        structure = Structure()
+        structure.execute(simple_payload)
+        result = Mueller(structure).decompose()
+        assert float(result["depolarization"]) == pytest.approx(0.0, abs=1e-6)
+        assert 0.0 <= float(result["diattenuation"]) <= 1.0
+
+    def test_batched_shapes(self):
+        structure = self._incident()
+        result = Mueller(structure).decompose()
+        shape = structure.r_pp.shape
+        assert result["diattenuation"].shape == shape
+        assert result["retardance"].shape == shape
+        assert result["depolarizer"].shape == shape + (4, 4)
+        # still non-depolarizing across the whole sweep (deterministic sample)
+        assert np.allclose(result["depolarization"], 0.0, atol=1e-6)
