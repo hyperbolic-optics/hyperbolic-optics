@@ -96,7 +96,11 @@ nav:
     - api/structure.md
     - api/materials.md
     - api/layers.md
+    - api/fields.md
+    - api/scattering.md
+    - api/sweep.md
     - api/mueller.md
+    - api/jones.md
     - api/scenario.md
     - api/plots.md
   - Contributing: contributing.md

@@ -7,7 +7,7 @@ authors:
     given-names: "Mark"
     orcid: "https://orcid.org/0000-0003-0163-3320"
     email: "m.cunningham.2@research.gla.ac.uk"
-repository-code: "https://github.com/MarkCunningham0410/hyperbolic_optics"
+repository-code: "https://github.com/hyperbolic-optics/hyperbolic-optics"
 url: "https://pypi.org/project/hyperbolic-optics/"
 abstract: "A Python package implementing the 4×4 transfer matrix method for calculating reflection coefficients of anisotropic multilayer structures, with Mueller matrix analysis capabilities."
 keywords:
@@ -18,7 +18,7 @@ keywords:
   - "hyperbolic"
   - "mueller matrix"
 license: MIT
-version: "0.2.3"  # This will be auto-updated by GitHub Action
+version: "0.3.0"  # Auto-updated to __version__ by the release GitHub Action
 date-released: "2025-09-30"
 doi: "10.5281/zenodo.14946555"
 references:

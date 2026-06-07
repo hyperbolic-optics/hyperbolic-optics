@@ -122,3 +122,5 @@ Thumbs.db
 
 # Project specific
 test_figures/
+# Local Claude Code settings
+.claude/
