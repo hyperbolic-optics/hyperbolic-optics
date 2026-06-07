@@ -1,21 +1,9 @@
-"""Mueller matrix calculus for polarization analysis.
+"""Mueller-matrix calculus for polarization analysis.
 
-This module provides the Mueller class for analyzing polarization transformations
-in optical systems. Mueller matrices are 4×4 real matrices that describe how
-Stokes parameters (polarization states) transform upon interaction with optical
-elements.
-
-The Mueller formalism handles:
-
-- Arbitrary incident polarization states (linear, circular, elliptical)
-- Polarization-dependent reflection from anisotropic samples
-- Ideal optical components (polarizers, wave plates)
-- Sequential component combinations
-
-Key relationships:
-
-- S_out = M · S_in (Stokes vector transformation)
-- M = A · F · A⁻¹ (Mueller from Jones matrix F)
+Mueller matrices are real 4×4 matrices that transform Stokes vectors,
+``S_out = M · S_in``, and derive from a Jones matrix ``F`` via ``M = A · F · A⁻¹``.
+The :class:`Mueller` class builds them for anisotropic samples and ideal
+components (polarizers, wave plates) and combines components in sequence.
 
 Reference:
     Chipman, Lam & Young, "Polarized Light and Optical Systems" (2018)
@@ -29,11 +17,10 @@ from .structure import Structure
 
 
 class Mueller:
-    """Mueller matrix analyzer for polarization calculations.
+    """Builds and applies Mueller matrices for a :class:`Structure`'s reflection.
 
-    The Mueller class provides tools for analyzing polarization transformations
-    in optical systems using the Mueller matrix formalism. It handles arbitrary
-    incident polarization states and sequential optical components.
+    Handles arbitrary incident polarization (linear/circular/elliptical) and
+    sequential optical components.
 
     Attributes:
         structure: The Structure object containing reflection coefficients
@@ -41,10 +28,6 @@ class Mueller:
         stokes_parameters: Output Stokes parameters
         incident_stokes: Incident polarization state [S0, S1, S2, S3]
         optical_components: List of Mueller matrices for optical elements
-
-    Note:
-        Mueller matrices are real-valued 4×4 matrices that transform Stokes
-        parameters: S_out = M · S_in
 
     Examples:
         Analyzing p-polarized reflection:

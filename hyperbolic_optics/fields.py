@@ -1,33 +1,21 @@
 """Numerical transmission, layer-resolved absorption, and field profiles.
 
 Where :mod:`hyperbolic_optics.structure` stops at reflection coefficients, this
-module reconstructs the electromagnetic field throughout the stack and derives
-*power* quantities directly from it -- no closed-form transmission/absorption
-formulas. Everything follows from two facts already encoded by the transfer
-matrices:
-
-1. The tangential field vector ``F = [Ex, Ey, Hx, Hy]`` is continuous across every
-   interface, and the stored layer matrices ``Mᵢ`` propagate it: ``Gᵢ = Mᵢ · G_{i+1}``.
-2. The time-averaged energy flux normal to the interfaces is
-   ``S_z = ½ Re(Ex·Hy* − Ey·Hx*)`` and depends only on those tangential components.
-
-From the per-interface fields we get, for unit incident power:
-
-- **Reflectance** ``R = 1 − S_z(G₁)/S_z^inc``  (equals ``|r_pp|²+|r_sp|²`` for p-in),
-- **Transmittance** ``T = S_z(G_exit)/S_z^inc``  (flux into the exit medium),
-- **Layer-resolved absorption** ``Aᵢ = [S_z(Gᵢ) − S_z(G_{i+1})]/S_z^inc``,
-
-which conserve energy exactly: ``R + T + ΣAᵢ = 1`` (the sum telescopes). For the
-"bulk" case of a single semi-infinite anisotropic exit there are no interior
-layers, ``T`` is the power delivered into the crystal, and :meth:`FieldProfile.field_profile`
-shows it being absorbed with depth (the decay length set by ``Im(kz)``).
+module reconstructs the field through the stack and derives *power* quantities
+from it directly (no closed-form transmission formulas). The tangential field
+``F = [Ex, Ey, Hx, Hy]`` is continuous across interfaces and propagated by the
+stored layer matrices (``Gᵢ = Mᵢ · G_{i+1}``); the normal energy flux is
+``S_z = ½ Re(Ex·Hy* − Ey·Hx*)``. For unit incident power this gives reflectance
+``R = 1 − S_z(G₁)/S_z^inc``, transmittance ``T = S_z(G_exit)/S_z^inc``, and
+layer absorption ``Aᵢ = [S_z(Gᵢ) − S_z(G_{i+1})]/S_z^inc``, which conserve energy
+exactly (``R + T + ΣAᵢ = 1``). For a single semi-infinite anisotropic exit there
+are no interior layers and :meth:`FieldProfile.field_profile` shows ``T`` absorbed
+with depth (decay length set by ``Im(kz)``).
 
 References:
 
-- Passler, Jeannin & Paarmann, "Layer-resolved absorption of light in arbitrarily
-  anisotropic heterostructures," J. Opt. Soc. Am. B 37, 1060 (2020); arXiv:2002.03832
-- pyGTM (``pyMatJ/pyGTM``): ``System.calculate_Efield`` /
-  ``calculate_Poynting_Absorption_vs_z``
+- Passler, Jeannin & Paarmann, JOSA B 37, 1060 (2020); arXiv:2002.03832
+- pyGTM: ``System.calculate_Efield`` / ``calculate_Poynting_Absorption_vs_z``
 - Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
 """
 
