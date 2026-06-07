@@ -71,4 +71,4 @@ This work builds upon the theoretical framework established by:
 
 Copyright (c) 2025 Mark Cunningham
 
-Licensed under the MIT License. See [LICENSE](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/LICENSE) for details.
+Licensed under the MIT License. See [LICENSE](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/LICENSE) for details.

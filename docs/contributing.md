@@ -4,7 +4,7 @@ We welcome contributions to the Hyperbolic Optics package! This guide will help 
 
 ## Ways to Contribute
 
-- **Report bugs** via [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+- **Report bugs** via [GitHub Issues](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 - **Request features** or enhancements
 - **Improve documentation** (fix typos, add examples, clarify explanations)
 - **Submit bug fixes** or new features via Pull Requests
@@ -283,8 +283,8 @@ What actually happened
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/MarkCunningham0410/hyperbolic_optics/discussions) for questions
-- Check existing [Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+- Open a [Discussion](https://github.com/hyperbolic-optics/hyperbolic-optics/discussions) for questions
+- Check existing [Issues](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 - Email: m.cunningham.2@research.gla.ac.uk
 
 ## License

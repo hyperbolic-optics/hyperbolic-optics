@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PyPI version](https://badge.fury.io/py/hyperbolic-optics.svg)](https://badge.fury.io/py/hyperbolic-optics)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml/badge.svg)](https://github.com/MarkCunningham0410/hyperbolic_optics/actions/workflows/tests.yml)
-[![Issues](https://img.shields.io/github/issues/MarkCunningham0410/hyperbolic_optics)](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+[![Tests](https://github.com/hyperbolic-optics/hyperbolic-optics/actions/workflows/tests.yml/badge.svg)](https://github.com/hyperbolic-optics/hyperbolic-optics/actions/workflows/tests.yml)
+[![Issues](https://img.shields.io/github/issues/hyperbolic-optics/hyperbolic-optics)](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 
 This package provides a comprehensive suite of tools to study the reflective properties of hyperbolic materials and anisotropic structures using the 4×4 transfer matrix method. It enables easy configuration of multilayer systems, calculation of reflection coefficients, and analysis using Mueller matrices.
 
@@ -59,7 +59,7 @@ uv add hyperbolic-optics
 For development or to get the latest features:
 
 ```bash
-git clone https://github.com/MarkCunningham0410/hyperbolic_optics.git
+git clone https://github.com/hyperbolic-optics/hyperbolic-optics.git
 cd hyperbolic_optics
 pip install -e .
 ```
@@ -301,7 +301,7 @@ pytest
 pytest --cov=hyperbolic_optics --cov-report=html  # with coverage report
 ```
 
-*Please open an [issue](https://github.com/MarkCunningham0410/hyperbolic_optics/issues) if you encounter any bugs or have suggestions for improvements.*
+*Please open an [issue](https://github.com/hyperbolic-optics/hyperbolic-optics/issues) if you encounter any bugs or have suggestions for improvements.*
 
 ---
 
@@ -326,7 +326,7 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 ## Getting Help
 
 - **Documentation:** Check the [examples/](examples/) folder and docstrings
-- **Issues:** Report bugs or request features via [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
+- **Issues:** Report bugs or request features via [GitHub Issues](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
 - **Discussions:** Start a discussion for usage questions or feature ideas
 
 ---

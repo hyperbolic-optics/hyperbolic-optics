@@ -1,6 +1,6 @@
 # Hyperbolic Optics Documentation
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/MarkCunningham0410/hyperbolic_optics/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/hyperbolic-optics/hyperbolic-optics/blob/main/LICENSE)
 [![PyPI version](https://badge.fury.io/py/hyperbolic-optics.svg)](https://badge.fury.io/py/hyperbolic-optics)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
@@ -93,5 +93,5 @@ If you use this package in your research, please cite:
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/MarkCunningham0410/hyperbolic_optics/issues)
-- **Repository**: [GitHub Repository](https://github.com/MarkCunningham0410/hyperbolic_optics)
+- **Issues**: [GitHub Issues](https://github.com/hyperbolic-optics/hyperbolic-optics/issues)
+- **Repository**: [GitHub Repository](https://github.com/hyperbolic-optics/hyperbolic-optics)
