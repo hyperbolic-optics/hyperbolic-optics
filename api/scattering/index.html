@@ -12,13 +12,13 @@
         <meta name="author" content="Mark Cunningham">
       
       
-        <link rel="canonical" href="https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/scenarios/">
+        <link rel="canonical" href="https://hyperbolic-optics.github.io/hyperbolic-optics/api/scattering/">
       
       
-        <link rel="prev" href="../concepts/">
+        <link rel="prev" href="../fields/">
       
       
-        <link rel="next" href="../materials/">
+        <link rel="next" href="../sweep/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Scenarios - Hyperbolic Optics</title>
+        <title>Scattering API - Hyperbolic Optics</title>
       
     
     
@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#scenarios" class="md-skip">
+        <a href="#scattering-api" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Scenarios
+              Scattering API
             
           </span>
         </div>
@@ -273,13 +273,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../concepts/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../user-guide/concepts/" class="md-tabs__link">
           
   
   
@@ -315,11 +313,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/structure/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../structure/" class="md-tabs__link">
           
   
   
@@ -562,31 +562,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -604,7 +601,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -622,7 +619,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/" class="md-nav__link">
+      <a href="../../user-guide/concepts/" class="md-nav__link">
         
   
   
@@ -647,37 +644,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Scenarios
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../user-guide/scenarios/" class="md-nav__link">
         
   
   
@@ -693,103 +663,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#simple-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Simple Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#incident-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Incident Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#azimuthal-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Azimuthal Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dispersion-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dispersion Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#frequency-ranges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Frequency Ranges
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-comparing-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example: Comparing Scenarios
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -802,7 +675,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../materials/" class="md-nav__link">
+      <a href="../../user-guide/materials/" class="md-nav__link">
         
   
   
@@ -830,7 +703,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mueller/" class="md-nav__link">
+      <a href="../../user-guide/mueller/" class="md-nav__link">
         
   
   
@@ -951,28 +824,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -990,7 +866,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1008,7 +884,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/structure/" class="md-nav__link">
+      <a href="../structure/" class="md-nav__link">
         
   
   
@@ -1036,7 +912,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/materials/" class="md-nav__link">
+      <a href="../materials/" class="md-nav__link">
         
   
   
@@ -1064,7 +940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/layers/" class="md-nav__link">
+      <a href="../layers/" class="md-nav__link">
         
   
   
@@ -1092,7 +968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/fields/" class="md-nav__link">
+      <a href="../fields/" class="md-nav__link">
         
   
   
@@ -1117,10 +993,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/scattering/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scattering API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1136,6 +1039,54 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#hyperbolic_optics.scattering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;scattering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" scattering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyperbolic_optics.scattering.scattering_coefficients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scattering_coefficients
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1148,7 +1099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/sweep/" class="md-nav__link">
+      <a href="../sweep/" class="md-nav__link">
         
   
   
@@ -1176,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/mueller/" class="md-nav__link">
+      <a href="../mueller/" class="md-nav__link">
         
   
   
@@ -1204,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/jones/" class="md-nav__link">
+      <a href="../jones/" class="md-nav__link">
         
   
   
@@ -1232,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/scenario/" class="md-nav__link">
+      <a href="../scenario/" class="md-nav__link">
         
   
   
@@ -1260,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/plots/" class="md-nav__link">
+      <a href="../plots/" class="md-nav__link">
         
   
   
@@ -1369,79 +1320,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#simple-scenario" class="md-nav__link">
+  <a href="#hyperbolic_optics.scattering" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Simple Scenario
+        <code class="doc-symbol doc-symbol-toc doc-symbol-module"></code>&nbsp;scattering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" scattering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hyperbolic_optics.scattering.scattering_coefficients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scattering_coefficients
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#incident-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Incident Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#azimuthal-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Azimuthal Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dispersion-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dispersion Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-scenario" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a Scenario
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#frequency-ranges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Frequency Ranges
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-comparing-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example: Comparing Scenarios
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1465,134 +1367,235 @@
   
 
 
-<h1 id="scenarios">Scenarios<a class="headerlink" href="#scenarios" title="Permanent link">&para;</a></h1>
-<p>The package supports four different scenario types for different analysis needs.</p>
-<h2 id="simple-scenario">Simple Scenario<a class="headerlink" href="#simple-scenario" title="Permanent link">&para;</a></h2>
-<p>Single point calculation at a specific angle, frequency, and orientation.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Simple&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="s2">&quot;incidentAngle&quot;</span><span class="p">:</span> <span class="mf">45.0</span><span class="p">,</span>      <span class="c1"># degrees</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="s2">&quot;azimuthal_angle&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>      <span class="c1"># degrees  </span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="mf">1460.0</span>          <span class="c1"># cm^-1</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="p">},</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">}</span>
+<h1 id="scattering-api">Scattering API<a class="headerlink" href="#scattering-api" title="Permanent link">&para;</a></h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="hyperbolic_optics.scattering" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">scattering</span>
+
+
+<a href="#hyperbolic_optics.scattering" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Numerically-stable scattering-matrix backend.</p>
+<p>The default engine multiplies per-layer <em>transfer</em> matrices <code>Mᵢ = Vᵢ·Pᵢ·Vᵢ⁻¹</code>
+with <code>Pᵢ = diag(exp(-i·kz·k₀·d))</code> (<code>waves.get_matrix</code>). For thick / lossy /
+strongly-evanescent layers the propagation diagonal mixes exponentially <em>growing</em>
+and <em>decaying</em> terms, so the products overflow and lose precision (energy
+conservation drifts, eventually <code>NaN</code>).</p>
+<p>This module reformulates the same 4×4 anisotropic problem as a <strong>scattering
+matrix</strong> cascaded with the <strong>Redheffer star product</strong>, where every propagation
+factor is a <em>decaying</em> exponential (<code>exp(-|Im(kz)|·k₀·d) ≤ 1</code>) — the growing
+matrices are never materialised — so it is stable in all cases. It is the
+opt-in backend behind <code>Structure.execute(payload, backend="scattering")</code> and
+produces the same reflection/transmission coefficients as the transfer method
+where both are well-conditioned, and <em>correct</em> coefficients where the transfer
+method fails.</p>
+<p>Algorithm and conventions follow PyLlama (Bay, Lafait &amp; Lequime / Bay et al.,
+J. Opt. Soc. Am. A 39, 1431 (2022); arXiv:2012.05945), eqs 18-28, adapted to this
+codebase's field-vector ordering <code>[Ex, Ey, Hx, Hy]</code> and partial-wave sort
+(<code>WaveProfile.tangential_modes</code>: columns <code>[t0, t1, r0, r1]</code> = forward,
+forward, backward, backward). Per-medium eigenvectors come from each layer's
+<code>profile</code> (interior layers and a semi-infinite crystal exit) or from the
+ambient dynamical matrices <code>A_inc</code> / <code>A_exit</code> (prism, isotropic exit).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+<p><span class="doc-section-title">Functions:</span></p>
+    <ul>
+          <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-function&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-function-name&quot;&gt;scattering_coefficients&lt;/span&gt; (&lt;code&gt;hyperbolic_optics.scattering.scattering_coefficients&lt;/code&gt;)" href="#hyperbolic_optics.scattering.scattering_coefficients">scattering_coefficients</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Reflection/transmission coefficients via the stable scattering-matrix method.</p>
+            </div>
+          </li>
+    </ul>
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyperbolic_optics.scattering.scattering_coefficients" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">scattering_coefficients</span>
+
+
+<a href="#hyperbolic_optics.scattering.scattering_coefficients" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">scattering_coefficients</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">k_0</span><span class="p">)</span>
 </code></pre></div>
-<p><strong>Output shape</strong>: Scalar values for reflection coefficients</p>
-<p><strong>Use case</strong>: Quick calculations, debugging, single point analysis</p>
-<h2 id="incident-scenario">Incident Scenario<a class="headerlink" href="#incident-scenario" title="Permanent link">&para;</a></h2>
-<p>Sweeps through incident angles at multiple frequencies.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="p">},</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
-</code></pre></div>
-<p><strong>Output shape</strong>: <code>[410, 360]</code> - 410 frequency points × 360 angle points</p>
-<p><strong>Use case</strong>: Analyzing angle-dependent behavior, finding resonances</p>
-<p><strong>Plotting</strong>: Use <code>plot_kx_frequency()</code> for frequency vs kx plots</p>
-<h2 id="azimuthal-scenario">Azimuthal Scenario<a class="headerlink" href="#azimuthal-scenario" title="Permanent link">&para;</a></h2>
-<p>Rotates the sample azimuthally at a fixed incident angle.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Azimuthal&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="s2">&quot;incidentAngle&quot;</span><span class="p">:</span> <span class="mf">40.0</span>  <span class="c1"># degrees</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="p">},</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">}</span>
-</code></pre></div>
-<p><strong>Output shape</strong>: <code>[410, 360]</code> - 410 frequency points × 360 azimuthal angles</p>
-<p><strong>Use case</strong>: Studying rotational symmetry, in-plane anisotropy</p>
-<p><strong>Plotting</strong>: Use <code>plot_mueller_azimuthal()</code> for frequency vs β plots</p>
-<h2 id="dispersion-scenario">Dispersion Scenario<a class="headerlink" href="#dispersion-scenario" title="Permanent link">&para;</a></h2>
-<p>k-space dispersion at a fixed frequency.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Dispersion&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="mf">1460.0</span>  <span class="c1"># cm^-1</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="p">},</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">}</span>
-</code></pre></div>
-<p><strong>Output shape</strong>: <code>[180, 480]</code> - 180 incident angles × 480 azimuthal angles</p>
-<p><strong>Use case</strong>: Visualizing polariton dispersion, identifying wave modes</p>
-<p><strong>Plotting</strong>: Use <code>plot_mueller_dispersion()</code> for kx vs ky plots</p>
-<h2 id="choosing-a-scenario">Choosing a Scenario<a class="headerlink" href="#choosing-a-scenario" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Goal</th>
-<th>Scenario Type</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Quick single calculation</td>
-<td>Simple</td>
-</tr>
-<tr>
-<td>Angle-dependent analysis</td>
-<td>Incident</td>
-</tr>
-<tr>
-<td>Rotational behavior</td>
-<td>Azimuthal</td>
-</tr>
-<tr>
-<td>k-space dispersion relations</td>
-<td>Dispersion</td>
-</tr>
-</tbody>
-</table>
-<h2 id="frequency-ranges">Frequency Ranges<a class="headerlink" href="#frequency-ranges" title="Permanent link">&para;</a></h2>
-<p>For <code>Incident</code> and <code>Azimuthal</code> scenarios, frequency ranges are automatically determined by the material:</p>
-<ul>
-<li><strong>Calcite</strong>: 1300-1600 cm⁻¹ (upper) or 860-920 cm⁻¹ (lower)</li>
-<li><strong>Quartz</strong>: 410-600 cm⁻¹</li>
-<li><strong>Sapphire</strong>: 210-1000 cm⁻¹</li>
-<li><strong>Gallium Oxide</strong>: 350-800 cm⁻¹</li>
-</ul>
-<h2 id="example-comparing-scenarios">Example: Comparing Scenarios<a class="headerlink" href="#example-comparing-scenarios" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_kx_frequency</span><span class="p">,</span> <span class="n">plot_mueller_dispersion</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Same material, different scenarios</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">base_layers</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ambient Incident Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">25.0</span><span class="p">},</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="p">{</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="p">}</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="p">]</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="c1"># Incident scenario</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="n">payload_incident</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span><span class="p">},</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="n">base_layers</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="p">}</span>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="n">structure_inc</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="n">structure_inc</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload_incident</span><span class="p">)</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="n">R_inc</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">structure_inc</span><span class="o">.</span><span class="n">r_pp</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="c1"># Dispersion scenario</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="n">payload_disp</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Dispersion&quot;</span><span class="p">,</span> <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="mf">1460.0</span><span class="p">},</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="n">base_layers</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="p">}</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="n">structure_disp</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="n">structure_disp</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload_disp</span><span class="p">)</span>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="n">R_disp</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">structure_disp</span><span class="o">.</span><span class="n">r_pp</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="c1"># Plot both</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="n">plot_kx_frequency</span><span class="p">(</span><span class="n">structure_inc</span><span class="p">,</span> <span class="n">R_inc</span><span class="p">,</span> <span class="n">save_name</span><span class="o">=</span><span class="s2">&quot;incident&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="n">plot_mueller_dispersion</span><span class="p">(</span><span class="n">structure_disp</span><span class="p">,</span> <span class="n">R_disp</span><span class="p">,</span> <span class="n">save_name</span><span class="o">=</span><span class="s2">&quot;dispersion&quot;</span><span class="p">)</span>
-</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reflection/transmission coefficients via the stable scattering-matrix method.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>layers</code></b>
+              (<code><span title="list">list</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>The executed structure's layers (<code>structure.layers</code>), each
+exposing eigenvectors via <code>profile</code> or an ambient dynamical matrix.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>k_0</code></b>
+              (<code><span title="numpy.ndarray">ndarray</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Canonical free-space wavenumber <code>[1, 1, F, 1]</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="numpy.ndarray">ndarray</span>]</code>
+          –
+          <div class="doc-md-description">
+            <p>Dict of the eight complex coefficients ``r_pp, r_ss, r_ps, r_sp, t_pp,</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+              <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="numpy.ndarray">ndarray</span>]</code>
+          –
+          <div class="doc-md-description">
+            <p>t_ss, t_ps, t_sp<code>in canonical</code>[A, B, F, T]`` layout (un-presented).</p>
+          </div>
+        </li>
+    </ul>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>For an isotropic exit the transmission coefficients are in the clean s/p
+basis; for a semi-infinite anisotropic exit they are in that crystal's
+eigenmode basis (as in the transfer method), while the reflection
+coefficients are always in the prism's s/p basis.</p>
+</details>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>hyperbolic_optics/scattering.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-127">127</a></span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span>
+<span class="normal"><a href="#__codelineno-0-132">132</a></span>
+<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+<span class="normal"><a href="#__codelineno-0-134">134</a></span>
+<span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span>
+<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+<span class="normal"><a href="#__codelineno-0-154">154</a></span>
+<span class="normal"><a href="#__codelineno-0-155">155</a></span>
+<span class="normal"><a href="#__codelineno-0-156">156</a></span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span>
+<span class="normal"><a href="#__codelineno-0-158">158</a></span>
+<span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
+<span class="normal"><a href="#__codelineno-0-162">162</a></span>
+<span class="normal"><a href="#__codelineno-0-163">163</a></span>
+<span class="normal"><a href="#__codelineno-0-164">164</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="k">def</span><span class="w"> </span><span class="nf">scattering_coefficients</span><span class="p">(</span><span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">k_0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reflection/transmission coefficients via the stable scattering-matrix method.</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
+<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">        layers: The executed structure&#39;s layers (``structure.layers``), each</span>
+<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">            exposing eigenvectors via ``profile`` or an ambient dynamical matrix.</span>
+<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">        k_0: Canonical free-space wavenumber ``[1, 1, F, 1]``.</span>
+<a id="__codelineno-0-134" name="__codelineno-0-134"></a>
+<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">        Dict of the eight complex coefficients ``r_pp, r_ss, r_ps, r_sp, t_pp,</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">        t_ss, t_ps, t_sp`` in canonical ``[A, B, F, T]`` layout (un-presented).</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">        For an isotropic exit the transmission coefficients are in the clean s/p</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">        basis; for a semi-infinite anisotropic exit they are in that crystal&#39;s</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">        eigenmode basis (as in the transfer method), while the reflection</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        coefficients are always in the prism&#39;s s/p basis.</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">_medium</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">]</span>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a>    <span class="n">scattering</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a>    <span class="k">for</span> <span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">),</span> <span class="p">(</span><span class="n">p_right</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">media</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a>        <span class="n">interface</span> <span class="o">=</span> <span class="n">_interface_scattering</span><span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">,</span> <span class="n">p_right</span><span class="p">,</span> <span class="n">k_0</span><span class="p">)</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>        <span class="n">scattering</span> <span class="o">=</span> <span class="n">interface</span> <span class="k">if</span> <span class="n">scattering</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_star</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">interface</span><span class="p">)</span>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="n">assert_canonical</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">matrix_ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;scattering_matrix&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">scattering</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="c1"># PyLlama r_kj is (out k, in j); this codebase uses r_{in-&gt;out}, so the cross</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="c1"># terms transpose (verified against the transfer backend).</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a>        <span class="s2">&quot;r_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="s2">&quot;r_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a>        <span class="s2">&quot;r_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a>        <span class="s2">&quot;r_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a>        <span class="s2">&quot;t_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a>        <span class="s2">&quot;t_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="s2">&quot;t_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="s2">&quot;t_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a>    <span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -1628,7 +1631,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../concepts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Basic Concepts">
+          <a href="../fields/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Fields API">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1638,20 +1641,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Basic Concepts
+                Fields API
               </div>
             </div>
           </a>
         
         
           
-          <a href="../materials/" class="md-footer__link md-footer__link--next" aria-label="Next: Materials">
+          <a href="../sweep/" class="md-footer__link md-footer__link--next" aria-label="Next: Sweep API">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Materials
+                Sweep API
               </div>
             </div>
             <div class="md-footer__button md-icon">

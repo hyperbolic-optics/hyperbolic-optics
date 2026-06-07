@@ -13,6 +13,14 @@
          <lastmod>2026-06-07</lastmod>
     </url>
     <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/fields/</loc>
+         <lastmod>2026-06-07</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/jones/</loc>
+         <lastmod>2026-06-07</lastmod>
+    </url>
+    <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/layers/</loc>
          <lastmod>2026-06-07</lastmod>
     </url>
@@ -29,11 +37,19 @@
          <lastmod>2026-06-07</lastmod>
     </url>
     <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/scattering/</loc>
+         <lastmod>2026-06-07</lastmod>
+    </url>
+    <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/scenario/</loc>
          <lastmod>2026-06-07</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/structure/</loc>
+         <lastmod>2026-06-07</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/sweep/</loc>
          <lastmod>2026-06-07</lastmod>
     </url>
     <url>
