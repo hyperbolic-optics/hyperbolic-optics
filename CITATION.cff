@@ -19,7 +19,7 @@ keywords:
   - "mueller matrix"
 license: MIT
 version: "0.3.0"  # Auto-updated to __version__ by the release GitHub Action
-date-released: "2025-09-30"
+date-released: "2026-06-07"
 doi: "10.5281/zenodo.14946555"
 references:
   - type: article

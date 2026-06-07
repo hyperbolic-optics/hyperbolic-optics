@@ -187,7 +187,7 @@ If you use this package in your research, please cite:
 @software{cunningham2025hyperbolic,
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
-  year={2025},
+  year={2026},
   version={0.3.0},
   doi={10.5281/zenodo.14946556},
   url={https://pypi.org/project/hyperbolic-optics/},
