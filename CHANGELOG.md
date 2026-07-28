@@ -75,6 +75,14 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —
   are expressible. Naming only the upper triangle keeps the previous symmetric
   behaviour, so existing payloads are unaffected.
+- **`Structure.execute` is idempotent.** `get_layers` appends, so calling
+  `execute` twice on one object stacked a second copy of the structure onto the
+  first — two layers became four, then six. Reflection survived it (everything
+  appended sits behind a semi-infinite exit and contributes nothing), which is
+  what made it dangerous: `r_pp` looked correct while `layer_absorption`
+  returned an entry per phantom layer, negative values among them, and the
+  scattering cascade hit a singular interface. Per-run state is now cleared
+  first, so re-running — including switching backend on the same object — works.
 - **Misspelled payload keys are rejected.** Layer and `ScenarioData` settings
   are read with `data.get(...)`, so an unrecognised key fell through to the
   default: `rotationy` for `rotationY` left the crystal unrotated and returned a
@@ -105,6 +113,11 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   thick enough to take the transfer route to `NaN` the cascade returns
   `R = 1.0000000000`. Resolving the field with depth still needs
   `backend="transfer"`, and now says so.
+- `tests/test_docs.py` executes every ```python block in the README and docs,
+  each page cumulatively in one namespace as a reader would follow it. Several
+  were broken: three pages opened with `structure.execute(payload)` where
+  `payload` was never defined, a plotting example used an undefined name, and
+  config fragments were tagged as Python.
 - Test batteries for regimes that had no coverage: lossless, hyperbolic and
   gyrotropic media (`test_general_tensors.py`), passivity and cross-validation
   against the closed-form isotropic path (`test_physical_invariants.py`), and

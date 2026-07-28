@@ -173,11 +173,20 @@ gyrotropic = {
 ### Built-in Visualization
 
 ```python
-from hyperbolic_optics.plots import plot_mueller_dispersion, plot_kx_frequency
+import numpy as np
+from hyperbolic_optics.plots import plot_kx_frequency
 
-# Generate publication-quality plots
+# A map plot needs a swept scenario -- the Quick Start payload above is a
+# single point, so re-run it over incident angle.
+payload["ScenarioData"] = {"type": "Incident"}
+structure.execute(payload)
+
+reflectivity = np.abs(structure.r_pp) ** 2
 plot_kx_frequency(structure, reflectivity, save_name="my_plot")
 ```
+
+The map plots draw one 2-D array, so slice any extra axis first — a swept
+thickness appends one: `plot_kx_frequency(structure, reflectivity[..., 0])`.
 
 ---
 

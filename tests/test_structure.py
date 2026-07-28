@@ -245,3 +245,63 @@ class TestPayloadKeyValidation:
             }
         )
         assert structure.r_pp.shape[-1] == 8
+
+
+class TestExecuteIsIdempotent:
+    """Calling execute twice on one object must not stack the structure twice."""
+
+    PAYLOAD = {
+        "ScenarioData": {
+            "type": "Simple",
+            "incidentAngle": 30.0,
+            "azimuthal_angle": 0.0,
+            "frequency": 1460.0,
+        },
+        "Layers": [
+            {"type": "Ambient Incident Layer", "permittivity": 25.0},
+            {"type": "Isotropic Middle-Stack Layer", "thickness": 1.0, "permittivity": 1.0},
+            {"type": "Crystal Layer", "material": "Calcite", "thickness": 1.0, "rotationY": 90},
+            {"type": "Semi Infinite Anisotropic Layer", "material": "Calcite", "rotationY": 90},
+        ],
+    }
+
+    def test_layer_count_is_stable(self):
+        structure = Structure()
+        for _ in range(3):
+            structure.execute(self.PAYLOAD)
+            assert len(structure.layers) == 4
+
+    def test_layer_resolved_quantities_are_stable(self):
+        """The symptom that made this dangerous.
+
+        get_layers appends, so a second execute stacked another copy of the
+        structure onto the first. Reflection survived it -- everything appended
+        sits behind a semi-infinite exit and contributes nothing -- so r_pp
+        looked right while layer_absorption returned an entry per phantom layer,
+        negative values among them.
+        """
+        from hyperbolic_optics.fields import FieldProfile
+
+        fresh = Structure()
+        fresh.execute(self.PAYLOAD)
+        expected = [
+            np.asarray(entry["absorptance"]) for entry in FieldProfile(fresh).layer_absorption("p")
+        ]
+
+        reused = Structure()
+        reused.execute(self.PAYLOAD)
+        reused.execute(self.PAYLOAD)
+        actual = [
+            np.asarray(entry["absorptance"]) for entry in FieldProfile(reused).layer_absorption("p")
+        ]
+
+        assert len(actual) == len(expected) == 2
+        for one, two in zip(actual, expected, strict=True):
+            np.testing.assert_allclose(one, two)
+
+    def test_backend_can_be_switched_on_one_object(self):
+        structure = Structure()
+        structure.execute(self.PAYLOAD)
+        structure.execute(self.PAYLOAD, backend="scattering")
+        assert structure.backend == "scattering"
+        assert np.all(np.isfinite(np.asarray(structure.r_pp)))

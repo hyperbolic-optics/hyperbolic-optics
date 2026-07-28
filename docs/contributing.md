@@ -258,7 +258,7 @@ Example:
 Brief description of the bug
 
 ## To Reproduce
-\```python
+\```text
 # Minimal code to reproduce
 \```
 

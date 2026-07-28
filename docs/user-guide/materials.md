@@ -87,7 +87,7 @@ Polar uniaxial crystals used (with MoO₃) in the layer-resolved absorption exam
 Both are modeled c-cut; SiC is treated as effectively isotropic in its
 reststrahlen band.
 
-```python
+```json
 {"type": "Semi Infinite Anisotropic Layer", "material": "SiC", "rotationY": 0}
 {"type": "Crystal Layer", "material": "AlN", "thickness": 1.0, "rotationY": 0}
 ```
@@ -197,7 +197,7 @@ Materials can be rotated using Euler angles (in degrees):
 
 **Optical axis perpendicular to interface**:
 
-```python
+```json
 "rotationX": 0,
 "rotationY": 0,
 "rotationZ": 0
@@ -205,7 +205,7 @@ Materials can be rotated using Euler angles (in degrees):
 
 **Optical axis in the plane (70° tilt)**:
 
-```python
+```json
 "rotationX": 0,
 "rotationY": 70,
 "rotationZ": 0
@@ -213,7 +213,7 @@ Materials can be rotated using Euler angles (in degrees):
 
 **45° azimuthal rotation**:
 
-```python
+```json
 "rotationX": 0,
 "rotationY": 90,
 "rotationZ": 45
@@ -222,7 +222,7 @@ Materials can be rotated using Euler angles (in degrees):
 ### Rotation Types for Z-rotation
 
 
-```python
+```text
 "rotationZ": 45,
 "rotationZType": "relative"  # Default: rotates with azimuthal angle
 ```
@@ -231,7 +231,7 @@ Materials can be rotated using Euler angles (in degrees):
 or
 
 
-```python
+```text
 "rotationZ": 45,
 "rotationZType": "static"  # Fixed: doesn't rotate with azimuthal angle
 ```

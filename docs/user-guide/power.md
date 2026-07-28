@@ -7,6 +7,22 @@ does.
 
 ## Power quantities
 
+Every snippet on this page follows on from:
+
+```python
+payload = {
+    "ScenarioData": {"type": "Incident"},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
+            "rotationY": 90,
+        },
+    ],
+}
+```
+
 ```python
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.fields import FieldProfile
