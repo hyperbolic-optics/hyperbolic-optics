@@ -32,6 +32,17 @@ import numpy as np
 from hyperbolic_optics.axes import assert_canonical
 
 
+def _ratio(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """``x / (x + y)``, yielding 0 rather than NaN where both vanish.
+
+    Both arguments are squared magnitudes, so the sum is zero only when the
+    mode carries nothing in either transverse component -- a genuine tie rather
+    than an error.
+    """
+    total = x + y
+    return np.divide(x, total, out=np.zeros_like(x), where=total > 0)
+
+
 class WaveProfile:
     """Class representing the wave profile."""
 
@@ -510,22 +521,28 @@ class Wave:
             (more y-component). This classification is crucial for properly
             assigning r_pp, r_ss, r_ps, r_sp coefficients.
         """
-        # Calculate polarization ratios
+        # p-character of each mode, as a fraction in [0, 1].
         poynting_x = np.abs(profile["Px"]) ** 2
         poynting_y = np.abs(profile["Py"]) ** 2
         electric_x = np.abs(profile["Ex"]) ** 2
         electric_y = np.abs(profile["Ey"]) ** 2
 
-        Cp_E = electric_x / (electric_x + electric_y)
-        Cp_P = poynting_x / (poynting_x + poynting_y)
+        Cp_E = _ratio(electric_x, electric_y)
+        Cp_P = _ratio(poynting_x, poynting_y)
 
-        # Sort by Poynting (descending) or E-field (ascending) based on difference threshold
-        indices_P = np.argsort(Cp_P, axis=-1)[..., ::-1]  # DESCENDING
-        indices_E = np.argsort(Cp_E, axis=-1)  # ASCENDING
+        # The field ratio is the primary criterion and both are sorted the same
+        # way, so slot 0 is the s-like mode in either case. Previously the two
+        # were sorted in opposite directions and selected between per batch
+        # point, which silently swapped the p and s labels -- and so r_pp with
+        # r_ss -- depending on which branch a given point happened to take.
+        indices_E = np.argsort(Cp_E, axis=-1, kind="stable")
+        indices_P = np.argsort(Cp_P, axis=-1, kind="stable")
 
-        # Choose sorting method based on distinctiveness of modes
-        condition_P = np.abs(Cp_P[..., 1] - Cp_P[..., 0])[..., np.newaxis]
-        sorting_indices = np.where(condition_P > 1e-6, indices_P, indices_E)
+        # The flux ratio only breaks ties: it is degenerate wherever the in-plane
+        # Poynting vector of both modes lies along x (Cp_P == 1 for p and s
+        # alike), and it separates no case that the field ratio cannot.
+        separation_E = np.abs(Cp_E[..., 1] - Cp_E[..., 0])[..., np.newaxis]
+        sorting_indices = np.where(separation_E > 1e-6, indices_E, indices_P)
 
         # Apply sorting to all profile elements using vectorized take_along_axis
         for key in profile:
@@ -543,6 +560,12 @@ class Wave:
             For semi-infinite layers, constructs matrix with only transmitted
             modes (zeros for reflected components). For finite layers, combines
             transmitted and reflected modes to form complete transfer matrix.
+
+            The exit modes have already been renormalised on the profile itself
+            (see :meth:`_normalize_exit_modes`), so the matrix built here and
+            the fields :mod:`hyperbolic_optics.fields` reconstructs share one
+            basis. Rescaling only here would desynchronise the two and break
+            tangential continuity across the last interface.
         """
         eigenvectors, eigenvalues = self.profile.tangential_modes()
 
@@ -558,6 +581,61 @@ class Wave:
             return transfer_matrix
 
         return self.get_matrix(eigenvalues, eigenvectors)
+
+    def _normalize_exit_modes(self, profile: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """Put the transmitted modes of a semi-infinite layer on a fixed basis.
+
+        Applied to the profile rather than to the transfer matrix so that every
+        consumer -- the matrix, the amplitude transmission coefficients, and the
+        field reconstruction in :mod:`hyperbolic_optics.fields` -- sees the same
+        modes. Fields are linear in the mode vector and Poynting components are
+        quadratic, so they scale by different powers.
+        """
+        scale = self._exit_mode_scale(profile)
+
+        for key in ("Ex", "Ey", "Ez", "Hx", "Hy", "Hz"):
+            profile[key] = profile[key] / scale
+        for key in ("Px", "Py", "Pz"):
+            profile[key] = profile[key] / scale**2
+        for key in ("Px_physical", "Py_physical", "Pz_physical"):
+            profile[key] = profile[key] / np.abs(scale) ** 2
+
+        return profile
+
+    def _exit_mode_scale(self, profile: dict[str, np.ndarray]) -> np.ndarray:
+        """Complex divisor fixing each transmitted mode's amplitude *and* phase.
+
+        ``np.linalg.eig`` pins neither: the eigenvectors are normalised over the
+        tangential 4-vector rather than over ``E``, and each carries an arbitrary
+        overall phase that can flip sign between neighbouring points of a sweep.
+        Both leak into the amplitude transmission coefficients.
+
+        The normalization that matches is ``E . E == 1`` -- the bilinear product,
+        with no conjugate. The closed form carries ``Ey = 1`` for the s-like mode
+        and ``(Ex, Ez) = (cos(theta_f), -sin(theta_f))`` for the p-like one, and
+        past the critical angle ``theta_f`` is complex: ``cos^2 + sin^2`` is
+        still 1, but ``|cos|^2 + |sin|^2`` is not. Normalising by ``|E|`` there
+        agrees with the closed form only below the critical angle.
+        """
+        electric = np.stack([profile["Ex"], profile["Ey"], profile["Ez"]], axis=-2)
+
+        bilinear = np.sqrt(np.sum(electric**2, axis=-2))
+        magnitude = np.sqrt(np.sum(np.abs(electric) ** 2, axis=-2))
+
+        # A circularly polarised mode has E . E == 0 exactly -- gyrotropic media
+        # have them -- so fall back to |E| rather than dividing by zero.
+        degenerate = np.abs(bilinear) <= 1e-12 * np.where(magnitude > 0, magnitude, 1.0)
+        scale = np.where(degenerate, magnitude, bilinear)
+        scale = np.where(scale != 0, scale, 1.0)
+
+        # Pick the square root's branch: Ey of the s-like mode and Ex of the
+        # p-like mode are the components the closed form takes positive. Modes
+        # are ordered s-like first, so each reference is that mode's dominant
+        # component by construction.
+        reference = np.stack([electric[..., 1, 0], electric[..., 0, 1]], axis=-1) / scale
+        branch = np.where(np.real(reference) < 0, -1.0, 1.0)
+
+        return scale * branch
 
     def execute(self) -> tuple[WaveProfile, np.ndarray]:
         """Execute complete wave calculation pipeline.
@@ -586,6 +664,11 @@ class Wave:
         )
         transmitted_wave_profile = self.sort_poynting_indices(transmitted_wave_profile)
         reflected_wave_profile = self.sort_poynting_indices(reflected_wave_profile)
+
+        if self.semi_infinite:
+            # Only the transmitted modes reach the outputs of a semi-infinite
+            # layer; its reflected columns are zeroed when the matrix is built.
+            transmitted_wave_profile = self._normalize_exit_modes(transmitted_wave_profile)
 
         profile = {
             "transmitted": transmitted_wave_profile,
