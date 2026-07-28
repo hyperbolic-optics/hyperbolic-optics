@@ -213,8 +213,7 @@ class TestCrossCheckVsTransfer:
             )
 
     def test_transmission_matches_for_isotropic_exit(self):
-        # Transmission is in the clean s/p basis only for an isotropic exit, so
-        # compare t there (crystal-exit t is in the eigenmode basis for both).
+        # Both backends are in the clean s/p basis here.
         payload = {
             "ScenarioData": {
                 "type": "Simple",
@@ -235,6 +234,56 @@ class TestCrossCheckVsTransfer:
             assert complex(getattr(scattering, key)) == pytest.approx(
                 complex(getattr(transfer, key)), abs=1e-7
             ), key
+
+
+class TestExitModeConvention:
+    """Both backends must name the same exit mode 'p'."""
+
+    @staticmethod
+    def _coefficients(exit_layer, backend):
+        payload = {
+            "ScenarioData": {
+                "type": "Simple",
+                "incidentAngle": 30.0,
+                "azimuthal_angle": 20.0,
+                "frequency": 1460.0,
+            },
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 25.0},
+                {"type": "Crystal Layer", "material": "Calcite", "thickness": 1.0, "rotationY": 90},
+                exit_layer,
+            ],
+        }
+        return FieldProfile(_run(payload, backend)).transmission_coefficients()
+
+    def test_anisotropic_exit_transmission_agrees(self):
+        """The case the suite used to excuse itself from.
+
+        A crystal layer's modes arrive s-like first, the ambient reorder puts p
+        first, so the two ends of the cascade disagreed about which mode was p.
+        Reflection never noticed -- both its indices are in the prism -- but the
+        transmission coefficients name the *exit* mode, and t_pp carried what
+        t_ps should have.
+        """
+        exit_layer = {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
+            "rotationY": 45,
+            "rotationZ": 30,
+        }
+        transfer = self._coefficients(exit_layer, "transfer")
+        scattering = self._coefficients(exit_layer, "scattering")
+        for key in ("t_pp", "t_ps", "t_sp", "t_ss"):
+            assert complex(np.asarray(scattering[key])) == pytest.approx(
+                complex(np.asarray(transfer[key])), abs=1e-9
+            ), key
+
+    # The isotropic-limit check lives in test_physical_invariants.py, which
+    # compares the crystal path against the closed-form exit over four angles in
+    # a geometry that keeps p and s decoupled. Repeating it here with a rotated
+    # crystal layer and a non-zero azimuth would be ill-posed: an isotropic
+    # *tensor* exit has a degenerate eigenspace, so the individual t
+    # coefficients depend on which basis the eigensolver picks inside it.
 
 
 def _otto_gap(gap_um):
@@ -336,3 +385,50 @@ class TestGuards:
         default.execute(_otto_gap(1.0))
         explicit = _run(_otto_gap(1.0), "transfer")
         assert complex(default.r_pp) == pytest.approx(complex(explicit.r_pp), abs=0)
+
+
+class TestOttoGapPinned:
+    """A pinned value for the canonical prism-coupled Otto geometry."""
+
+    PAYLOAD = {
+        "ScenarioData": {
+            "type": "Simple",
+            "incidentAngle": 45.0,
+            "azimuthal_angle": 0.0,
+            "frequency": 500.0,
+        },
+        "Layers": [
+            {"type": "Ambient Incident Layer", "permittivity": 50.0},
+            {"type": "Isotropic Middle-Stack Layer", "thickness": 3.0, "permittivity": 1.0},
+            {
+                "type": "Semi Infinite Anisotropic Layer",
+                "material": "Quartz",
+                "rotationY": 90,
+            },
+        ],
+    }
+
+    #: kx = 7.07 through a 3 um air gap is deep enough into the evanescent
+    #: regime that almost nothing couples across, but Quartz is lossy, so the
+    #: small deficit from 1 is real absorption rather than round-off.
+    EXPECTED_REFLECTANCE = 0.999992004344
+
+    @staticmethod
+    def _reflectance(structure):
+        return float(
+            np.abs(np.asarray(structure.r_pp)) ** 2 + np.abs(np.asarray(structure.r_ps)) ** 2
+        )
+
+    def test_scattering_result_is_pinned(self):
+        """Pinned, not merely checked for finiteness, so the cascade cannot drift."""
+        reflectance = self._reflectance(_run(self.PAYLOAD, "scattering"))
+        assert reflectance == pytest.approx(self.EXPECTED_REFLECTANCE, abs=1e-9)
+
+    def test_transfer_agrees_at_this_gap(self):
+        """3 um is still within reach of the transfer product; 150 um is not.
+
+        Pinning a case where both backends work is what makes the pin meaningful
+        -- it fixes the physical answer rather than one backend's opinion of it.
+        """
+        reflectance = self._reflectance(_run(self.PAYLOAD, "transfer"))
+        assert reflectance == pytest.approx(self.EXPECTED_REFLECTANCE, abs=1e-9)

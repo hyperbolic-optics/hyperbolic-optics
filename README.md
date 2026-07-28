@@ -272,7 +272,7 @@ absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
 The amplitude transmission coefficients are also available via
 `FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
 
-`summary()` also reports a `conservation_residual`. It is a **bookkeeping**
+`summary()` also reports a `flux_bookkeeping_residual`. It is a **bookkeeping**
 check, not a physics one: the per-layer absorptances are successive differences
 of the same interface fluxes `R` and `T` are built from, so the sum telescopes
 and the residual is algebraically zero however wrong the fields are. Use it to

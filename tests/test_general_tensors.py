@@ -270,3 +270,77 @@ class TestModeDirectionSorting:
         near_lossless = np.asarray(reflectance(1e-9))
 
         assert np.allclose(lossless, near_lossless, atol=1e-6)
+
+
+class TestModePartitionInvariants:
+    """The specific checks the audit asked for, on the partition itself."""
+
+    def test_forward_backward_split_is_two_and_two(self):
+        """Four modes must resolve to two forward and two backward, everywhere.
+
+        A 3/1 split would mean the direction test had failed on one mode, which
+        the argsort-and-halve then hides by taking the first two regardless.
+        """
+        eps_options = [(5.0, 5.0, 2.0), (-3.0, -3.0, 4.0), (4.0, 4.0, -3.0), (5.0, 3.0, -2.0)]
+        mu_options = [(1.0, 1.0, 1.0), (2.0, 2.0, -1.0)]
+        checked = 0
+
+        for eps_diag in eps_options:
+            for mu_diag in mu_options:
+                for kx in np.linspace(0.1, 6.0, 25):
+                    wave = diagonal_wave(eps_diag, mu_diag, float(kx))
+                    wave.delta_matrix_calc()
+                    eigenvalues = np.linalg.eigvals(wave.berreman_matrix)
+
+                    transmitted, reflected, _, _ = wave.wave_sorting()
+                    assert transmitted.shape[-1] == 2
+                    assert reflected.shape[-1] == 2
+
+                    selected = np.concatenate([transmitted, reflected], axis=-1).ravel()
+                    for value in eigenvalues.ravel():
+                        assert np.isclose(selected, value).any(), (
+                            f"eps={eps_diag} mu={mu_diag} kx={kx}: mode {value} lost"
+                        )
+                    checked += 1
+
+        assert checked == len(eps_options) * len(mu_options) * 25
+
+    def test_slot_zero_polarization_varies_continuously_with_rotation(self):
+        """A small rotation must not make the slot-0 mode jump between p and s.
+
+        The p/s ordering used to be chosen per point between two criteria sorted
+        in opposite directions, so crossing the threshold flipped which mode sat
+        in slot 0 -- discontinuously, for an arbitrarily small parameter change.
+        """
+        fractions = []
+        for rotation_z in np.linspace(0.0, 1.0, 21):
+            payload = {
+                "ScenarioData": {
+                    "type": "Simple",
+                    "incidentAngle": 45.0,
+                    "azimuthal_angle": 0.0,
+                    "frequency": 1460.0,
+                },
+                "Layers": [
+                    {"type": "Ambient Incident Layer", "permittivity": 11.56},
+                    {
+                        "type": "Semi Infinite Anisotropic Layer",
+                        "material": {"eps_xx": 2.0, "eps_yy": 3.0, "eps_zz": 5.0},
+                        "rotationX": 0,
+                        "rotationY": 40,
+                        "rotationZ": float(rotation_z),
+                    },
+                ],
+            }
+            structure = Structure()
+            structure.execute(payload)
+            profile = structure.layers[-1].profile
+            Ex = np.abs(np.asarray(profile.transmitted_Ex).ravel()[0]) ** 2
+            Ey = np.abs(np.asarray(profile.transmitted_Ey).ravel()[0]) ** 2
+            fractions.append(Ey / (Ex + Ey))
+
+        steps = np.abs(np.diff(fractions))
+        assert steps.max() < 0.05, (
+            f"slot-0 polarization character jumps by {steps.max():.3f} over a "
+            "0.05 degree step; the ordering is flipping"
+        )

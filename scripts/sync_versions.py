@@ -1,119 +1,107 @@
 #!/usr/bin/env python3
 """
 Synchronize version numbers across all project files.
+
+``__init__.py`` is the source of truth. Run with no arguments to rewrite every
+other file to match it; run with ``--check`` to verify they already agree and
+exit non-zero if not, which is what the release workflow does so a stale
+CITATION.cff or docs citation fails the release rather than shipping.
 """
 
+import argparse
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
+#: Only the *software* citation tracks the release. The related-publication
+#: entries are @article blocks with their own, fixed, years -- rewriting those
+#: to the current year (as this script used to) silently falsifies a reference.
+SOFTWARE_BLOCK = re.compile(r"@software\{[^@]*?\n\}", re.S)
 
-def get_version_from_init():
-    """Extract version from __init__.py"""
-    init_path = Path("hyperbolic_optics/__init__.py")
-    with open(init_path) as f:
-        content = f.read()
 
-    # Find __version__ = "x.y.z"
+def get_version_from_init() -> str:
+    """Extract version from __init__.py."""
+    content = Path("hyperbolic_optics/__init__.py").read_text(encoding="utf-8")
     match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
-    if match:
-        return match.group(1)
-    else:
+    if not match:
         raise ValueError("Could not find __version__ in __init__.py")
+    return match.group(1)
 
 
-def update_citation_cff(version):
-    """Update CITATION.cff file"""
-    cff_path = Path("CITATION.cff")
-    if not cff_path.exists():
-        return
+def _retag_software_citations(content: str, version: str, year: int) -> str:
+    """Rewrite version/year inside @software blocks only."""
 
-    with open(cff_path) as f:
-        content = f.read()
+    def fix(match: re.Match[str]) -> str:
+        block = match.group(0)
+        block = re.sub(r"version=\{.*?\}", f"version={{{version}}}", block)
+        return re.sub(r"year=\{.*?\}", f"year={{{year}}}", block)
 
-    # Update version and date
+    return SOFTWARE_BLOCK.sub(fix, content)
+
+
+def _citation_cff(content: str, version: str, year: int) -> str:
     content = re.sub(r'version: ".*"', f'version: "{version}"', content)
-    content = re.sub(
+    return re.sub(
         r'date-released: ".*"',
         f'date-released: "{datetime.now().strftime("%Y-%m-%d")}"',
         content,
     )
 
-    with open(cff_path, "w") as f:
-        f.write(content)
 
-    print(f"✅ Updated CITATION.cff to version {version}")
-
-
-def update_readme_citation(version):
-    """Update README.md software citation"""
-    readme_path = Path("README.md")
-    if not readme_path.exists():
-        return
-
-    with open(readme_path) as f:
-        content = f.read()
-
-    # Update BibTeX citation
-    content = re.sub(r"version={.*?}", f"version={{{version}}}", content)
-    content = re.sub(r"year={.*?}", f"year={{{datetime.now().year}}}", content)
-
-    with open(readme_path, "w") as f:
-        f.write(content)
-
-    print(f"✅ Updated README.md citation to version {version}")
+TARGETS = {
+    Path("CITATION.cff"): _citation_cff,
+    Path("README.md"): _retag_software_citations,
+    Path("docs/index.md"): _retag_software_citations,
+    Path("docs/citation.md"): _retag_software_citations,
+}
 
 
-def update_docs_index(version):
-    """Update version in docs/index.md if it exists"""
-    docs_index_path = Path("docs/index.md")
-    if not docs_index_path.exists():
-        return
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report disagreements and exit 1 without writing anything",
+    )
+    args = parser.parse_args()
 
-    with open(docs_index_path) as f:
-        content = f.read()
-
-    # Update version in BibTeX citation
-    content = re.sub(r"version={.*?}", f"version={{{version}}}", content)
-    content = re.sub(r"year={.*?}", f"year={{{datetime.now().year}}}", content)
-
-    with open(docs_index_path, "w") as f:
-        f.write(content)
-
-    print(f"✅ Updated docs/index.md to version {version}")
-
-
-def update_docs_citation(version):
-    """Update version in docs/citation.md if it exists"""
-    docs_citation_path = Path("docs/citation.md")
-    if not docs_citation_path.exists():
-        return
-
-    with open(docs_citation_path) as f:
-        content = f.read()
-
-    # Update version in all BibTeX citations
-    content = re.sub(r"version={.*?}", f"version={{{version}}}", content)
-    content = re.sub(r"year={.*?}", f"year={{{datetime.now().year}}}", content)
-
-    with open(docs_citation_path, "w") as f:
-        f.write(content)
-
-    print(f"✅ Updated docs/citation.md to version {version}")
-
-
-def main():
-    """Sync all version numbers"""
     version = get_version_from_init()
-    print(f"Syncing all files to version {version} from __init__.py")
+    year = datetime.now().year
+    stale = []
 
-    update_citation_cff(version)
-    update_readme_citation(version)
-    update_docs_index(version)
-    update_docs_citation(version)
+    for path, transform in TARGETS.items():
+        if not path.exists():
+            continue
+        current = path.read_text(encoding="utf-8")
+        updated = transform(current, version, year)
+        if current == updated:
+            continue
+        if args.check:
+            # CITATION.cff carries a release date that moves every day, so a
+            # date-only difference is not staleness.
+            if transform is _citation_cff and re.sub(
+                r'date-released: ".*"', "", current
+            ) == re.sub(r'date-released: ".*"', "", updated):
+                continue
+            stale.append(path)
+        else:
+            path.write_text(updated, encoding="utf-8")
+            print(f"updated {path} to version {version}")
 
-    print(f"🎉 All version numbers synchronized to {version}")
+    if args.check:
+        if stale:
+            print(f"version {version} (from __init__.py) is not reflected in:")
+            for path in stale:
+                print(f"  {path}")
+            print("run `python scripts/sync_versions.py` to fix")
+            return 1
+        print(f"all version references agree with __init__.py ({version})")
+        return 0
+
+    print(f"all version numbers synchronized to {version}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

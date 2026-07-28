@@ -103,6 +103,13 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 - Structure **warns when the transfer product has lost conditioning** — non-finite
   coefficients, or a passive stack reflecting more than it receives — naming
   `backend="scattering"`.
+- **The two backends now agree on transmission into a crystal exit.** A crystal
+  layer's modes arrive s-like first while the ambient reorder puts p first, so
+  the two ends of the cascade disagreed about which mode was p. Reflection never
+  noticed — both its indices are in the prism — but the transmission
+  coefficients name the *exit* mode, and `t_pp` carried what `t_ps` should have.
+  The suite had excused itself from this by comparing `t` only for an isotropic
+  exit; that carve-out is replaced by a real cross-backend assertion.
 - **`FieldProfile` works under `backend="scattering"`.** Its power quantities
   previously required the transfer product, so they were unavailable in exactly
   the thick / lossy / evanescent regime that backend exists for. The interface
@@ -127,6 +134,14 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Changed
 
+- `check_conservation` / `conservation_residual` are renamed
+  `check_flux_bookkeeping` / `flux_bookkeeping_residual`. The old names claimed
+  a physics check; the quantity telescopes to zero regardless of the fields.
+- `scripts/sync_versions.py` gains a `--check` mode and is wired into the
+  release workflow, so a stale `CITATION.cff` or docs citation fails the release
+  instead of shipping. It also no longer rewrites the year of the *related
+  publication* — it forced every `year={...}` to the current year, silently
+  falsifying the reference — and now touches `@software` blocks only.
 - The scattering-vs-transfer cross-check now compares elements. It masked on
   `cond(transfer_matrix) < 1e10`, but a semi-infinite exit makes that matrix
   structurally rank-deficient, so `cond` is `inf` and the mask excused every

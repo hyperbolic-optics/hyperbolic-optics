@@ -33,6 +33,14 @@ from hyperbolic_optics.axes import assert_canonical
 # used here (forward = columns 0,1; backward = columns 2,3).
 _AMBIENT_REORDER = [2, 0, 3, 1]
 
+# A crystal layer's own columns arrive as [t0, t1, r0, r1] with slot 0 the s-like
+# mode (``Wave.sort_poynting_indices`` sorts p-character ascending). The ambient
+# reorder above puts p first, so without this the two ends of the cascade
+# disagree about which mode is p. Reflection never noticed -- both its indices
+# are in the prism -- but the transmission coefficients name the *exit* mode, and
+# a crystal exit had them transposed: t_pp carried what t_ps should have.
+_CRYSTAL_REORDER = [1, 0, 3, 2]
+
 
 def _diag(values: np.ndarray) -> np.ndarray:
     """Build batched diagonal 4×4 matrices from ``values`` shaped ``[..., 4]``."""
@@ -52,11 +60,11 @@ def _medium(layer) -> tuple[np.ndarray, np.ndarray | None, object]:
     if profile is not None and layer.thickness is not None:
         # interior finite layer (crystal or isotropic air gap)
         eigenvectors, kz = profile.tangential_modes()
-        return eigenvectors, kz, layer.thickness
+        return eigenvectors[..., :, _CRYSTAL_REORDER], kz[..., _CRYSTAL_REORDER], layer.thickness
     if profile is not None:
         # semi-infinite anisotropic exit: half-space, no propagation
         eigenvectors, _ = profile.tangential_modes()
-        return eigenvectors, None, None
+        return eigenvectors[..., :, _CRYSTAL_REORDER], None, None
     # ambient isotropic half-space: prism.matrix = A_inc^{-1}; exit.matrix = A_exit.
     matrix = layer.matrix
     dynamical = np.linalg.inv(matrix) if layer.type == "Ambient Incident Layer" else matrix
@@ -221,10 +229,11 @@ def scattering_coefficients(layers: list, k_0: np.ndarray) -> dict[str, np.ndarr
         t_ss, t_ps, t_sp`` in canonical ``[A, B, F, T]`` layout (un-presented).
 
     Note:
-        For an isotropic exit the transmission coefficients are in the clean s/p
-        basis; for a semi-infinite anisotropic exit they are in that crystal's
-        eigenmode basis (as in the transfer method), while the reflection
-        coefficients are always in the prism's s/p basis.
+        Reflection coefficients are in the prism's s/p basis. For an isotropic
+        exit the transmission coefficients are too; for a semi-infinite
+        anisotropic exit they name that crystal's eigenmodes, ordered p-like
+        first to match the prism -- the same convention the transfer backend
+        uses, so the two agree coefficient for coefficient.
     """
     media = [_medium(layer) for layer in layers]
     scattering = None
