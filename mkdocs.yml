@@ -127,7 +127,9 @@ nav:
     - Basic Concepts: user-guide/concepts.md
     - Scenarios: user-guide/scenarios.md
     - Materials: user-guide/materials.md
+    - Transmission & Backends: user-guide/power.md
     - Mueller Matrices: user-guide/mueller.md
+    - Jones Calculus: user-guide/jones.md
   - Examples:
     - Basic Examples: examples/basic.md
   - API Reference:

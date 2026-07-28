@@ -1,5 +1,12 @@
 # Materials
 
+```python
+from hyperbolic_optics.materials import list_materials
+
+list_materials()   # the built-in catalogue
+```
+
+
 ## Built-in Materials
 
 ### Uniaxial Materials
