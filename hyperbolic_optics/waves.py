@@ -134,6 +134,9 @@ class WaveProfile:
 class Wave:
     """Class representing the four partial waves in a layer of the structure."""
 
+    #: |Im kz| above which a mode counts as evanescent rather than propagating.
+    DIRECTION_TOL = 1e-9
+
     def __init__(
         self,
         kx: np.ndarray,
@@ -254,26 +257,47 @@ class Wave:
         self.berreman_matrix = np.stack([row0, row1, row2, row3], axis=-2).astype(np.complex128)
 
     def wave_sorting(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Sort wave modes into transmitted and reflected components.
+        """Partition the four Berreman modes into transmitted (+z) and reflected.
 
-        Solves the eigenvalue problem for the Berreman matrix and sorts
-        eigenmodes based on their propagation direction (sign of Im(kz) or Re(kz)).
+        Solves the eigenvalue problem for the Berreman matrix and splits the
+        eigenmodes by the direction they carry energy / decay in.
 
         Returns:
             Tuple of (transmitted_wavevectors, reflected_wavevectors,
                     transmitted_fields, reflected_fields)
 
         Note:
-            Forward-propagating modes (Im(kz) > 0 or Re(kz) > 0) are transmitted.
-            Backward-propagating modes are reflected.
+            The direction test is per mode, and which test applies depends on
+            the mode:
+
+            - evanescent (``|Im kz| > 1e-9``): forward iff ``Im(kz) > 0``, i.e.
+              it decays along +z.
+            - propagating: forward iff ``S_z > 0``. ``Re(kz)`` is *not* usable
+              here — in a hyperbolic medium phase and energy velocity are
+              antiparallel, so the mode carrying energy inward can have
+              ``Re(kz) < 0``.
+
+            The two tests are combined into a single score before sorting.
+            Ranking by one criterion and then splicing in the other with
+            ``np.where`` does not yield a permutation when a layer carries both
+            kinds of mode (lossless hyperbolic, gyrotropic and magnetic media),
+            and silently duplicates and drops modes.
         """
         wavevectors, fields = np.linalg.eig(self.berreman_matrix)
 
-        # Vectorized sorting - prefer imaginary part if significant, else real part
-        is_complex = np.abs(np.imag(wavevectors)) > 1e-9
-        idx_real = np.argsort(np.real(wavevectors), axis=-1)[..., ::-1]  # DESCENDING
-        idx_imag = np.argsort(np.imag(wavevectors), axis=-1)[..., ::-1]  # DESCENDING
-        indices = np.where(is_complex, idx_imag, idx_real)
+        # S_z per mode. Quadratic in the eigenvector, so the arbitrary phase
+        # np.linalg.eig returns cancels and the sign is well defined.
+        Ex, Ey = fields[..., 0, :], fields[..., 1, :]
+        Hx, Hy = fields[..., 2, :], fields[..., 3, :]
+        poynting_z = 0.5 * np.real(Ex * np.conj(Hy) - Ey * np.conj(Hx))
+
+        imag = np.imag(wavevectors)
+        evanescent = np.abs(imag) > self.DIRECTION_TOL
+        score = np.where(evanescent, np.sign(imag), np.sign(poynting_z))
+        # A propagating mode with kz -> 0 carries no net flux; fall back to phase.
+        score = np.where(score == 0, np.sign(np.real(wavevectors)), score)
+
+        indices = np.argsort(-score, axis=-1, kind="stable")
 
         # Gather sorted wavevectors and fields using take_along_axis
         sorted_waves = np.take_along_axis(wavevectors, indices, axis=-1)
