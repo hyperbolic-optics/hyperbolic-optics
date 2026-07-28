@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/mueller/">
       
       
-        <link rel="prev" href="../materials/">
+        <link rel="prev" href="../power/">
       
       
-        <link rel="next" href="../../examples/basic/">
+        <link rel="next" href="../jones/">
       
       
         
@@ -703,6 +703,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../power/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transmission & Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1046,6 +1074,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jones/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jones Calculus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1868,79 +1924,95 @@
 <h1 id="mueller-matrices">Mueller Matrices<a class="headerlink" href="#mueller-matrices" title="Permanent link">&para;</a></h1>
 <p>Mueller matrices describe how light's polarization state changes upon reflection from a surface.</p>
 <h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.mueller</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mueller</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Create structure</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Create Mueller analyzer</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Set incident polarization</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Add the sample</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1"># Calculate results</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
+<p>Every snippet on this page follows on from:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span><span class="p">},</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ambient Incident Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">50.0</span><span class="p">},</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="p">{</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="p">},</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="p">],</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.mueller</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mueller</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Create structure</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Create Mueller analyzer</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># Each block below starts a fresh Mueller; a component may be added once.</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Set incident polarization</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># Add the sample</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="c1"># Calculate results</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="incident-polarization-states">Incident Polarization States<a class="headerlink" href="#incident-polarization-states" title="Permanent link">&para;</a></h2>
 <h3 id="linear-polarization">Linear Polarization<a class="headerlink" href="#linear-polarization" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># p-polarized (0°)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># s-polarized (90°)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># 45° linear</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># p-polarized (0°)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># s-polarized (90°)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 45° linear</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="circular-polarization">Circular Polarization<a class="headerlink" href="#circular-polarization" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Right-handed circular</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;circular&#39;</span><span class="p">,</span> <span class="n">handedness</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Left-handed circular</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;circular&#39;</span><span class="p">,</span> <span class="n">handedness</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Right-handed circular</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;circular&#39;</span><span class="p">,</span> <span class="n">handedness</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Left-handed circular</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;circular&#39;</span><span class="p">,</span> <span class="n">handedness</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="elliptical-polarization">Elliptical Polarization<a class="headerlink" href="#elliptical-polarization" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Elliptical with azimuth 30° and ellipticity 20°</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;elliptical&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Elliptical with azimuth 30° and ellipticity 20°</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;elliptical&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="optical-components">Optical Components<a class="headerlink" href="#optical-components" title="Permanent link">&para;</a></h2>
 <h3 id="anisotropic-sample">Anisotropic Sample<a class="headerlink" href="#anisotropic-sample" title="Permanent link">&para;</a></h3>
 <p>The main sample being analyzed:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>   <span class="c1"># a component may only be added once</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="linear-polarizer">Linear Polarizer<a class="headerlink" href="#linear-polarizer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Horizontal polarizer (0°)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Vertical polarizer (90°)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># 45° polarizer</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">45</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Horizontal polarizer (0°)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Vertical polarizer (90°)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># 45° polarizer</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">45</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="quarter-wave-plate">Quarter-Wave Plate<a class="headerlink" href="#quarter-wave-plate" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># QWP with fast axis at 45°</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;quarter_wave_plate&#39;</span><span class="p">,</span> <span class="mi">45</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># QWP with fast axis at 45°</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;quarter_wave_plate&#39;</span><span class="p">,</span> <span class="mi">45</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="half-wave-plate">Half-Wave Plate<a class="headerlink" href="#half-wave-plate" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># HWP with fast axis at 22.5°</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;half_wave_plate&#39;</span><span class="p">,</span> <span class="mf">22.5</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># HWP with fast axis at 22.5°</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;half_wave_plate&#39;</span><span class="p">,</span> <span class="mf">22.5</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="multiple-components">Multiple Components<a class="headerlink" href="#multiple-components" title="Permanent link">&para;</a></h2>
 <p>Place components in series:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Polarizer → Sample → Analyzer</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Input polarizer</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>    <span class="c1"># Sample</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>  <span class="c1"># Analyzer (crossed)</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">reflectivity</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Polarizer → Sample → Analyzer</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Input polarizer</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>    <span class="c1"># Sample</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;linear_polarizer&#39;</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>  <span class="c1"># Analyzer (crossed)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">reflectivity</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="stokes-parameters">Stokes Parameters<a class="headerlink" href="#stokes-parameters" title="Permanent link">&para;</a></h2>
 <p>The Stokes parameters describe the polarization state:</p>
@@ -1950,80 +2022,80 @@
 <li><strong>S2</strong>: +45° vs -45° linear polarization</li>
 <li><strong>S3</strong>: Right vs left circular polarization</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">stokes</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_stokes_parameters</span><span class="p">()</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total intensity: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S0&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear H/V: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear ±45°: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Circular R/L: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">stokes</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_stokes_parameters</span><span class="p">()</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total intensity: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S0&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear H/V: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear ±45°: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Circular R/L: </span><span class="si">{</span><span class="n">stokes</span><span class="p">[</span><span class="s1">&#39;S3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="polarization-properties">Polarization Properties<a class="headerlink" href="#polarization-properties" title="Permanent link">&para;</a></h2>
 <h3 id="degree-of-polarization-dop">Degree of Polarization (DOP)<a class="headerlink" href="#degree-of-polarization-dop" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">dop</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_degree_of_polarisation</span><span class="p">()</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># DOP = 0: unpolarized</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># DOP = 1: fully polarized</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">dop</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_degree_of_polarisation</span><span class="p">()</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># DOP = 0: unpolarized</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># DOP = 1: fully polarized</span>
 </code></pre></div>
 <h3 id="ellipticity">Ellipticity<a class="headerlink" href="#ellipticity" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">ellipticity</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_ellipticity</span><span class="p">()</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># Ellipticity angle in radians</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># 0: linear</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># ±π/4: circular</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">ellipticity</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_ellipticity</span><span class="p">()</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># Ellipticity angle in radians</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># 0: linear</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># ±π/4: circular</span>
 </code></pre></div>
 <h3 id="azimuth">Azimuth<a class="headerlink" href="#azimuth" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">azimuth</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_azimuth</span><span class="p">()</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># Orientation of polarization ellipse major axis</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">azimuth</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_azimuth</span><span class="p">()</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># Orientation of polarization ellipse major axis</span>
 </code></pre></div>
 <h2 id="all-parameters-at-once">All Parameters at Once<a class="headerlink" href="#all-parameters-at-once" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1"># Contains: S0, S1, S2, S3, DOP, Ellipticity, Azimuth</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1"># Contains: S0, S1, S2, S3, DOP, Ellipticity, Azimuth</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.mueller</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mueller</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1"># Define structure</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="p">},</span>
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span>
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ambient Incident Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">50.0</span><span class="p">},</span>
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>        <span class="p">{</span>
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>            <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">,</span>
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>            <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>            <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span>
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>            <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>        <span class="p">}</span>
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    <span class="p">]</span>
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="p">}</span>
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>
-<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a><span class="c1"># Run simulation</span>
-<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a><span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
-<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
-<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>
-<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a><span class="c1"># Mueller analysis</span>
-<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
-<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>
-<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a><span class="c1"># Try different incident polarizations</span>
-<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a><span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">90</span><span class="p">]:</span>
-<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span>
-<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
-<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a>
-<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a>    <span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
-<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Incident angle: </span><span class="si">{</span><span class="n">angle</span><span class="si">}</span><span class="s2">°&quot;</span><span class="p">)</span>
-<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average reflectance: </span><span class="si">{</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;S0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-14-37" name="__codelineno-14-37" href="#__codelineno-14-37"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average DOP: </span><span class="si">{</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;DOP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-14-38" name="__codelineno-14-38" href="#__codelineno-14-38"></a>
-<a id="__codelineno-14-39" name="__codelineno-14-39" href="#__codelineno-14-39"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>  <span class="c1"># Reset for next calculation</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.mueller</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mueller</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># Define structure</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="p">},</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ambient Incident Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">50.0</span><span class="p">},</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>        <span class="p">{</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>            <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>            <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>            <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>            <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>        <span class="p">}</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>    <span class="p">]</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="p">}</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="c1"># Run simulation</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a><span class="c1"># Mueller analysis</span>
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a><span class="n">mueller</span> <span class="o">=</span> <span class="n">Mueller</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a><span class="c1"># Try different incident polarizations</span>
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a><span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">90</span><span class="p">]:</span>
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">set_incident_polarization</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">)</span>
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">add_optical_component</span><span class="p">(</span><span class="s1">&#39;anisotropic_sample&#39;</span><span class="p">)</span>
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>    <span class="n">params</span> <span class="o">=</span> <span class="n">mueller</span><span class="o">.</span><span class="n">get_all_parameters</span><span class="p">()</span>
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Incident angle: </span><span class="si">{</span><span class="n">angle</span><span class="si">}</span><span class="s2">°&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average reflectance: </span><span class="si">{</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;S0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average DOP: </span><span class="si">{</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;DOP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>    <span class="n">mueller</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>  <span class="c1"># Reset for next calculation</span>
 </code></pre></div>
 <h2 id="resetting-the-mueller-object">Resetting the Mueller Object<a class="headerlink" href="#resetting-the-mueller-object" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Clear all settings and start fresh</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Clear all settings and start fresh</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">mueller</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
 </code></pre></div>
 <p>This clears:
 - Mueller matrix
@@ -2083,7 +2155,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../materials/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Materials">
+          <a href="../power/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Transmission &amp; Backends">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2093,20 +2165,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Materials
+                Transmission & Backends
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../examples/basic/" class="md-footer__link md-footer__link--next" aria-label="Next: Basic Examples">
+          <a href="../jones/" class="md-footer__link md-footer__link--next" aria-label="Next: Jones Calculus">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Basic Examples
+                Jones Calculus
               </div>
             </div>
             <div class="md-footer__button md-icon">

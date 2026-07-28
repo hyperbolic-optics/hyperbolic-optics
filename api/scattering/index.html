@@ -703,6 +703,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../user-guide/power/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transmission & Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../user-guide/mueller/" class="md-nav__link">
         
   
@@ -711,6 +739,34 @@
     
   
     Mueller Matrices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/jones/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jones Calculus
   
 
     
@@ -1068,6 +1124,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#hyperbolic_optics.scattering.scattering_interface_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scattering_interface_fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hyperbolic_optics.scattering.scattering_coefficients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1332,6 +1399,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#hyperbolic_optics.scattering.scattering_interface_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;scattering_interface_fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hyperbolic_optics.scattering.scattering_coefficients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1418,6 +1496,13 @@ ambient dynamical matrices <code>A_inc</code> / <code>A_exit</code> (prism, isot
 <p><span class="doc-section-title">Functions:</span></p>
     <ul>
           <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-function&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-function-name&quot;&gt;scattering_interface_fields&lt;/span&gt; (&lt;code&gt;hyperbolic_optics.scattering.scattering_interface_fields&lt;/code&gt;)" href="#hyperbolic_optics.scattering.scattering_interface_fields">scattering_interface_fields</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Tangential field <code>[Ex, Ey, Hx, Hy]</code> at the top of each layer, stably.</p>
+            </div>
+          </li>
+          <li class="doc-section-item field-body">
             <b><code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-function&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-function-name&quot;&gt;scattering_coefficients&lt;/span&gt; (&lt;code&gt;hyperbolic_optics.scattering.scattering_coefficients&lt;/code&gt;)" href="#hyperbolic_optics.scattering.scattering_coefficients">scattering_coefficients</a></code></b>
             –
             <div class="doc-md-description">
@@ -1440,6 +1525,262 @@ ambient dynamical matrices <code>A_inc</code> / <code>A_exit</code> (prism, isot
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyperbolic_optics.scattering.scattering_interface_fields" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">scattering_interface_fields</span>
+
+
+<a href="#hyperbolic_optics.scattering.scattering_interface_fields" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">scattering_interface_fields</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">k_0</span><span class="p">,</span> <span class="n">a_p</span><span class="p">,</span> <span class="n">a_s</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Tangential field <code>[Ex, Ey, Hx, Hy]</code> at the top of each layer, stably.</p>
+<p>The transfer route to these fields propagates <code>Gᵢ = Mᵢ·G_{i+1}</code> through the
+per-layer matrices, which carry the growing exponentials this module exists
+to avoid. Here the mode amplitudes come out of the cascade instead and the
+field is rebuilt from each medium's own eigenvectors, so no growing term is
+ever formed.</p>
+<p>For layer <code>i</code>, split the stack at its top interface into the cascade above
+it (<code>L</code>) and the cascade below (<code>R</code>). The forward amplitude entering the
+layer and the backward amplitude returning into it satisfy</p>
+<div class="highlight"><pre><span></span><code>c_f = L₀₀·a + L₀₁·c_b ,   c_b = R₁₀·c_f
+</code></pre></div>
+<p>-- the layer is illuminated from above by <code>a</code> and from below by whatever
+the rest of the stack sends back -- giving
+<code>c_f = (I − L₀₁·R₁₀)⁻¹·L₀₀·a</code>. The field is then <code>P·[c_f, c_b]</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>layers</code></b>
+              (<code><span title="list">list</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>The executed structure's layers.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>k_0</code></b>
+              (<code><span title="numpy.ndarray">ndarray</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Canonical free-space wavenumber.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>a_p</code></b>
+              (<code><span title="complex">complex</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Incident forward p amplitude.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>a_s</code></b>
+              (<code><span title="complex">complex</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Incident forward s amplitude.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="list">list</span>[<span title="numpy.ndarray">ndarray</span>]</code>
+          –
+          <div class="doc-md-description">
+            <p>One <code>[..., 4]</code> field array per layer, ordered prism-first, matching the</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+              <code><span title="list">list</span>[<span title="numpy.ndarray">ndarray</span>]</code>
+          –
+          <div class="doc-md-description">
+            <p>convention of :mod:<code>hyperbolic_optics.fields</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>hyperbolic_optics/scattering.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-135">135</a></span>
+<span class="normal"><a href="#__codelineno-0-136">136</a></span>
+<span class="normal"><a href="#__codelineno-0-137">137</a></span>
+<span class="normal"><a href="#__codelineno-0-138">138</a></span>
+<span class="normal"><a href="#__codelineno-0-139">139</a></span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span>
+<span class="normal"><a href="#__codelineno-0-144">144</a></span>
+<span class="normal"><a href="#__codelineno-0-145">145</a></span>
+<span class="normal"><a href="#__codelineno-0-146">146</a></span>
+<span class="normal"><a href="#__codelineno-0-147">147</a></span>
+<span class="normal"><a href="#__codelineno-0-148">148</a></span>
+<span class="normal"><a href="#__codelineno-0-149">149</a></span>
+<span class="normal"><a href="#__codelineno-0-150">150</a></span>
+<span class="normal"><a href="#__codelineno-0-151">151</a></span>
+<span class="normal"><a href="#__codelineno-0-152">152</a></span>
+<span class="normal"><a href="#__codelineno-0-153">153</a></span>
+<span class="normal"><a href="#__codelineno-0-154">154</a></span>
+<span class="normal"><a href="#__codelineno-0-155">155</a></span>
+<span class="normal"><a href="#__codelineno-0-156">156</a></span>
+<span class="normal"><a href="#__codelineno-0-157">157</a></span>
+<span class="normal"><a href="#__codelineno-0-158">158</a></span>
+<span class="normal"><a href="#__codelineno-0-159">159</a></span>
+<span class="normal"><a href="#__codelineno-0-160">160</a></span>
+<span class="normal"><a href="#__codelineno-0-161">161</a></span>
+<span class="normal"><a href="#__codelineno-0-162">162</a></span>
+<span class="normal"><a href="#__codelineno-0-163">163</a></span>
+<span class="normal"><a href="#__codelineno-0-164">164</a></span>
+<span class="normal"><a href="#__codelineno-0-165">165</a></span>
+<span class="normal"><a href="#__codelineno-0-166">166</a></span>
+<span class="normal"><a href="#__codelineno-0-167">167</a></span>
+<span class="normal"><a href="#__codelineno-0-168">168</a></span>
+<span class="normal"><a href="#__codelineno-0-169">169</a></span>
+<span class="normal"><a href="#__codelineno-0-170">170</a></span>
+<span class="normal"><a href="#__codelineno-0-171">171</a></span>
+<span class="normal"><a href="#__codelineno-0-172">172</a></span>
+<span class="normal"><a href="#__codelineno-0-173">173</a></span>
+<span class="normal"><a href="#__codelineno-0-174">174</a></span>
+<span class="normal"><a href="#__codelineno-0-175">175</a></span>
+<span class="normal"><a href="#__codelineno-0-176">176</a></span>
+<span class="normal"><a href="#__codelineno-0-177">177</a></span>
+<span class="normal"><a href="#__codelineno-0-178">178</a></span>
+<span class="normal"><a href="#__codelineno-0-179">179</a></span>
+<span class="normal"><a href="#__codelineno-0-180">180</a></span>
+<span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span>
+<span class="normal"><a href="#__codelineno-0-194">194</a></span>
+<span class="normal"><a href="#__codelineno-0-195">195</a></span>
+<span class="normal"><a href="#__codelineno-0-196">196</a></span>
+<span class="normal"><a href="#__codelineno-0-197">197</a></span>
+<span class="normal"><a href="#__codelineno-0-198">198</a></span>
+<span class="normal"><a href="#__codelineno-0-199">199</a></span>
+<span class="normal"><a href="#__codelineno-0-200">200</a></span>
+<span class="normal"><a href="#__codelineno-0-201">201</a></span>
+<span class="normal"><a href="#__codelineno-0-202">202</a></span>
+<span class="normal"><a href="#__codelineno-0-203">203</a></span>
+<span class="normal"><a href="#__codelineno-0-204">204</a></span>
+<span class="normal"><a href="#__codelineno-0-205">205</a></span>
+<span class="normal"><a href="#__codelineno-0-206">206</a></span>
+<span class="normal"><a href="#__codelineno-0-207">207</a></span>
+<span class="normal"><a href="#__codelineno-0-208">208</a></span>
+<span class="normal"><a href="#__codelineno-0-209">209</a></span>
+<span class="normal"><a href="#__codelineno-0-210">210</a></span>
+<span class="normal"><a href="#__codelineno-0-211">211</a></span>
+<span class="normal"><a href="#__codelineno-0-212">212</a></span>
+<span class="normal"><a href="#__codelineno-0-213">213</a></span>
+<span class="normal"><a href="#__codelineno-0-214">214</a></span>
+<span class="normal"><a href="#__codelineno-0-215">215</a></span>
+<span class="normal"><a href="#__codelineno-0-216">216</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="k">def</span><span class="w"> </span><span class="nf">scattering_interface_fields</span><span class="p">(</span>
+<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">k_0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">a_p</span><span class="p">:</span> <span class="nb">complex</span><span class="p">,</span> <span class="n">a_s</span><span class="p">:</span> <span class="nb">complex</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tangential field ``[Ex, Ey, Hx, Hy]`` at the top of each layer, stably.</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a>
+<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">    The transfer route to these fields propagates ``Gᵢ = Mᵢ·G_{i+1}`` through the</span>
+<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">    per-layer matrices, which carry the growing exponentials this module exists</span>
+<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">    to avoid. Here the mode amplitudes come out of the cascade instead and the</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    field is rebuilt from each medium&#39;s own eigenvectors, so no growing term is</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    ever formed.</span>
+<a id="__codelineno-0-145" name="__codelineno-0-145"></a>
+<a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">    For layer ``i``, split the stack at its top interface into the cascade above</span>
+<a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    it (``L``) and the cascade below (``R``). The forward amplitude entering the</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">    layer and the backward amplitude returning into it satisfy</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a>
+<a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        c_f = L₀₀·a + L₀₁·c_b ,   c_b = R₁₀·c_f</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a>
+<a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    -- the layer is illuminated from above by ``a`` and from below by whatever</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">    the rest of the stack sends back -- giving</span>
+<a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">    ``c_f = (I − L₀₁·R₁₀)⁻¹·L₀₀·a``. The field is then ``P·[c_f, c_b]``.</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a>
+<a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="sd">        layers: The executed structure&#39;s layers.</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="sd">        k_0: Canonical free-space wavenumber.</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">        a_p: Incident forward p amplitude.</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="sd">        a_s: Incident forward s amplitude.</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a>
+<a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">        One ``[..., 4]`` field array per layer, ordered prism-first, matching the</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">        convention of :mod:`hyperbolic_optics.fields`.</span>
+<a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a>    <span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">_medium</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">]</span>
+<a id="__codelineno-0-167" name="__codelineno-0-167"></a>    <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">media</span><span class="p">)</span>
+<a id="__codelineno-0-168" name="__codelineno-0-168"></a>    <span class="n">interfaces</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a>        <span class="n">_interface_scattering</span><span class="p">(</span><span class="n">media</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">k_0</span><span class="p">)</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-171" name="__codelineno-0-171"></a>    <span class="p">]</span>
+<a id="__codelineno-0-172" name="__codelineno-0-172"></a>
+<a id="__codelineno-0-173" name="__codelineno-0-173"></a>    <span class="c1"># below[i] cascades interfaces i .. end; above[i] cascades 0 .. i-1.</span>
+<a id="__codelineno-0-174" name="__codelineno-0-174"></a>    <span class="n">below</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">count</span>
+<a id="__codelineno-0-175" name="__codelineno-0-175"></a>    <span class="n">accumulated</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-176" name="__codelineno-0-176"></a>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177"></a>        <span class="n">accumulated</span> <span class="o">=</span> <span class="n">interfaces</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">accumulated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_star</span><span class="p">(</span><span class="n">interfaces</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">accumulated</span><span class="p">)</span>
+<a id="__codelineno-0-178" name="__codelineno-0-178"></a>        <span class="n">below</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">accumulated</span>
+<a id="__codelineno-0-179" name="__codelineno-0-179"></a>
+<a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="n">above</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">count</span>
+<a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">accumulated</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+<a id="__codelineno-0-183" name="__codelineno-0-183"></a>        <span class="n">accumulated</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a>            <span class="n">interfaces</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">accumulated</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_star</span><span class="p">(</span><span class="n">accumulated</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a>        <span class="p">)</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a>        <span class="n">above</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">accumulated</span>
+<a id="__codelineno-0-187" name="__codelineno-0-187"></a>
+<a id="__codelineno-0-188" name="__codelineno-0-188"></a>    <span class="c1"># Ambient columns are reordered to [p_fwd, s_fwd, ...], so the incident</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a>    <span class="c1"># forward pair is (p, s) in that order.</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a>    <span class="n">reference</span> <span class="o">=</span> <span class="n">interfaces</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="n">incident</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a>        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">a_p</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">a_s</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a>    <span class="p">)</span>  <span class="c1"># [..., 2]</span>
+<a id="__codelineno-0-194" name="__codelineno-0-194"></a>
+<a id="__codelineno-0-195" name="__codelineno-0-195"></a>    <span class="n">identity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">)</span>
+<a id="__codelineno-0-196" name="__codelineno-0-196"></a>    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a>        <span class="k">if</span> <span class="n">above</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># the prism: nothing above it to correct for</span>
+<a id="__codelineno-0-199" name="__codelineno-0-199"></a>            <span class="n">forward</span> <span class="o">=</span> <span class="n">incident</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-201" name="__codelineno-0-201"></a>            <span class="n">l00</span><span class="p">,</span> <span class="n">l01</span> <span class="o">=</span> <span class="n">above</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">above</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">:]</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a>            <span class="n">forward</span> <span class="o">=</span> <span class="n">l00</span> <span class="o">@</span> <span class="n">incident</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+<a id="__codelineno-0-203" name="__codelineno-0-203"></a>            <span class="k">if</span> <span class="n">below</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a>                <span class="n">r10</span> <span class="o">=</span> <span class="n">below</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a>                <span class="n">forward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">identity</span> <span class="o">-</span> <span class="n">l01</span> <span class="o">@</span> <span class="n">r10</span><span class="p">)</span> <span class="o">@</span> <span class="n">forward</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a>            <span class="n">forward</span> <span class="o">=</span> <span class="n">forward</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-207" name="__codelineno-0-207"></a>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a>        <span class="k">if</span> <span class="n">below</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># the exit half-space carries no backward wave</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a>            <span class="n">backward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">forward</span><span class="p">)</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a>            <span class="n">backward</span> <span class="o">=</span> <span class="p">(</span><span class="n">below</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">@</span> <span class="n">forward</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a>        <span class="n">amplitudes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">forward</span><span class="p">,</span> <span class="n">backward</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [..., 4]</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a>        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">media</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">@</span> <span class="n">amplitudes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>    <span class="k">return</span> <span class="n">fields</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
@@ -1500,89 +1841,92 @@ exposing eigenvectors via <code>profile</code> or an ambient dynamical matrix.</
 
 <details class="note" open>
   <summary>Note</summary>
-  <p>For an isotropic exit the transmission coefficients are in the clean s/p
-basis; for a semi-infinite anisotropic exit they are in that crystal's
-eigenmode basis (as in the transfer method), while the reflection
-coefficients are always in the prism's s/p basis.</p>
+  <p>Reflection coefficients are in the prism's s/p basis. For an isotropic
+exit the transmission coefficients are too; for a semi-infinite
+anisotropic exit they name that crystal's eigenmodes, ordered p-like
+first to match the prism -- the same convention the transfer backend
+uses, so the two agree coefficient for coefficient.</p>
 </details>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>hyperbolic_optics/scattering.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-127">127</a></span>
-<span class="normal"><a href="#__codelineno-0-128">128</a></span>
-<span class="normal"><a href="#__codelineno-0-129">129</a></span>
-<span class="normal"><a href="#__codelineno-0-130">130</a></span>
-<span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
-<span class="normal"><a href="#__codelineno-0-134">134</a></span>
-<span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span>
-<span class="normal"><a href="#__codelineno-0-137">137</a></span>
-<span class="normal"><a href="#__codelineno-0-138">138</a></span>
-<span class="normal"><a href="#__codelineno-0-139">139</a></span>
-<span class="normal"><a href="#__codelineno-0-140">140</a></span>
-<span class="normal"><a href="#__codelineno-0-141">141</a></span>
-<span class="normal"><a href="#__codelineno-0-142">142</a></span>
-<span class="normal"><a href="#__codelineno-0-143">143</a></span>
-<span class="normal"><a href="#__codelineno-0-144">144</a></span>
-<span class="normal"><a href="#__codelineno-0-145">145</a></span>
-<span class="normal"><a href="#__codelineno-0-146">146</a></span>
-<span class="normal"><a href="#__codelineno-0-147">147</a></span>
-<span class="normal"><a href="#__codelineno-0-148">148</a></span>
-<span class="normal"><a href="#__codelineno-0-149">149</a></span>
-<span class="normal"><a href="#__codelineno-0-150">150</a></span>
-<span class="normal"><a href="#__codelineno-0-151">151</a></span>
-<span class="normal"><a href="#__codelineno-0-152">152</a></span>
-<span class="normal"><a href="#__codelineno-0-153">153</a></span>
-<span class="normal"><a href="#__codelineno-0-154">154</a></span>
-<span class="normal"><a href="#__codelineno-0-155">155</a></span>
-<span class="normal"><a href="#__codelineno-0-156">156</a></span>
-<span class="normal"><a href="#__codelineno-0-157">157</a></span>
-<span class="normal"><a href="#__codelineno-0-158">158</a></span>
-<span class="normal"><a href="#__codelineno-0-159">159</a></span>
-<span class="normal"><a href="#__codelineno-0-160">160</a></span>
-<span class="normal"><a href="#__codelineno-0-161">161</a></span>
-<span class="normal"><a href="#__codelineno-0-162">162</a></span>
-<span class="normal"><a href="#__codelineno-0-163">163</a></span>
-<span class="normal"><a href="#__codelineno-0-164">164</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="k">def</span><span class="w"> </span><span class="nf">scattering_coefficients</span><span class="p">(</span><span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">k_0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reflection/transmission coefficients via the stable scattering-matrix method.</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">        layers: The executed structure&#39;s layers (``structure.layers``), each</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a><span class="sd">            exposing eigenvectors via ``profile`` or an ambient dynamical matrix.</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">        k_0: Canonical free-space wavenumber ``[1, 1, F, 1]``.</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">        Dict of the eight complex coefficients ``r_pp, r_ss, r_ps, r_sp, t_pp,</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">        t_ss, t_ps, t_sp`` in canonical ``[A, B, F, T]`` layout (un-presented).</span>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">        For an isotropic exit the transmission coefficients are in the clean s/p</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a><span class="sd">        basis; for a semi-infinite anisotropic exit they are in that crystal&#39;s</span>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">        eigenmode basis (as in the transfer method), while the reflection</span>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        coefficients are always in the prism&#39;s s/p basis.</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">_medium</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">]</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a>    <span class="n">scattering</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a>    <span class="k">for</span> <span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">),</span> <span class="p">(</span><span class="n">p_right</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">media</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a>        <span class="n">interface</span> <span class="o">=</span> <span class="n">_interface_scattering</span><span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">,</span> <span class="n">p_right</span><span class="p">,</span> <span class="n">k_0</span><span class="p">)</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a>        <span class="n">scattering</span> <span class="o">=</span> <span class="n">interface</span> <span class="k">if</span> <span class="n">scattering</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_star</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">interface</span><span class="p">)</span>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="n">assert_canonical</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">matrix_ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;scattering_matrix&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">scattering</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="c1"># PyLlama r_kj is (out k, in j); this codebase uses r_{in-&gt;out}, so the cross</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="c1"># terms transpose (verified against the transfer backend).</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>        <span class="s2">&quot;r_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>        <span class="s2">&quot;r_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>        <span class="s2">&quot;r_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>        <span class="s2">&quot;r_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a>        <span class="s2">&quot;t_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a>        <span class="s2">&quot;t_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="s2">&quot;t_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a>        <span class="s2">&quot;t_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a>    <span class="p">}</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-219">219</a></span>
+<span class="normal"><a href="#__codelineno-0-220">220</a></span>
+<span class="normal"><a href="#__codelineno-0-221">221</a></span>
+<span class="normal"><a href="#__codelineno-0-222">222</a></span>
+<span class="normal"><a href="#__codelineno-0-223">223</a></span>
+<span class="normal"><a href="#__codelineno-0-224">224</a></span>
+<span class="normal"><a href="#__codelineno-0-225">225</a></span>
+<span class="normal"><a href="#__codelineno-0-226">226</a></span>
+<span class="normal"><a href="#__codelineno-0-227">227</a></span>
+<span class="normal"><a href="#__codelineno-0-228">228</a></span>
+<span class="normal"><a href="#__codelineno-0-229">229</a></span>
+<span class="normal"><a href="#__codelineno-0-230">230</a></span>
+<span class="normal"><a href="#__codelineno-0-231">231</a></span>
+<span class="normal"><a href="#__codelineno-0-232">232</a></span>
+<span class="normal"><a href="#__codelineno-0-233">233</a></span>
+<span class="normal"><a href="#__codelineno-0-234">234</a></span>
+<span class="normal"><a href="#__codelineno-0-235">235</a></span>
+<span class="normal"><a href="#__codelineno-0-236">236</a></span>
+<span class="normal"><a href="#__codelineno-0-237">237</a></span>
+<span class="normal"><a href="#__codelineno-0-238">238</a></span>
+<span class="normal"><a href="#__codelineno-0-239">239</a></span>
+<span class="normal"><a href="#__codelineno-0-240">240</a></span>
+<span class="normal"><a href="#__codelineno-0-241">241</a></span>
+<span class="normal"><a href="#__codelineno-0-242">242</a></span>
+<span class="normal"><a href="#__codelineno-0-243">243</a></span>
+<span class="normal"><a href="#__codelineno-0-244">244</a></span>
+<span class="normal"><a href="#__codelineno-0-245">245</a></span>
+<span class="normal"><a href="#__codelineno-0-246">246</a></span>
+<span class="normal"><a href="#__codelineno-0-247">247</a></span>
+<span class="normal"><a href="#__codelineno-0-248">248</a></span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span>
+<span class="normal"><a href="#__codelineno-0-255">255</a></span>
+<span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="k">def</span><span class="w"> </span><span class="nf">scattering_coefficients</span><span class="p">(</span><span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">k_0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reflection/transmission coefficients via the stable scattering-matrix method.</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        layers: The executed structure&#39;s layers (``structure.layers``), each</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">            exposing eigenvectors via ``profile`` or an ambient dynamical matrix.</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        k_0: Canonical free-space wavenumber ``[1, 1, F, 1]``.</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        Dict of the eight complex coefficients ``r_pp, r_ss, r_ps, r_sp, t_pp,</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        t_ss, t_ps, t_sp`` in canonical ``[A, B, F, T]`` layout (un-presented).</span>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">    Note:</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">        Reflection coefficients are in the prism&#39;s s/p basis. For an isotropic</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        exit the transmission coefficients are too; for a semi-infinite</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">        anisotropic exit they name that crystal&#39;s eigenmodes, ordered p-like</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">        first to match the prism -- the same convention the transfer backend</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        uses, so the two agree coefficient for coefficient.</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">_medium</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">]</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="n">scattering</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="k">for</span> <span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">),</span> <span class="p">(</span><span class="n">p_right</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">media</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">media</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="n">interface</span> <span class="o">=</span> <span class="n">_interface_scattering</span><span class="p">(</span><span class="n">p_left</span><span class="p">,</span> <span class="n">q_left</span><span class="p">,</span> <span class="n">d_left</span><span class="p">,</span> <span class="n">p_right</span><span class="p">,</span> <span class="n">k_0</span><span class="p">)</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="n">scattering</span> <span class="o">=</span> <span class="n">interface</span> <span class="k">if</span> <span class="n">scattering</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_star</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">interface</span><span class="p">)</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">assert_canonical</span><span class="p">(</span><span class="n">scattering</span><span class="p">,</span> <span class="n">matrix_ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;scattering_matrix&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">scattering</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="c1"># PyLlama r_kj is (out k, in j); this codebase uses r_{in-&gt;out}, so the cross</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="c1"># terms transpose (verified against the transfer backend).</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="s2">&quot;r_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>        <span class="s2">&quot;r_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="s2">&quot;r_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="s2">&quot;r_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="s2">&quot;t_pp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>        <span class="s2">&quot;t_ss&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>        <span class="s2">&quot;t_ps&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="s2">&quot;t_sp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

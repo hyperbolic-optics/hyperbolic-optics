@@ -18,7 +18,7 @@
         <link rel="prev" href="../scenarios/">
       
       
-        <link rel="next" href="../mueller/">
+        <link rel="next" href="../power/">
       
       
         
@@ -1009,6 +1009,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../power/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transmission & Backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../mueller/" class="md-nav__link">
         
   
@@ -1017,6 +1045,34 @@
     
   
     Mueller Matrices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jones/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Jones Calculus
   
 
     
@@ -1824,17 +1880,21 @@
 
 
 <h1 id="materials">Materials<a class="headerlink" href="#materials" title="Permanent link">&para;</a></h1>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.materials</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_materials</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">list_materials</span><span class="p">()</span>   <span class="c1"># the built-in catalogue</span>
+</code></pre></div>
 <h2 id="built-in-materials">Built-in Materials<a class="headerlink" href="#built-in-materials" title="Permanent link">&para;</a></h2>
 <h3 id="uniaxial-materials">Uniaxial Materials<a class="headerlink" href="#uniaxial-materials" title="Permanent link">&para;</a></h3>
 <p>Materials with a single optical axis (extraordinary axis differs from ordinary axes).</p>
 <h4 id="quartz">Quartz<a class="headerlink" href="#quartz" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>  <span class="c1"># Optical axis orientation</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>  <span class="c1"># Optical axis orientation</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Frequency range</strong>: 410-600 cm⁻¹</li>
@@ -1844,39 +1904,39 @@
 <h4 id="calcite">Calcite<a class="headerlink" href="#calcite" title="Permanent link">&para;</a></h4>
 <p>Two variants available:</p>
 <p><strong>Upper Reststrahlen Band</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;CalciteUpper&quot;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
-</code></pre></div>
-<ul>
-<li><strong>Frequency range</strong>: 1300-1600 cm⁻¹</li>
-<li><strong>Type</strong>: Uniaxial negative (hyperbolic)</li>
-</ul>
-<p><strong>Lower Reststrahlen Band</strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;CalciteLower&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;CalciteUpper&quot;</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
-<li><strong>Frequency range</strong>: 860-920 cm⁻¹</li>
-<li><strong>Type</strong>: Uniaxial positive</li>
+<li><strong>Frequency range</strong>: 1300-1600 cm⁻¹</li>
+<li><strong>Type</strong>: Uniaxial negative (hyperbolic)</li>
 </ul>
-<h4 id="sapphire">Sapphire<a class="headerlink" href="#sapphire" title="Permanent link">&para;</a></h4>
+<p><strong>Lower Reststrahlen Band</strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Sapphire&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;CalciteLower&quot;</span><span class="p">,</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><strong>Frequency range</strong>: 860-920 cm⁻¹</li>
+<li><strong>Type</strong>: Uniaxial positive</li>
+</ul>
+<h4 id="sapphire">Sapphire<a class="headerlink" href="#sapphire" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Sapphire&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Frequency range</strong>: 210-1000 cm⁻¹</li>
@@ -1887,8 +1947,8 @@
 <p>Polar uniaxial crystals used (with MoO₃) in the layer-resolved absorption example.
 Both are modeled c-cut; SiC is treated as effectively isotropic in its
 reststrahlen band.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;SiC&quot;</span><span class="p">,</span> <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Crystal Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;AlN&quot;</span><span class="p">,</span> <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;material&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SiC&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;rotationY&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Crystal Layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;material&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AlN&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;thickness&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;rotationY&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Type</strong>: Uniaxial (AlN), near-isotropic (SiC)</li>
@@ -1897,13 +1957,13 @@ reststrahlen band.</p>
 </ul>
 <h3 id="monoclinic-materials">Monoclinic Materials<a class="headerlink" href="#monoclinic-materials" title="Permanent link">&para;</a></h3>
 <h4 id="gallium-oxide-ga2o3">Gallium Oxide (β-Ga₂O₃)<a class="headerlink" href="#gallium-oxide-ga2o3" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;GalliumOxide&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;GalliumOxide&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Frequency range</strong>: 350-800 cm⁻¹</li>
@@ -1912,13 +1972,13 @@ reststrahlen band.</p>
 </ul>
 <h3 id="biaxial-materials">Biaxial Materials<a class="headerlink" href="#biaxial-materials" title="Permanent link">&para;</a></h3>
 <h4 id="-moo3-molybdenum-trioxide">α-MoO₃ (molybdenum trioxide)<a class="headerlink" href="#-moo3-molybdenum-trioxide" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Crystal Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;MoO3&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">,</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>  <span class="c1"># azimuthal rotation exposes the in-plane anisotropy</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Crystal Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;MoO3&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>  <span class="c1"># azimuthal rotation exposes the in-plane anisotropy</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Type</strong>: Orthorhombic biaxial — a <strong>diagonal</strong> tensor with three distinct
@@ -1931,35 +1991,35 @@ reststrahlen band.</p>
 <h2 id="isotropic-materials">Isotropic Materials<a class="headerlink" href="#isotropic-materials" title="Permanent link">&para;</a></h2>
 <h3 id="air">Air<a class="headerlink" href="#air" title="Permanent link">&para;</a></h3>
 <p>Used for air gaps and isotropic layers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">1.0</span>  <span class="c1"># Air</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">}</span>
-</code></pre></div>
-<h3 id="custom-isotropic">Custom Isotropic<a class="headerlink" href="#custom-isotropic" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">1.0</span>  <span class="c1"># Air</span>
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="custom-isotropic">Custom Isotropic<a class="headerlink" href="#custom-isotropic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Isotropic Middle-Stack Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="arbitrary-materials">Arbitrary Materials<a class="headerlink" href="#arbitrary-materials" title="Permanent link">&para;</a></h2>
 <p>Define custom materials with full tensors:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        <span class="s2">&quot;eps_xx&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">2.27</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="s2">&quot;eps_yy&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">4.84</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.755</span><span class="p">},</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        <span class="s2">&quot;eps_zz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">4.84</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.755</span><span class="p">},</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        <span class="s2">&quot;eps_xy&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        <span class="s2">&quot;eps_xz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        <span class="s2">&quot;eps_yz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="p">},</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="s2">&quot;eps_xx&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">2.27</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="s2">&quot;eps_yy&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">4.84</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.755</span><span class="p">},</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        <span class="s2">&quot;eps_zz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">4.84</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.755</span><span class="p">},</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="s2">&quot;eps_xy&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        <span class="s2">&quot;eps_xz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        <span class="s2">&quot;eps_yz&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;real&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;imag&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="p">},</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    <span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="material-rotations">Material Rotations<a class="headerlink" href="#material-rotations" title="Permanent link">&para;</a></h2>
 <h3 id="rotation-types">Rotation Types<a class="headerlink" href="#rotation-types" title="Permanent link">&para;</a></h3>
@@ -1971,40 +2031,40 @@ reststrahlen band.</p>
 </ul>
 <h3 id="rotation-examples">Rotation Examples<a class="headerlink" href="#rotation-examples" title="Permanent link">&para;</a></h3>
 <p><strong>Optical axis perpendicular to interface</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">&quot;rotationX&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nt">&quot;rotationY&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nt">&quot;rotationZ&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
 </code></pre></div>
 <p><strong>Optical axis in the plane (70° tilt)</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">70</span><span class="p">,</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">&quot;rotationX&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nt">&quot;rotationY&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">70</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="nt">&quot;rotationZ&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
 </code></pre></div>
 <p><strong>45° azimuthal rotation</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="s2">&quot;rotationX&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">45</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">&quot;rotationX&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nt">&quot;rotationY&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="nt">&quot;rotationZ&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span>
 </code></pre></div>
 <h3 id="rotation-types-for-z-rotation">Rotation Types for Z-rotation<a class="headerlink" href="#rotation-types-for-z-rotation" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">45</span><span class="p">,</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="s2">&quot;rotationZType&quot;</span><span class="p">:</span> <span class="s2">&quot;relative&quot;</span>  <span class="c1"># Default: rotates with azimuthal angle</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>&quot;rotationZ&quot;: 45,
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>&quot;rotationZType&quot;: &quot;relative&quot;  # Default: rotates with azimuthal angle
 </code></pre></div>
 <p>or</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="s2">&quot;rotationZ&quot;</span><span class="p">:</span> <span class="mi">45</span><span class="p">,</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="s2">&quot;rotationZType&quot;</span><span class="p">:</span> <span class="s2">&quot;static&quot;</span>  <span class="c1"># Fixed: doesn&#39;t rotate with azimuthal angle</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>&quot;rotationZ&quot;: 45,
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>&quot;rotationZType&quot;: &quot;static&quot;  # Fixed: doesn&#39;t rotate with azimuthal angle
 </code></pre></div>
 <h2 id="plotting-material-properties">Plotting Material Properties<a class="headerlink" href="#plotting-material-properties" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.materials</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalciteUpper</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_permittivity</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># Create material</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">calcite</span> <span class="o">=</span> <span class="n">CalciteUpper</span><span class="p">()</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1"># Get permittivity</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="n">eps_ext</span><span class="p">,</span> <span class="n">eps_ord</span> <span class="o">=</span> <span class="n">calcite</span><span class="o">.</span><span class="n">permittivity_fetch</span><span class="p">()</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="c1"># Plot</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="n">plot_permittivity</span><span class="p">(</span><span class="n">calcite</span><span class="p">,</span> <span class="n">eps_ext</span><span class="p">,</span> <span class="n">eps_ord</span><span class="p">,</span> <span class="n">save_name</span><span class="o">=</span><span class="s2">&quot;calcite_permittivity&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.materials</span><span class="w"> </span><span class="kn">import</span> <span class="n">CalciteUpper</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_permittivity</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1"># Create material</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">calcite</span> <span class="o">=</span> <span class="n">CalciteUpper</span><span class="p">()</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1"># Get permittivity</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="n">eps_ext</span><span class="p">,</span> <span class="n">eps_ord</span> <span class="o">=</span> <span class="n">calcite</span><span class="o">.</span><span class="n">permittivity_fetch</span><span class="p">()</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="c1"># Plot</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="n">plot_permittivity</span><span class="p">(</span><span class="n">calcite</span><span class="p">,</span> <span class="n">eps_ext</span><span class="p">,</span> <span class="n">eps_ord</span><span class="p">,</span> <span class="n">save_name</span><span class="o">=</span><span class="s2">&quot;calcite_permittivity&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="material-properties-summary">Material Properties Summary<a class="headerlink" href="#material-properties-summary" title="Permanent link">&para;</a></h2>
 <table>
@@ -2120,13 +2180,13 @@ reststrahlen band.</p>
         
         
           
-          <a href="../mueller/" class="md-footer__link md-footer__link--next" aria-label="Next: Mueller Matrices">
+          <a href="../power/" class="md-footer__link md-footer__link--next" aria-label="Next: Transmission &amp; Backends">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Mueller Matrices
+                Transmission & Backends
               </div>
             </div>
             <div class="md-footer__button md-icon">

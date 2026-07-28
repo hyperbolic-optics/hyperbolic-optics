@@ -12,13 +12,13 @@
         <meta name="author" content="Mark Cunningham">
       
       
-        <link rel="canonical" href="https://hyperbolic-optics.github.io/hyperbolic-optics/getting-started/installation/">
+        <link rel="canonical" href="https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/power/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../materials/">
       
       
-        <link rel="next" href="../quickstart/">
+        <link rel="next" href="../mueller/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Installation - Hyperbolic Optics</title>
+        <title>Transmission & Backends - Hyperbolic Optics</title>
       
     
     
@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation" class="md-skip">
+        <a href="#transmission-absorption-backends" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Installation
+              Transmission & Backends
             
           </span>
         </div>
@@ -253,13 +253,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../getting-started/installation/" class="md-tabs__link">
           
   
   
@@ -275,11 +273,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../user-guide/concepts/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../concepts/" class="md-tabs__link">
           
   
   
@@ -445,31 +445,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
@@ -487,7 +484,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -502,37 +499,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Installation
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -548,120 +518,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Requirements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#install-from-pypi" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install from PyPI
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Install from PyPI">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-pip" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using pip
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-uv-recommended" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using uv (recommended)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#development-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Development Installation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verify-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verify Installation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -674,7 +530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -706,28 +562,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
@@ -745,7 +604,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -763,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-guide/concepts/" class="md-nav__link">
+      <a href="../concepts/" class="md-nav__link">
         
   
   
@@ -791,7 +650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-guide/scenarios/" class="md-nav__link">
+      <a href="../scenarios/" class="md-nav__link">
         
   
   
@@ -819,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-guide/materials/" class="md-nav__link">
+      <a href="../materials/" class="md-nav__link">
         
   
   
@@ -844,10 +703,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../user-guide/power/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transmission & Backends
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -863,6 +749,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#power-quantities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power quantities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-profiles-with-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field profiles with depth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sweeping-layer-thickness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sweeping layer thickness
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -875,7 +825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-guide/mueller/" class="md-nav__link">
+      <a href="../mueller/" class="md-nav__link">
         
   
   
@@ -903,7 +853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../user-guide/jones/" class="md-nav__link">
+      <a href="../jones/" class="md-nav__link">
         
   
   
@@ -1442,10 +1392,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
+  <a href="#power-quantities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Requirements
+        Power quantities
       
     </span>
   </a>
@@ -1453,49 +1403,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-from-pypi" class="md-nav__link">
+  <a href="#choosing-a-backend" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install from PyPI
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Install from PyPI">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-pip" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using pip
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-uv-recommended" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using uv (recommended)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#development-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Development Installation
+        Choosing a backend
       
     </span>
   </a>
@@ -1503,10 +1414,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verify-installation" class="md-nav__link">
+  <a href="#field-profiles-with-depth" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verify Installation
+        Field profiles with depth
       
     </span>
   </a>
@@ -1514,21 +1425,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
+  <a href="#sweeping-layer-thickness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Dependencies
+        Sweeping layer thickness
       
     </span>
   </a>
@@ -1555,45 +1455,132 @@
   
 
 
-<h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
-<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Python 3.12 or higher</li>
-<li>pip or uv package manager</li>
-</ul>
-<h2 id="install-from-pypi">Install from PyPI<a class="headerlink" href="#install-from-pypi" title="Permanent link">&para;</a></h2>
-<h3 id="using-pip">Using pip<a class="headerlink" href="#using-pip" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>hyperbolic-optics
+<h1 id="transmission-absorption-backends">Transmission, Absorption &amp; Backends<a class="headerlink" href="#transmission-absorption-backends" title="Permanent link">&para;</a></h1>
+<p><code>Structure.execute</code> gives you reflection coefficients. Everything else — power
+transmittance, where the light is absorbed, the field through the stack — comes
+from <code>FieldProfile</code>, which consumes an executed structure the same way <code>Mueller</code>
+does.</p>
+<h2 id="power-quantities">Power quantities<a class="headerlink" href="#power-quantities" title="Permanent link">&para;</a></h2>
+<p>Every snippet on this page follows on from:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">&quot;ScenarioData&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Incident&quot;</span><span class="p">},</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="s2">&quot;Layers&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ambient Incident Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;permittivity&quot;</span><span class="p">:</span> <span class="mf">50.0</span><span class="p">},</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="p">{</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Semi Infinite Anisotropic Layer&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="p">},</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="p">],</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
 </code></pre></div>
-<h3 id="using-uv-recommended">Using uv (recommended)<a class="headerlink" href="#using-uv-recommended" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>add<span class="w"> </span>hyperbolic-optics
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.fields</span><span class="w"> </span><span class="kn">import</span> <span class="n">FieldProfile</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">structure</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">fp</span> <span class="o">=</span> <span class="n">FieldProfile</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">fp</span><span class="o">.</span><span class="n">reflectance</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>        <span class="c1"># R</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">fp</span><span class="o">.</span><span class="n">transmittance</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>      <span class="c1"># T, the flux crossing into the exit medium</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">fp</span><span class="o">.</span><span class="n">layer_absorption</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>   <span class="c1"># one entry per finite interior layer</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">fp</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>            <span class="c1"># all of the above at once</span>
 </code></pre></div>
-<h2 id="development-installation">Development Installation<a class="headerlink" href="#development-installation" title="Permanent link">&para;</a></h2>
-<p>If you want to contribute or modify the source code:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Clone the repository</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/hyperbolic-optics/hyperbolic-optics.git
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">cd</span><span class="w"> </span>hyperbolic_optics
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Install with all extras</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>uv<span class="w"> </span>sync<span class="w"> </span>--all-extras
+<p>These are computed from the propagated field, not from a closed-form
+transmission formula: the tangential field <code>[Ex, Ey, Hx, Hy]</code> is continuous
+across interfaces, and the normal flux <code>S_z = ½ Re(Ex·Hy* − Ey·Hx*)</code> at each
+interface gives the power crossing it.</p>
+<p>Any polarization works — pass <code>"p"</code>, <code>"s"</code>, or an explicit complex <code>(a_s, a_p)</code>
+Jones pair.</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>flux_bookkeeping_residual</code> is a bookkeeping check</p>
+<p><code>summary()</code> reports <code>flux_bookkeeping_residual = max|R + T + ΣAᵢ − 1|</code>. This is
+<strong>not</strong> a physics check. The per-layer absorptances are defined as
+successive differences of the same interface fluxes <code>R</code> and <code>T</code> are built
+from, so the sum telescopes and the residual is algebraically zero however
+wrong the fields are — it returns machine epsilon even where <code>R</code> exceeds 1.</p>
+<p>Use it to catch <code>NaN</code> propagation. To check the physics, test <strong>passivity</strong>:
+every layer absorptance and <code>T</code> non-negative, <code>R</code> at most 1.</p>
+</div>
+<h2 id="choosing-a-backend">Choosing a backend<a class="headerlink" href="#choosing-a-backend" title="Permanent link">&para;</a></h2>
+<p>The default multiplies per-layer transfer matrices. That is fast, but for thick,
+lossy or strongly evanescent layers the propagation terms grow exponentially and
+the product loses precision — long before it overflows to <code>NaN</code> it returns
+finite, plausible, wrong numbers.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">structure</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;scattering&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="verify-installation">Verify Installation<a class="headerlink" href="#verify-installation" title="Permanent link">&para;</a></h2>
-<p>Test your installation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Structure</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Installation successful!&quot;</span><span class="p">)</span>
+<p>The scattering backend cascades per-layer scattering matrices with the Redheffer
+star product, so only <em>decaying</em> exponentials ever appear. It returns the same
+coefficients as the transfer method where that is well-conditioned, and correct
+ones where it is not — a thick evanescent Otto gap gives <code>NaN</code> under
+<code>backend="transfer"</code> and correct total reflection under <code>backend="scattering"</code>.</p>
+<p><code>FieldProfile</code> works under either. Under the scattering backend the interface
+fields are recovered from the cascade rather than by propagating the transfer
+matrices, so the power quantities stay correct in that regime too.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>transfer</code> (default)</th>
+<th><code>scattering</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>reflection / transmission coefficients</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>reflectance</code> / <code>transmittance</code> / <code>layer_absorption</code></td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>field_profile</code> (resolved with depth)</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>stable for thick / evanescent stacks</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<p>You rarely need to choose manually. The default path detects when a
+coefficient's <code>2×2</code> minor has cancelled down to the rounding floor and
+recomputes just those points with the cascade; <code>Structure.repaired_fraction</code>
+reports how many. Pass <code>calculate_reflectivity(stabilize=False)</code> for the literal
+transfer product.</p>
+<h2 id="field-profiles-with-depth">Field profiles with depth<a class="headerlink" href="#field-profiles-with-depth" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">profile</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">field_profile</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>     <span class="c1"># needs backend=&quot;transfer&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">profile</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span>                        <span class="c1"># depth axis</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">profile</span><span class="p">[</span><span class="s2">&quot;Ex&quot;</span><span class="p">],</span> <span class="n">profile</span><span class="p">[</span><span class="s2">&quot;Hy&quot;</span><span class="p">],</span> <span class="o">...</span>   <span class="c1"># six field components</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">profile</span><span class="p">[</span><span class="s2">&quot;Sz&quot;</span><span class="p">]</span>                       <span class="c1"># Poynting flux vs depth</span>
 </code></pre></div>
-<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
-<p>The package automatically installs:</p>
-<ul>
-<li>NumPy &gt;= 1.20.0</li>
-<li>SciPy &gt;= 1.7.0</li>
-<li>Matplotlib &gt;= 3.5.0</li>
-</ul>
-<h2 id="optional-dependencies">Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Permanent link">&para;</a></h2>
-<p>For development:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>dev
+<p>This is batched, but a full angle × frequency sweep times a depth axis times six
+components is memory-heavy — it is meant for <code>Simple</code> or a single slice.</p>
+<h2 id="sweeping-layer-thickness">Sweeping layer thickness<a class="headerlink" href="#sweeping-layer-thickness" title="Permanent link">&para;</a></h2>
+<p>A layer's <code>thickness</code> may be a <strong>list</strong>, which sweeps it as a fourth axis in a
+single <code>execute</code> — the eigendecomposition does not depend on thickness, so only
+the propagation phase broadcasts over it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Crystal Layer&quot;</span><span class="p">,</span> <span class="s2">&quot;material&quot;</span><span class="p">:</span> <span class="s2">&quot;Calcite&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a> <span class="s2">&quot;thickness&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="s2">&quot;rotationY&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">}</span>
 </code></pre></div>
-<p>This includes pytest, black, isort, and flake8 for testing and code quality.</p>
+<p>Outputs gain a trailing axis: <code>Simple</code> gives <code>r_pp.shape == (4,)</code>, <code>Incident</code>
+gives <code>(F, angle, 4)</code>. At most one layer may carry a list thickness.</p>
+<div class="admonition note">
+<p class="admonition-title">Slice before plotting</p>
+<p>The map plots draw one 2-D array, so select a slice —
+<code>plot_kx_frequency(structure, R[..., 0])</code>. They will tell you if you forget.</p>
+</div>
+<p>For a 2-D thickness × thickness grid, combine a list thickness on one layer with
+the <code>ThicknessSweep</code> helper, which re-runs the stack and stacks results along a
+leading index:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hyperbolic_optics</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThicknessSweep</span>
+</code></pre></div>
 
 
 
@@ -1629,7 +1616,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+          <a href="../materials/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Materials">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1639,20 +1626,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Home
+                Materials
               </div>
             </div>
           </a>
         
         
           
-          <a href="../quickstart/" class="md-footer__link md-footer__link--next" aria-label="Next: Quick Start">
+          <a href="../mueller/" class="md-footer__link md-footer__link--next" aria-label="Next: Mueller Matrices">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Quick Start
+                Mueller Matrices
               </div>
             </div>
             <div class="md-footer__button md-icon">
