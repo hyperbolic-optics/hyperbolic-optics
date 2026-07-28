@@ -384,9 +384,20 @@ class Mueller:
             self.calculate_mueller_matrix()
         matrix = np.asarray(self.mueller_matrix, dtype=np.float64)
         eye3 = np.eye(3)
+        # Relative, not absolute: m00 is unnormalized total reflected intensity,
+        # so an absolute 1e-12 floor is a threshold on the units the caller
+        # happened to use. Across an evanescent sweep m00 spans forty orders of
+        # magnitude, and a physically ordinary point below the floor was silently
+        # divided by 1.0 instead of by itself.
         m00 = matrix[..., 0, 0]
-        m00_safe = np.where(np.abs(m00) > 1e-12, m00, 1.0)
+        scale = np.max(np.abs(matrix), axis=(-2, -1))
+        floor = 1e-12 * np.where(scale > 0, scale, 1.0)
+        valid = np.abs(m00) > floor
+        m00_safe = np.where(valid, m00, 1.0)
         normalized = matrix / m00_safe[..., np.newaxis, np.newaxis]
+        # A point with no reflected intensity has no decomposition; propagate NaN
+        # rather than a fabricated one.
+        normalized = np.where(valid[..., np.newaxis, np.newaxis], normalized, np.nan)
 
         # Diattenuation and polarizance vectors (top row / left column).
         d_vec = normalized[..., 0, 1:]
@@ -407,7 +418,12 @@ class Mueller:
         diattenuator = self._assemble_mueller(d_vec, d_vec, m_d)
 
         # Strip the diattenuator: M' = M_norm · M_D⁻¹ = M_Δ · M_R.
-        m_prime = normalized @ np.linalg.inv(diattenuator)
+        # pinv, not inv: these are batched over a whole sweep, and np.linalg.inv
+        # raises LinAlgError for the entire batch if any single grid point is
+        # singular -- a total-reflection or field-null point would take the
+        # decomposition of every other point with it. pinv degrades that point
+        # instead of destroying the array.
+        m_prime = normalized @ np.linalg.pinv(diattenuator)
         mp = m_prime[..., 1:, 1:]
         p_delta = m_prime[..., 1:, 0]
 
@@ -420,17 +436,21 @@ class Mueller:
         c3 = (s0 * s1 * s2)[..., np.newaxis, np.newaxis]
         sign = np.sign(np.linalg.det(mp))
         sign = np.where(sign == 0, 1.0, sign)[..., np.newaxis, np.newaxis]
-        m_depol = sign * (np.linalg.inv(g + c2 * eye3) @ (c1 * g + c3 * eye3))
+        m_depol = sign * (np.linalg.pinv(g + c2 * eye3) @ (c1 * g + c3 * eye3))
         depolarizer = self._assemble_mueller(np.zeros_like(d_vec), p_delta, m_depol)
 
         # Retarder is what remains: m_R = m_Δ⁻¹ m'.
-        m_ret = np.linalg.inv(m_depol) @ mp
+        m_ret = np.linalg.pinv(m_depol) @ mp
         retarder = self._assemble_mueller(np.zeros_like(d_vec), np.zeros_like(d_vec), m_ret)
 
         trace_ret = m_ret[..., 0, 0] + m_ret[..., 1, 1] + m_ret[..., 2, 2]
         retardance = np.arccos(np.clip((trace_ret - 1.0) / 2.0, -1.0, 1.0))
         trace_depol = np.abs(m_depol[..., 0, 0] + m_depol[..., 1, 1] + m_depol[..., 2, 2])
-        depolarization = 1.0 - trace_depol / 3.0
+        # Clipped because the Lu-Chipman closed form leaves float noise of order
+        # 1e-4 either side of the physical [0, 1] range on a rank-1 (fully
+        # polarized) matrix. Not masking a defect: the excursions are noise, and
+        # NaN from a genuinely undecomposable point propagates through untouched.
+        depolarization = np.clip(1.0 - trace_depol / 3.0, 0.0, 1.0)
 
         return {
             "diattenuation": diattenuation,

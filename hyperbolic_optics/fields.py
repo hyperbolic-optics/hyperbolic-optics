@@ -192,7 +192,11 @@ class FieldProfile:
         """Total power reflectance ``R`` for the given incident polarization.
 
         ``R = 1 − S_z(G₁)/S_z^inc``. For pure p/s incidence this equals
-        ``|r_pp|²+|r_sp|²`` / ``|r_ss|²+|r_ps|²`` (a useful normalization check).
+        ``|r_pp|²+|r_ps|²`` / ``|r_ss|²+|r_sp|²`` (a useful normalization check).
+        Both coefficients carry the incident polarization second, matching the
+        ``r_{out,in}`` convention documented on
+        :meth:`transmission_coefficients`; the pairing here previously named the
+        other cross term and so disagreed with what this method returns.
         Returned in the scenario's presentation shape (scalar for ``Simple``).
         """
         _, _, _, s_inc, fields = self._solve(polarization)
@@ -268,8 +272,17 @@ class FieldProfile:
     def summary(self, polarization: str | tuple[complex, complex] = "p") -> dict[str, Any]:
         """One-call ``R``, ``T``, per-layer absorption, total, and conservation residual.
 
-        ``conservation_residual = max|R + T + ΣAᵢ − 1|`` over the batch; it should
-        be ~machine-epsilon for a correct, energy-conserving result.
+        ``conservation_residual = max|R + T + ΣAᵢ − 1|`` over the batch.
+
+        Warning:
+            This is a bookkeeping check, not a physics check. The per-layer
+            absorptances are defined as successive differences of the same
+            interface fluxes that ``R`` and ``T`` are built from, so the sum
+            telescopes and the residual is algebraically zero however wrong the
+            fields are -- it returns machine epsilon even where ``R`` exceeds 1.
+            Use it to catch NaN propagation. For an assertion that can fail on
+            bad physics, check passivity instead: every layer absorptance and
+            ``T`` non-negative, and ``R`` at most 1.
         """
         _, _, _, s_inc, fields = self._solve(polarization)
         r = 1.0 - _poynting_z(fields[1]) / s_inc
