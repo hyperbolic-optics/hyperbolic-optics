@@ -244,6 +244,13 @@ class Jones:
         Args:
             transmission: Use the transmission Jones matrix instead of reflection.
 
+        Note:
+            With ``transmission=True`` the ``|t|²`` these amplitudes imply equals
+            true power transmittance only for a symmetric system (prism ==
+            substrate); into a lower-index medium it breaks in the evanescent
+            regime. Use :meth:`~hyperbolic_optics.fields.FieldProfile.transmittance`
+            for power there.
+
         Returns:
             Dict with ``eigenvalues`` ``[..., 2]``, ``eigenpolarizations``
             ``[..., 2, 2]`` (columns are the unit eigenvectors), ``discriminant``
@@ -256,9 +263,15 @@ class Jones:
         discriminant = (0.5 * (j_pp - j_ss)) ** 2 + j_ps * j_sp
         v0, v1 = eigenvectors[..., :, 0], eigenvectors[..., :, 1]
         overlap = np.abs(np.sum(np.conj(v0) * v1, axis=-1))  # eig returns unit vectors
+        # Off-diagonal coupling sets the scale the discriminant has to be small
+        # *against*. Without it |discriminant| is not comparable between grid
+        # points, and near-grazing points where the whole Jones matrix collapses
+        # dominate the ranking while being trivially diagonalizable.
+        coupling = np.abs(j_ps * j_sp)
         return {
             "eigenvalues": eigenvalues,
             "eigenpolarizations": eigenvectors,
+            "coupling": coupling,
             "discriminant": discriminant,
             "eigenvector_overlap": overlap,
         }
@@ -339,11 +352,20 @@ class Jones:
         data = self.eigenpolarizations()
         overlap = data["eigenvector_overlap"]
         magnitude = np.abs(data["discriminant"])
+        coupling = data["coupling"]
+
+        # Scale-free: 0 where the eigenvectors truly coalesce, 1 where the two
+        # polarizations are uncoupled. Ranking on raw |discriminant| instead
+        # picked whichever point had the smallest numbers in absolute terms --
+        # in practice the +-90 degree endpoints of the scenario grid, where the
+        # Jones matrix vanishes and the eigenvectors are perfectly distinct.
+        defectiveness = magnitude / np.where(magnitude + coupling > 0, magnitude + coupling, 1.0)
         return {
             "overlap": overlap,
             "discriminant": data["discriminant"],
+            "defectiveness": defectiveness,
             "near_ep": overlap >= overlap_threshold,
-            "ep_index": np.unravel_index(np.argmin(magnitude), magnitude.shape),
+            "ep_index": np.unravel_index(np.argmin(defectiveness), defectiveness.shape),
         }
 
 
