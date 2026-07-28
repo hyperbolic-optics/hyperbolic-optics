@@ -29,7 +29,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 ## Features
 
 - **4×4 transfer-matrix engine** for reflection coefficients of arbitrary anisotropic multilayers, plus an opt-in **numerically-stable scattering-matrix backend** for thick / lossy / evanescent stacks
-- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux — energy-conserving `R + T + ΣA = 1`
+- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux
 - **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
 - **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors
 - **Scenarios:** incident-angle, azimuthal, k-space dispersion (kₓ–k_y), full 3-D sweep, single-point — and a swept **layer-thickness** axis
@@ -183,7 +183,7 @@ plot_kx_frequency(structure, reflectivity, save_name="my_plot")
 
 ## Contributing
 
-We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [contributing guidelines](docs/contributing.md) for details on:
 
 - Reporting bugs and requesting features
 - Setting up a development environment
@@ -198,7 +198,7 @@ If you use this package in your research, please cite:
 
 ### Software Citation
 ```bibtex
-@software{cunningham2025hyperbolic,
+@software{cunningham2026hyperbolic,
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
   year={2026},
@@ -221,7 +221,7 @@ This package was used to generate results in:
 
 Reflection is computed automatically by `Structure.execute`. Power transmittance,
 layer-resolved absorption, and field profiles are computed **numerically** from
-the propagated fields (energy-conserving `R + T + ΣA = 1`) via `FieldProfile`:
+the propagated fields via `FieldProfile`:
 
 ```python
 from hyperbolic_optics.structure import Structure
@@ -231,7 +231,7 @@ structure = Structure()
 structure.execute(payload)
 
 fp = FieldProfile(structure)
-print(fp.summary("p"))            # R, T, per-layer absorption, conservation residual
+print(fp.summary("p"))            # R, T, per-layer absorption
 T = fp.transmittance("p")          # power transmittance (same shape as r_pp)
 A = fp.layer_absorption("p")       # per-interior-layer absorptance
 prof = fp.field_profile("p")       # z, Ex..Hz, S_z(z), cumulative absorption
@@ -262,6 +262,13 @@ absorption of a MoO₃/AlN/SiC heterostructure in the Otto geometry
 (Passler, Jeannin & Paarmann, *J. Opt. Soc. Am. B* **37**, 1060 (2020)).
 The amplitude transmission coefficients are also available via
 `FieldProfile.transmission_coefficients()` (and `Structure.calculate_transmissivity()`).
+
+`summary()` also reports a `conservation_residual`. It is a **bookkeeping**
+check, not a physics one: the per-layer absorptances are successive differences
+of the same interface fluxes `R` and `T` are built from, so the sum telescopes
+and the residual is algebraically zero however wrong the fields are. Use it to
+catch NaN propagation. For a check that can fail on bad physics, test passivity
+— every layer absorptance and `T` non-negative, `R` at most 1.
 
 ## Numerical backends
 
