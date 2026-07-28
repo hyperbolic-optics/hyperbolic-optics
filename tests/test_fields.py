@@ -158,7 +158,15 @@ class TestEnergyConservation:
     )
     def test_conservation(self, pol, eps_prism, extra):
         fp = FieldProfile(_simple(eps_prism, extra))
+        # The residual telescopes and so cannot fail on bad physics; it is kept
+        # only as a NaN tripwire. The passivity checks beside it are what would
+        # actually catch a wrong field, so assert those here too.
         assert fp.check_conservation(pol) < 1e-9
+        assert 0.0 - 1e-9 <= float(np.min(fp.reflectance(pol)))
+        assert float(np.max(fp.reflectance(pol))) <= 1.0 + 1e-9
+        assert float(np.min(fp.transmittance(pol))) >= -1e-9
+        for entry in fp.layer_absorption(pol):
+            assert float(np.min(np.asarray(entry["absorptance"]))) >= -1e-9
 
 
 class TestPassivity:
@@ -278,7 +286,8 @@ class TestShapes:
         fp = FieldProfile(structure)
         assert fp.transmittance("p").shape == structure.r_pp.shape
         assert fp.reflectance("p").shape == structure.r_pp.shape
-        assert fp.check_conservation("p") < 1e-9
+        assert fp.check_conservation("p") < 1e-9  # NaN tripwire only; see TestPassivity
+        assert float(np.max(fp.reflectance("p"))) <= 1.0 + 1e-9
 
     def test_dispersion_shape(self):
         structure = Structure()

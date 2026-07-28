@@ -218,6 +218,47 @@ def _light_cone(ax: plt.Axes) -> None:
 # --- public plotting functions -----------------------------------------------
 
 
+def _broadcast_colour(color_by: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
+    """Spread a colour axis over the full Stokes grid and flatten it.
+
+    NumPy aligns trailing axes, so colouring an ``(F, angle)`` grid by a
+    length-``F`` frequency array tried to match ``F`` against ``angle`` and
+    raised. Right-padding with size-1 axes lines the array up with the axis it
+    actually indexes.
+    """
+    colour = np.asarray(color_by, dtype=np.float64)
+    if 0 < colour.ndim < len(shape) and colour.shape == shape[: colour.ndim]:
+        colour = colour.reshape(colour.shape + (1,) * (len(shape) - colour.ndim))
+    return np.broadcast_to(colour, shape).ravel()
+
+
+def _require_2d(param: np.ndarray, name: str = "param") -> np.ndarray:
+    """Reject anything but a 2-D map, naming the axis that has to go.
+
+    A trailing axis of size 3 or 4 is the dangerous case: pcolormesh reads it as
+    RGB or RGBA and renders a picture rather than raising, so a 3- or 4-point
+    thickness sweep produced a plausible, meaningless plot. Sizes 2 and 5 raised
+    a shape error from inside matplotlib that named neither the argument nor the
+    axis.
+    """
+    array = np.asarray(param)
+    if array.ndim == 2:
+        return array
+    if array.ndim == 3 and array.shape[-1] in (3, 4):
+        raise ValueError(
+            f"{name} has shape {array.shape}; the trailing axis of size "
+            f"{array.shape[-1]} would be silently interpreted as "
+            f"{'RGB' if array.shape[-1] == 3 else 'RGBA'} colour channels. These "
+            "plots draw one 2-D map, so select a slice first, e.g. "
+            f"{name}[..., 0] for the first swept thickness."
+        )
+    raise ValueError(
+        f"{name} has shape {array.shape}, but these plots draw one 2-D map. "
+        "Select a slice of any extra axis (a swept thickness appends a trailing "
+        f"one), e.g. {name}[..., 0]."
+    )
+
+
 def plot_permittivity(
     material: BaseMaterial, eps_ext: np.ndarray, eps_ord: np.ndarray, save_name: str | None = None
 ) -> None:
@@ -370,7 +411,7 @@ def plot_poincare_sphere(
     x = (s1 / s0_safe).ravel()
     y = (s2 / s0_safe).ravel()
     z = (s3 / s0_safe).ravel()
-    colours = np.arange(x.size) if color_by is None else np.broadcast_to(color_by, s0.shape).ravel()
+    colours = np.arange(x.size) if color_by is None else _broadcast_colour(color_by, s0.shape)
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="3d")
@@ -416,6 +457,7 @@ def plot_mueller_azimuthal(
         Color plot with frequency on the y-axis and azimuthal angle (β) on the
         x-axis, for studying rotational anisotropy.
     """
+    param = _require_2d(param, "param")
     PlotStyle.initialize()
     fig, ax = _single_axis()
 
@@ -559,6 +601,7 @@ def plot_kx_frequency(
         Shows polariton dispersion with kx/k0 on x-axis and frequency on
         y-axis. Useful for identifying resonance branches.
     """
+    param = _require_2d(param, "param")
     PlotStyle.initialize()
     fig, ax = _single_axis()
 
@@ -670,6 +713,7 @@ def plot_mueller_dispersion(
         Shows isofrequency contours in momentum space. The unit circle
         indicates the light cone (k = k0); features outside are evanescent.
     """
+    param = _require_2d(param, "param")
     PlotStyle.initialize()
     fig, ax = _single_axis()
 
