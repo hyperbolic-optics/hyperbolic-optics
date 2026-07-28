@@ -11,6 +11,7 @@ Each layer type calculates its own transfer matrix using the 4×4 formalism,
 which relates electromagnetic field components at the layer boundaries.
 """
 
+import difflib
 import math as m
 from abc import ABC, abstractmethod
 from typing import Any
@@ -669,6 +670,61 @@ class IsotropicSemiInfiniteLayer(Layer):
             self.matrix = canonicalize(matrix, batch_axes=(A,), matrix_ndim=2)
 
 
+#: Every key a layer configuration is allowed to carry. A layer reads its
+#: settings with ``data.get(...)``, so anything misspelled here would otherwise
+#: be silently ignored and the default used instead -- ``rotationy`` for
+#: ``rotationY`` leaves the crystal unrotated and returns a different, entirely
+#: plausible number.
+LAYER_KEYS = frozenset(
+    {
+        "type",
+        "material",
+        "permittivity",
+        "permeability",
+        "thickness",
+        "rotationX",
+        "rotationY",
+        "rotationZ",
+        "rotationZType",
+    }
+)
+
+
+def _suggest(key: str, valid: frozenset[str]) -> str:
+    """Nearest valid key for a typo, preferring a pure case difference.
+
+    difflib is case-sensitive, so it ranks 'rotationy' no closer to 'rotationY'
+    than to 'rotationZ' and would happily point at the wrong axis -- and a case
+    slip is the most likely typo of the three rotation keys.
+    """
+    lowered = {name.lower(): name for name in valid}
+    if key.lower() in lowered:
+        return f" (did you mean {lowered[key.lower()]!r}?)"
+    close = difflib.get_close_matches(key, sorted(valid), n=1, cutoff=0.6)
+    return f" (did you mean {close[0]!r}?)" if close else ""
+
+
+def validate_layer_keys(layer_data: dict[str, Any], index: int | None = None) -> None:
+    """Reject unrecognised keys in one layer configuration.
+
+    Raises:
+        ValueError: If any key is not in :data:`LAYER_KEYS`, naming the closest
+            valid alternative when there is one.
+    """
+    unknown = sorted(set(layer_data) - LAYER_KEYS)
+    if not unknown:
+        return
+
+    where = "layer" if index is None else f"layer {index}"
+    details = []
+    for key in unknown:
+        details.append(f"{key!r}" + _suggest(key, LAYER_KEYS))
+    raise ValueError(
+        f"Unknown key(s) in {where}: {', '.join(details)}. "
+        f"Valid keys are {', '.join(sorted(LAYER_KEYS))}."
+    )
+
+
 class LayerFactory:
     """Factory class for creating layers."""
 
@@ -708,7 +764,7 @@ class LayerFactory:
             >>> layer = factory.create_layer(layer_data, scenario, kx, k0)
         """
         layer_class = self.layer_classes.get(layer_data["type"])
-        if layer_class is not None:
-            return layer_class(layer_data, scenario, kx, k0)
-        else:
+        if layer_class is None:
             raise ValueError(f"Invalid layer type {layer_data['type']}")
+        validate_layer_keys(layer_data)
+        return layer_class(layer_data, scenario, kx, k0)

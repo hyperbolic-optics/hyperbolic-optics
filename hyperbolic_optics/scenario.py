@@ -11,12 +11,55 @@ Each scenario type automatically sets up appropriate angle and frequency
 arrays with correct dimensions for batch processing.
 """
 
+import difflib
 import math as m
 import warnings
 from abc import ABC
 from typing import Any
 
 import numpy as np
+
+#: Every key ScenarioData is allowed to carry. Settings are read with
+#: ``data.get(...)``, so a misspelling would otherwise be silently ignored --
+#: ``incidentangle`` for ``incidentAngle`` reached the solver as None.
+SCENARIO_KEYS = frozenset(
+    {
+        "type",
+        "incidentAngle",
+        "azimuthal_angle",
+        "frequency",
+        "polar_points",
+        "azimuthal_points",
+    }
+)
+
+
+def _suggest(key: str, valid: frozenset[str]) -> str:
+    """Nearest valid key for a typo, preferring a pure case difference.
+
+    difflib is case-sensitive, so it ranks 'rotationy' no closer to 'rotationY'
+    than to 'rotationZ' and would happily point at the wrong axis -- and a case
+    slip is the most likely typo of the three rotation keys.
+    """
+    lowered = {name.lower(): name for name in valid}
+    if key.lower() in lowered:
+        return f" (did you mean {lowered[key.lower()]!r}?)"
+    close = difflib.get_close_matches(key, sorted(valid), n=1, cutoff=0.6)
+    return f" (did you mean {close[0]!r}?)" if close else ""
+
+
+def _validate_scenario_keys(data: dict[str, Any]) -> None:
+    """Reject unrecognised keys in ScenarioData."""
+    unknown = sorted(set(data) - SCENARIO_KEYS)
+    if not unknown:
+        return
+    details = []
+    for key in unknown:
+        details.append(f"{key!r}" + _suggest(key, SCENARIO_KEYS))
+    raise ValueError(
+        f"Unknown key(s) in ScenarioData: {', '.join(details)}. "
+        f"Valid keys are {', '.join(sorted(SCENARIO_KEYS))}."
+    )
 
 
 class ScenarioSetup(ABC):
@@ -38,6 +81,7 @@ class ScenarioSetup(ABC):
             ...         "azimuthal_angle": 0.0, "frequency": 1460.0}
             >>> scenario = ScenarioSetup(data)
         """
+        _validate_scenario_keys(data)
         self.data = data
         self.type = data.get("type")
         self.incident_angle = data.get("incidentAngle", None)

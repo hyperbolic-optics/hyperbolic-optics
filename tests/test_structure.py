@@ -3,6 +3,7 @@ Tests for the Structure class and overall simulation workflow.
 """
 
 import numpy as np
+import pytest
 
 from hyperbolic_optics.structure import Structure
 
@@ -166,3 +167,81 @@ class TestStructureAttributes:
         structure.execute(simple_payload)
 
         assert structure.eps_prism == 50.0
+
+
+class TestPayloadKeyValidation:
+    """A misspelled key must not be silently ignored.
+
+    Settings are read with ``data.get(...)``, so an unrecognised key used to
+    fall through to the default. ``rotationy`` for ``rotationY`` left the
+    crystal unrotated and returned a different, entirely plausible number --
+    the worst failure mode available, because nothing indicates it happened.
+    """
+
+    PRISM = {"type": "Ambient Incident Layer", "permittivity": 50.0}
+    SAMPLE = {
+        "type": "Semi Infinite Anisotropic Layer",
+        "material": "Calcite",
+        "rotationX": 0,
+        "rotationY": 90,
+        "rotationZ": 0,
+    }
+    SCENARIO = {
+        "type": "Simple",
+        "incidentAngle": 45.0,
+        "azimuthal_angle": 0.0,
+        "frequency": 1460.0,
+    }
+
+    def _run(self, scenario=None, sample=None):
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": scenario or self.SCENARIO,
+                "Layers": [self.PRISM, sample or self.SAMPLE],
+            }
+        )
+        return structure
+
+    def test_reference_payload_is_accepted(self):
+        assert np.isfinite(np.asarray(self._run().r_pp)).all()
+
+    @pytest.mark.parametrize(
+        "typo,expected",
+        [
+            ("rotationy", "rotationY"),
+            ("rotation_Y", "rotationY"),
+            ("Thickness", "thickness"),
+            ("materal", "material"),
+        ],
+    )
+    def test_layer_key_typo_is_rejected_with_a_suggestion(self, typo, expected):
+        sample = {k: v for k, v in self.SAMPLE.items() if k != "rotationY"}
+        sample[typo] = 90
+        with pytest.raises(ValueError, match=f"did you mean '{expected}'"):
+            self._run(sample=sample)
+
+    @pytest.mark.parametrize(
+        "typo,expected",
+        [("incidentangle", "incidentAngle"), ("polar_pts", "polar_points")],
+    )
+    def test_scenario_key_typo_is_rejected_with_a_suggestion(self, typo, expected):
+        scenario = dict(self.SCENARIO)
+        scenario.pop("incidentAngle", None) if typo == "incidentangle" else None
+        scenario[typo] = 45.0 if typo == "incidentangle" else 10
+        with pytest.raises(ValueError, match=f"did you mean '{expected}'"):
+            self._run(scenario=scenario)
+
+    def test_unrecognisable_key_still_names_the_valid_set(self):
+        with pytest.raises(ValueError, match="Valid keys are"):
+            self._run(sample={**self.SAMPLE, "wibble": 1})
+
+    def test_valid_resolution_key_is_accepted(self):
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {"type": "Incident", "polar_points": 8},
+                "Layers": [self.PRISM, self.SAMPLE],
+            }
+        )
+        assert structure.r_pp.shape[-1] == 8

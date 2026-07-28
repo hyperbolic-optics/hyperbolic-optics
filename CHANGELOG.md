@@ -41,6 +41,14 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   longer needs its compensating `rotationX=90`.
 - **hBN** parameters were a mixture of the two references cited; they are now the
   single self-consistent set from Caldwell et al., *Nat. Commun.* **5**, 5221 (2014).
+- `Jones.eigenpolarizations` now labels the two states by polarization
+  character rather than returning them in `np.linalg.eig` order, which is
+  unspecified and swaps across a sweep. Measured on a Calcite dispersion map:
+  470 seam edges against 54906 for the obvious `|λ|`-descending alternative.
+- `plot_kx_frequency` and the other map plots reject anything but a 2-D array.
+  A trailing axis of size 3 or 4 -- which a 3- or 4-point thickness sweep
+  produces -- was read by matplotlib as RGB/RGBA and rendered silently.
+  `plot_poincare_sphere` can now colour by frequency, which previously raised.
 - **Reflection coefficients are no longer invented by cancellation.** Every
   coefficient is a 2×2 minor over a denominator, and a layer carrying a growing
   exponential drives the assembled matrix towards rank 1, where all such minors
@@ -67,6 +75,12 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —
   are expressible. Naming only the upper triangle keeps the previous symmetric
   behaviour, so existing payloads are unaffected.
+- **Misspelled payload keys are rejected.** Layer and `ScenarioData` settings
+  are read with `data.get(...)`, so an unrecognised key fell through to the
+  default: `rotationy` for `rotationY` left the crystal unrotated and returned a
+  different, entirely plausible number with nothing to indicate it. Both are now
+  validated against their known keys, with a suggestion (case-insensitive first,
+  since a case slip is the likeliest typo of the three rotation keys).
 - **Swept angular axes are controllable.** `polar_points` / `azimuthal_points`
   set the resolution (the design is taken from the Rust engine in the companion
   desktop app, which already exposed both), and `incidentAngle` /
