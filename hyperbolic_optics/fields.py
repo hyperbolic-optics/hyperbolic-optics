@@ -24,6 +24,7 @@ from typing import Any
 import numpy as np
 
 from hyperbolic_optics.axes import T, present
+from hyperbolic_optics.scattering import scattering_coefficients, scattering_interface_fields
 from hyperbolic_optics.structure import Structure
 
 # Amplitude-vector slot ordering shared by the prism and exit dynamical matrices,
@@ -83,18 +84,17 @@ class FieldProfile:
 
         Raises:
             ValueError: If the structure has not been executed.
-            NotImplementedError: If it was executed with ``backend="scattering"``,
-                which does not build the interface fields these quantities need.
+
+        Note:
+            Works with either backend. Under ``backend="scattering"`` the
+            interface fields are recovered from the Redheffer cascade rather
+            than by propagating the per-layer transfer matrices, so the power
+            quantities stay correct for the thick / lossy / evanescent stacks
+            that backend exists for. The two agree to round-off wherever the
+            transfer product is well-conditioned.
         """
-        if structure.transfer_matrix is None:
-            if getattr(structure, "backend", None) == "scattering":
-                raise NotImplementedError(
-                    "FieldProfile requires backend='transfer'. The scattering "
-                    "backend cascades reflection and transmission coefficients "
-                    "without forming the per-interface fields that transmittance, "
-                    "layer absorption and field profiles are computed from, so it "
-                    "cannot supply them yet."
-                )
+        self.use_cascade = getattr(structure, "backend", None) == "scattering"
+        if structure.transfer_matrix is None and not self.use_cascade:
             raise ValueError("Structure has not been executed; call structure.execute(payload).")
         self.structure = structure
         self.layers = structure.layers
@@ -181,8 +181,13 @@ class FieldProfile:
     def _solve(self, polarization: str | tuple[complex, complex]):
         """Common front half: amplitudes, incident flux, and per-interface fields."""
         a_s, a_p = self._resolve_polarization(polarization)
-        c_exit = self._transmitted_amplitudes(a_s, a_p)
         s_inc = self._incident_flux(a_s, a_p)
+        if self.use_cascade:
+            # The cascade yields the interface fields directly, without the
+            # exit-amplitude solve (which needs the transfer product).
+            fields = scattering_interface_fields(self.layers, self.k_0, a_p, a_s)
+            return a_s, a_p, None, s_inc, fields
+        c_exit = self._transmitted_amplitudes(a_s, a_p)
         fields = self._interface_fields(c_exit)
         return a_s, a_p, c_exit, s_inc, fields
 
@@ -226,6 +231,10 @@ class FieldProfile:
         ``transmittance`` then converts |amplitude|² to *power* with the correct
         Poynting/impedance weighting. Presentation shape.
         """
+        if self.use_cascade:
+            stable = scattering_coefficients(self.layers, self.k_0)
+            return {name: present(stable[name]) for name in ("t_ss", "t_ps", "t_sp", "t_pp")}
+
         g = self.gamma
         row0 = np.stack([g[..., _S_FWD, _S_FWD], g[..., _S_FWD, _P_FWD]], axis=-1)
         row1 = np.stack([g[..., _P_FWD, _S_FWD], g[..., _P_FWD, _P_FWD]], axis=-1)
@@ -474,6 +483,14 @@ class FieldProfile:
                 size > 1) — the depth grid of the swept layer would itself change
                 along ``T``, so a field-vs-depth profile is not well defined.
         """
+        if self.use_cascade:
+            raise NotImplementedError(
+                "field_profile requires backend='transfer'. The power quantities "
+                "(transmittance, reflectance, layer_absorption, summary) work "
+                "under either backend, but resolving the field *with depth* "
+                "needs each layer's mode amplitudes at arbitrary z, which the "
+                "cascade does not yet expose."
+            )
         if self.gamma.shape[T] > 1:
             raise ValueError(
                 "field_profile is undefined while sweeping a layer thickness "

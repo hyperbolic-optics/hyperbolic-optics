@@ -124,6 +124,90 @@ def _star(s_a: np.ndarray, s_b: np.ndarray) -> np.ndarray:
     return np.concatenate([top, bottom], axis=-2)
 
 
+def scattering_interface_fields(
+    layers: list, k_0: np.ndarray, a_p: complex, a_s: complex
+) -> list[np.ndarray]:
+    """Tangential field ``[Ex, Ey, Hx, Hy]`` at the top of each layer, stably.
+
+    The transfer route to these fields propagates ``Gᵢ = Mᵢ·G_{i+1}`` through the
+    per-layer matrices, which carry the growing exponentials this module exists
+    to avoid. Here the mode amplitudes come out of the cascade instead and the
+    field is rebuilt from each medium's own eigenvectors, so no growing term is
+    ever formed.
+
+    For layer ``i``, split the stack at its top interface into the cascade above
+    it (``L``) and the cascade below (``R``). The forward amplitude entering the
+    layer and the backward amplitude returning into it satisfy
+
+        c_f = L₀₀·a + L₀₁·c_b ,   c_b = R₁₀·c_f
+
+    -- the layer is illuminated from above by ``a`` and from below by whatever
+    the rest of the stack sends back -- giving
+    ``c_f = (I − L₀₁·R₁₀)⁻¹·L₀₀·a``. The field is then ``P·[c_f, c_b]``.
+
+    Args:
+        layers: The executed structure's layers.
+        k_0: Canonical free-space wavenumber.
+        a_p: Incident forward p amplitude.
+        a_s: Incident forward s amplitude.
+
+    Returns:
+        One ``[..., 4]`` field array per layer, ordered prism-first, matching the
+        convention of :mod:`hyperbolic_optics.fields`.
+    """
+    media = [_medium(layer) for layer in layers]
+    count = len(media)
+    interfaces = [
+        _interface_scattering(media[i][0], media[i][1], media[i][2], media[i + 1][0], k_0)
+        for i in range(count - 1)
+    ]
+
+    # below[i] cascades interfaces i .. end; above[i] cascades 0 .. i-1.
+    below: list[np.ndarray | None] = [None] * count
+    accumulated = None
+    for i in range(count - 2, -1, -1):
+        accumulated = interfaces[i] if accumulated is None else _star(interfaces[i], accumulated)
+        below[i] = accumulated
+
+    above: list[np.ndarray | None] = [None] * count
+    accumulated = None
+    for i in range(1, count):
+        accumulated = (
+            interfaces[i - 1] if accumulated is None else _star(accumulated, interfaces[i - 1])
+        )
+        above[i] = accumulated
+
+    # Ambient columns are reordered to [p_fwd, s_fwd, ...], so the incident
+    # forward pair is (p, s) in that order.
+    reference = interfaces[0][..., 0, 0]
+    incident = np.stack(
+        [np.full_like(reference, a_p), np.full_like(reference, a_s)], axis=-1
+    )  # [..., 2]
+
+    identity = np.eye(2, dtype=np.complex128)
+    fields = []
+    for i in range(count):
+        if above[i] is None:  # the prism: nothing above it to correct for
+            forward = incident
+        else:
+            l00, l01 = above[i][..., :2, :2], above[i][..., :2, 2:]
+            forward = l00 @ incident[..., np.newaxis]
+            if below[i] is not None:
+                r10 = below[i][..., 2:, :2]
+                forward = np.linalg.inv(identity - l01 @ r10) @ forward
+            forward = forward[..., 0]
+
+        if below[i] is None:  # the exit half-space carries no backward wave
+            backward = np.zeros_like(forward)
+        else:
+            backward = (below[i][..., 2:, :2] @ forward[..., np.newaxis])[..., 0]
+
+        amplitudes = np.concatenate([forward, backward], axis=-1)  # [..., 4]
+        fields.append((media[i][0] @ amplitudes[..., np.newaxis])[..., 0])
+
+    return fields
+
+
 def scattering_coefficients(layers: list, k_0: np.ndarray) -> dict[str, np.ndarray]:
     """Reflection/transmission coefficients via the stable scattering-matrix method.
 

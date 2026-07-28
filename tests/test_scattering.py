@@ -93,17 +93,18 @@ class TestBackendGuards:
         stable = _run(payload, "scattering")
         assert np.isfinite(np.asarray(stable.r_pp)).all()
 
-    def test_field_profile_rejects_the_scattering_backend_honestly(self):
-        """Not 'has not been executed' -- it has; the backend just cannot supply fields."""
+    def test_field_profile_works_under_either_backend(self):
+        """Power quantities must agree wherever the transfer product is sound."""
         payload = {
             "ScenarioData": {
                 "type": "Simple",
-                "incidentAngle": 45.0,
+                "incidentAngle": 30.0,
                 "azimuthal_angle": 0.0,
                 "frequency": 1460.0,
             },
             "Layers": [
-                {"type": "Ambient Incident Layer", "permittivity": 50.0},
+                {"type": "Ambient Incident Layer", "permittivity": 25.0},
+                {"type": "Crystal Layer", "material": "Calcite", "thickness": 1.0, "rotationY": 90},
                 {
                     "type": "Semi Infinite Anisotropic Layer",
                     "material": "Calcite",
@@ -111,9 +112,72 @@ class TestBackendGuards:
                 },
             ],
         }
-        structure = _run(payload, "scattering")
-        with pytest.raises(NotImplementedError, match="requires backend='transfer'"):
-            FieldProfile(structure)
+        transfer = FieldProfile(_run(payload, "transfer"))
+        cascade = FieldProfile(_run(payload, "scattering"))
+
+        for polarization in ("p", "s"):
+            for quantity in ("reflectance", "transmittance"):
+                np.testing.assert_allclose(
+                    np.asarray(getattr(cascade, quantity)(polarization)),
+                    np.asarray(getattr(transfer, quantity)(polarization)),
+                    rtol=1e-9,
+                    atol=1e-12,
+                    err_msg=f"{quantity}('{polarization}') differs between backends",
+                )
+            for one, two in zip(
+                cascade.layer_absorption(polarization),
+                transfer.layer_absorption(polarization),
+                strict=True,
+            ):
+                np.testing.assert_allclose(
+                    np.asarray(one["absorptance"]),
+                    np.asarray(two["absorptance"]),
+                    rtol=1e-9,
+                    atol=1e-12,
+                )
+
+    def test_transmission_coefficients_agree_for_an_isotropic_exit(self):
+        """Both are in the clean s/p basis only there; a crystal exit uses its own."""
+        payload = {
+            "ScenarioData": {
+                "type": "Simple",
+                "incidentAngle": 30.0,
+                "azimuthal_angle": 0.0,
+                "frequency": 1460.0,
+            },
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 25.0},
+                {"type": "Crystal Layer", "material": "Calcite", "thickness": 1.0, "rotationY": 90},
+                {"type": "Semi Infinite Isotropic Layer", "permittivity": 1.0},
+            ],
+        }
+        transfer = FieldProfile(_run(payload, "transfer")).transmission_coefficients()
+        cascade = FieldProfile(_run(payload, "scattering")).transmission_coefficients()
+        for key in ("t_pp", "t_ss", "t_ps", "t_sp"):
+            assert complex(np.asarray(cascade[key])) == pytest.approx(
+                complex(np.asarray(transfer[key])), abs=1e-9
+            ), key
+
+    def test_power_quantities_survive_where_the_transfer_product_does_not(self):
+        """The whole point: a gap thick enough to take the transfer route to NaN."""
+        payload = _otto_gap(150.0)
+        with np.errstate(all="ignore"):
+            broken = Structure()
+            broken.execute(payload)
+        assert not np.isfinite(np.asarray(broken.r_pp)).all()
+
+        cascade = FieldProfile(_run(payload, "scattering"))
+        reflectance = np.asarray(cascade.reflectance("p"))
+        assert np.isfinite(reflectance).all()
+        # A thick evanescent gap reflects everything.
+        np.testing.assert_allclose(reflectance, 1.0, atol=1e-9)
+        np.testing.assert_allclose(np.asarray(cascade.transmittance("p")), 0.0, atol=1e-9)
+
+    def test_depth_profile_still_says_it_needs_the_transfer_backend(self):
+        """Power works under the cascade; resolving with depth does not yet."""
+        structure = _run(_otto_gap(1.0), "scattering")
+        with pytest.raises(NotImplementedError, match="field_profile requires"):
+            FieldProfile(structure).field_profile("p")
 
 
 class TestCrossCheckVsTransfer:
