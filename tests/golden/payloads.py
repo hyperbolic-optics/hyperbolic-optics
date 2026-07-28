@@ -218,4 +218,116 @@ PAYLOADS: dict[str, dict[str, Any]] = {
 }
 
 # Payloads that are expensive to run (marked slow in the test module).
+# --- materials and axes the battery previously never touched ------------------
+#
+# The library ships ten materials; before these, only Calcite, Quartz and
+# GalliumOxide appeared here, so half of it had no value locked anywhere. That
+# is how alpha-MoO3 kept two Reststrahlen bands on the wrong crystal axes and
+# hBN kept a mixture of two references' parameters. A list-valued thickness (the
+# canonical T axis) was likewise unrepresented.
+
+PAYLOADS["moo3_incident"] = {
+    "ScenarioData": {"type": "Incident", "polar_points": 40},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 5.5},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "MoO3",
+            "rotationX": 0,
+            "rotationY": 0,
+            "rotationZ": 0,
+        },
+    ],
+}
+
+PAYLOADS["hbn_azimuthal"] = {
+    "ScenarioData": {"type": "Azimuthal", "incidentAngle": 30.0, "azimuthal_points": 40},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 11.56},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "hBN",
+            "rotationX": 0,
+            "rotationY": 70,
+            "rotationZ": 0,
+        },
+    ],
+}
+
+PAYLOADS["sic_aln_stack_incident"] = {
+    "ScenarioData": {"type": "Incident", "polar_points": 40},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 11.56},
+        {"type": "Crystal Layer", "material": "AlN", "thickness": 1.0, "rotationY": 0},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "SiC",
+            "rotationX": 0,
+            "rotationY": 0,
+            "rotationZ": 0,
+        },
+    ],
+}
+
+PAYLOADS["gan_simple"] = {
+    "ScenarioData": {
+        "type": "Simple",
+        "incidentAngle": 40.0,
+        "azimuthal_angle": 25.0,
+        "frequency": 600.0,
+    },
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 11.56},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "GaN",
+            "rotationX": 0,
+            "rotationY": 60,
+            "rotationZ": 0,
+        },
+    ],
+}
+
+PAYLOADS["sapphire_calcite_lower_dispersion"] = {
+    "ScenarioData": {
+        "type": "Dispersion",
+        "frequency": 600.0,
+        "polar_points": 30,
+        "azimuthal_points": 40,
+    },
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 11.56},
+        {"type": "Crystal Layer", "material": "CalciteLower", "thickness": 1.0, "rotationY": 45},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Sapphire",
+            "rotationX": 0,
+            "rotationY": 90,
+            "rotationZ": 0,
+        },
+    ],
+}
+
+# List-valued thickness: locks the canonical T axis and the broadcast that
+# builds it, which nothing else in the battery exercises.
+PAYLOADS["thickness_axis_simple"] = {
+    "ScenarioData": {
+        "type": "Simple",
+        "incidentAngle": 45.0,
+        "azimuthal_angle": 0.0,
+        "frequency": 1460.0,
+    },
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        {
+            "type": "Crystal Layer",
+            "material": "Calcite",
+            "thickness": [0.5, 1.0, 1.5, 2.0],
+            "rotationY": 90,
+        },
+        _CALCITE_Y90,
+    ],
+}
+
+
 SLOW_PAYLOADS = {"fullsweep_quartz"}
