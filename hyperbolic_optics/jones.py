@@ -251,6 +251,19 @@ class Jones:
             regime. Use :meth:`~hyperbolic_optics.fields.FieldProfile.transmittance`
             for power there.
 
+        The two are labelled by **polarization character**: index 0 is the more
+        p-like eigenvector, index 1 the more s-like. ``np.linalg.eig`` returns
+        them in no particular order, so across a sweep the two would otherwise
+        swap wherever the solver felt like it, putting seams through channel maps
+        that have nothing to do with the physics.
+
+        Labelling by ``|λ|`` (the obvious alternative) is worse: it seams along
+        every ``|λ₀| = |λ₁|`` contour. No labelling can be globally continuous
+        when exceptional points are present -- encircling one exchanges the two
+        sheets, so every scheme owns at least one branch cut per EP -- but
+        p-character puts its cuts on the EP chains, where a discontinuity is
+        physically correct, and nowhere else.
+
         Returns:
             Dict with ``eigenvalues`` ``[..., 2]``, ``eigenpolarizations``
             ``[..., 2, 2]`` (columns are the unit eigenvectors), ``discriminant``
@@ -258,6 +271,7 @@ class Jones:
         """
         jones = self.calculate_jones_matrix(transmission=transmission)
         eigenvalues, eigenvectors = np.linalg.eig(jones)
+        eigenvalues, eigenvectors = _order_by_polarization(eigenvalues, eigenvectors)
         j_pp, j_ps = jones[..., 0, 0], jones[..., 0, 1]
         j_sp, j_ss = jones[..., 1, 0], jones[..., 1, 1]
         discriminant = (0.5 * (j_pp - j_ss)) ** 2 + j_ps * j_sp
@@ -376,6 +390,29 @@ def _grids_match(a: np.ndarray, b: np.ndarray) -> bool:
     except ValueError:
         return False
     return np.allclose(broadcast_a, broadcast_b)
+
+
+def _order_by_polarization(
+    eigenvalues: np.ndarray, eigenvectors: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Put the more p-like eigenvector first, pointwise.
+
+    The Jones basis is ``(p, s)``, so component 0 of an eigenvector is its
+    p-amplitude. Sorting on that fraction is pointwise -- it needs no
+    neighbouring grid point and so cannot depend on scan order or grid
+    resolution, which a continuation scheme would.
+    """
+    p_weight = np.abs(eigenvectors[..., 0, :]) ** 2
+    s_weight = np.abs(eigenvectors[..., 1, :]) ** 2
+    total = p_weight + s_weight
+    p_fraction = np.divide(p_weight, total, out=np.zeros_like(p_weight), where=total > 0)
+
+    swap = p_fraction[..., 1] > p_fraction[..., 0]
+    order = np.where(swap[..., np.newaxis], np.array([1, 0]), np.array([0, 1]))
+
+    ordered_values = np.take_along_axis(eigenvalues, order, axis=-1)
+    ordered_vectors = np.take_along_axis(eigenvectors, order[..., np.newaxis, :], axis=-1)
+    return ordered_values, ordered_vectors
 
 
 def compose_jones(*elements: Structure | np.ndarray) -> np.ndarray:

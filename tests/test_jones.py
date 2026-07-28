@@ -271,3 +271,75 @@ class TestComposeJones:
     def test_empty_raises(self):
         with pytest.raises(ValueError):
             compose_jones()
+
+
+class TestEigenpolarizationLabelling:
+    """The two eigenpolarizations are labelled by polarization character."""
+
+    @staticmethod
+    def _dispersion_jones():
+        payload = {
+            "ScenarioData": {"type": "Dispersion", "frequency": 1460.0, "polar_points": 60},
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 25.0},
+                {"type": "Isotropic Middle-Stack Layer", "thickness": 10.0, "permittivity": 1.0},
+                {
+                    "type": "Semi Infinite Anisotropic Layer",
+                    "material": "Calcite",
+                    "rotationY": 90,
+                    "rotationZ": 0,
+                },
+            ],
+        }
+        structure = Structure()
+        structure.execute(payload)
+        return Jones(structure)
+
+    @staticmethod
+    def _seam_count(vectors, axis, margin=0.05):
+        """Edges where swapping the two labels would track the eigenvectors better.
+
+        A seam is where the labelling is locally wrong, so fewer is better. Some
+        are unavoidable: encircling an exceptional point genuinely exchanges the
+        two sheets, so no labelling is globally continuous.
+        """
+        moved = np.moveaxis(vectors, axis, 0)
+        v0, v1 = moved[..., :, 0], moved[..., :, 1]
+        overlap = lambda a, b: np.abs(np.sum(np.conj(a) * b, axis=-1))  # noqa: E731
+        keep = overlap(v0[:-1], v0[1:]) + overlap(v1[:-1], v1[1:])
+        swap = overlap(v0[:-1], v1[1:]) + overlap(v1[:-1], v0[1:])
+        return int(((swap - keep) > margin).sum())
+
+    def test_index_zero_is_the_p_like_state(self):
+        data = self._dispersion_jones().eigenpolarizations()
+        vectors = np.asarray(data["eigenpolarizations"])
+
+        p_weight = np.abs(vectors[..., 0, :]) ** 2
+        s_weight = np.abs(vectors[..., 1, :]) ** 2
+        total = p_weight + s_weight
+        fraction = np.divide(p_weight, total, out=np.zeros_like(p_weight), where=total > 0)
+
+        assert np.all(fraction[..., 0] >= fraction[..., 1])
+
+    def test_beats_magnitude_ordering_on_seams(self):
+        """Ordering by |lambda| seams along every |l0| = |l1| contour."""
+        jones = self._dispersion_jones()
+        vectors = np.asarray(jones.eigenpolarizations()["eigenpolarizations"])
+
+        raw = np.linalg.eig(jones.calculate_jones_matrix())
+        by_magnitude = np.argsort(-np.abs(raw[0]), axis=-1)
+        magnitude_vectors = np.take_along_axis(raw[1], by_magnitude[..., np.newaxis, :], axis=-1)
+
+        ours = sum(self._seam_count(vectors, ax) for ax in (0, 1))
+        theirs = sum(self._seam_count(magnitude_vectors, ax) for ax in (0, 1))
+
+        assert ours * 10 < theirs, (
+            f"p-character gave {ours} seams against {theirs} for |lambda| ordering; "
+            "the gap should be an order of magnitude"
+        )
+
+    def test_labelling_is_deterministic(self):
+        """Pointwise, so it cannot depend on scan order or neighbouring points."""
+        first = np.asarray(self._dispersion_jones().eigenpolarizations()["eigenvalues"])
+        second = np.asarray(self._dispersion_jones().eigenpolarizations()["eigenvalues"])
+        assert np.array_equal(first, second)
