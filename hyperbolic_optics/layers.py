@@ -641,10 +641,13 @@ class IsotropicSemiInfiniteLayer(Layer):
         kx_flat = np.atleast_1d(np.asarray(kx, dtype=np.float64)).reshape(-1)
         inc_flat = np.atleast_1d(np.asarray(self.incident_angle, dtype=np.float64)).reshape(-1)
         self.eps_incident = float((kx_flat[0] / np.sin(inc_flat[0])) ** 2)
-        self.eps_exit = np.float64(data.get("permittivity"))
-
-        if self.eps_exit is None:
+        # Check before the cast, not after: np.float64(None) is nan on numpy 2,
+        # not an error, so the guard below never fired and a missing
+        # permittivity silently produced an all-NaN spectrum.
+        permittivity = data.get("permittivity")
+        if permittivity is None:
             raise ValueError("No exit permittivity provided for isotropic semi-infinite layer")
+        self.eps_exit = np.float64(permittivity)
 
         self.create()
 

@@ -18,7 +18,7 @@ keywords:
   - "hyperbolic"
   - "mueller matrix"
 license: MIT
-version: "0.3.0"  # Auto-updated to __version__ by the release GitHub Action
+version: "0.3.0"  # Keep in step with __version__; the release workflow verifies the tag matches
 date-released: "2026-06-07"
 doi: "10.5281/zenodo.14946555"
 references:

@@ -58,9 +58,31 @@ jobs:
     - name: Lint with ruff
       run: |
         uv run ruff check hyperbolic_optics tests
-      continue-on-error: true
 
     - name: Check formatting with ruff
       run: |
         uv run ruff format --check hyperbolic_optics tests
-      continue-on-error: true
+
+  # Goldens are environment-pinned, so run them on one fixed platform rather
+  # than across the matrix. The full battery takes ~11 s and the data is
+  # committed, so deselecting them everywhere left no test anywhere locking the
+  # value of a single reflection coefficient.
+  golden:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run golden-master battery
+      run: uv run pytest -m "golden and not slow" --no-header

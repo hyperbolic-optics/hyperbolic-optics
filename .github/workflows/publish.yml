@@ -5,90 +5,72 @@ on:
     types: [published]
 
 jobs:
-  publish-pypi:
+  # Gate the upload on the suite. A release previously published whatever was
+  # on the tag without running anything.
+  test:
     runs-on: ubuntu-latest
-    environment: release  # This must match what you enter on PyPI
-    permissions:
-      id-token: write      # REQUIRED for trusted publishing
-      contents: write      # REQUIRED to commit version updates back to repo
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0  # Fetch all history for proper git operations
-      
-    - name: Update version references automatically
-      run: |
-        # Extract version from __init__.py instead of pyproject.toml
-        VERSION=$(grep -oP '__version__ = "\K[^"]+' hyperbolic_optics/__init__.py)
-        DATE=$(date +%Y-%m-%d)
-        YEAR=$(date +%Y)
-        
-        echo "Updating all version references to $VERSION"
-        
-        # Update CITATION.cff if it exists
-        if [ -f "CITATION.cff" ]; then
-          sed -i "s/version: \".*\"/version: \"$VERSION\"/" CITATION.cff
-          sed -i "s/date-released: \".*\"/date-released: \"$DATE\"/" CITATION.cff
-          echo "✅ Updated CITATION.cff"
-        fi
-        
-        # Update README citation if it exists
-        if [ -f "README.md" ]; then
-          sed -i "s/version={.*}/version={$VERSION}/" README.md
-          sed -i "s/year={.*}/year={$YEAR}/" README.md
-          echo "✅ Updated README.md citation"
-        fi
-        
-        # Update __init__.py version if it exists
-        if [ -f "hyperbolic_optics/__init__.py" ]; then
-          if grep -q "__version__" hyperbolic_optics/__init__.py; then
-            sed -i "s/__version__ = [\"'].*[\"']/__version__ = \"$VERSION\"/" hyperbolic_optics/__init__.py
-          else
-            sed -i "1i__version__ = \"$VERSION\"" hyperbolic_optics/__init__.py
-          fi
-          echo "✅ Updated __init__.py version"
-        fi
-        
-        # Commit version updates back to the repository
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add -A
-        
-        # Only commit if there are changes
-        if ! git diff --staged --quiet; then
-          git commit -m "Auto-update version references to $VERSION [skip ci]"
-          git push origin HEAD:main
-          echo "✅ Committed version updates"
-        else
-          echo "ℹ️ No version updates needed"
-        fi
-      
+    - uses: actions/checkout@v4
+
     - name: Install uv
       uses: astral-sh/setup-uv@v4
       with:
         version: "latest"
-        
+
     - name: Set up Python
       run: uv python install 3.12
-      
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run tests
+      run: uv run pytest -m "not slow" --no-header
+
+    - name: Lint
+      run: |
+        uv run ruff check hyperbolic_optics tests
+        uv run ruff format --check hyperbolic_optics tests
+
+  publish-pypi:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: release  # This must match what you enter on PyPI
+    permissions:
+      id-token: write      # REQUIRED for trusted publishing
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # The tag is the source of truth for what is being released. Previously the
+    # version was read out of __init__.py and written straight back to it, so
+    # nothing tied the upload to the tag: releasing v0.4.0 from a tree still
+    # saying 0.3.0 would have published 0.3.0 under the new release. That step
+    # also committed and pushed to main mid-release, which is where the
+    # "Auto-update version references [skip ci]" commits on main came from.
+    - name: Verify the tag matches the package version
+      run: |
+        PACKAGE_VERSION=$(grep -oP '__version__ = "\K[^"]+' hyperbolic_optics/__init__.py)
+        TAG_VERSION="${GITHUB_REF_NAME#v}"
+        echo "package: $PACKAGE_VERSION   tag: $TAG_VERSION"
+        if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+          echo "::error::Tag $GITHUB_REF_NAME does not match __version__ $PACKAGE_VERSION."
+          echo "Bump the version in the pull request preceding the tag (scripts/sync_versions.py)."
+          exit 1
+        fi
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
     - name: Build package
       run: |
-        echo "Building package..."
         uv build
-        echo "✅ Package built successfully"
-        
-        # Show what was built
         ls -la dist/
-      
+
     - name: Publish to PyPI (trusted publishing)
-      run: |
-        echo "Publishing to PyPI using trusted publishing..."
-        uv publish --trusted-publishing automatic
-        echo "🎉 Successfully published to PyPI!"
-      
-    - name: Update Zenodo (if configured)
-      run: |
-        echo "ℹ️ Zenodo will automatically create a new version from this GitHub release"
+      run: uv publish --trusted-publishing automatic
