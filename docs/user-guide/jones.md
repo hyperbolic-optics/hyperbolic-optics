@@ -14,6 +14,22 @@ J = [[r_pp, r_ps],
 
 ## Basic usage
 
+Every snippet on this page follows on from:
+
+```python
+payload = {
+    "ScenarioData": {"type": "Incident"},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
+            "rotationY": 90,
+        },
+    ],
+}
+```
+
 ```python
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.jones import Jones
@@ -79,7 +95,8 @@ jones.ellipsometric_parameters()    # psi and delta
 ```python
 from hyperbolic_optics.jones import compose_jones
 
-total = compose_jones(sample, analyzer)   # beam order
+analyzer = jones.linear_polarizer(90)
+total = compose_jones(structure, analyzer)   # beam order
 ```
 
 Two `Structure` elements must share the same `kx` and frequency grids — the

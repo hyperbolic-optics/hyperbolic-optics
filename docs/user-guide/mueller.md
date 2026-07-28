@@ -4,6 +4,22 @@ Mueller matrices describe how light's polarization state changes upon reflection
 
 ## Basic Usage
 
+Every snippet on this page follows on from:
+
+```python
+payload = {
+    "ScenarioData": {"type": "Incident"},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 50.0},
+        {
+            "type": "Semi Infinite Anisotropic Layer",
+            "material": "Calcite",
+            "rotationY": 90,
+        },
+    ],
+}
+```
+
 ```python
 from hyperbolic_optics.structure import Structure
 from hyperbolic_optics.mueller import Mueller
@@ -15,6 +31,7 @@ structure.execute(payload)
 # Create Mueller analyzer
 mueller = Mueller(structure)
 
+# Each block below starts a fresh Mueller; a component may be added once.
 # Set incident polarization
 mueller.set_incident_polarization('linear', angle=45)
 
@@ -64,6 +81,7 @@ mueller.set_incident_polarization('elliptical', alpha=30, ellipticity=20)
 The main sample being analyzed:
 
 ```python
+mueller = Mueller(structure)   # a component may only be added once
 mueller.add_optical_component('anisotropic_sample')
 ```
 
@@ -100,6 +118,7 @@ Place components in series:
 
 ```python
 # Polarizer → Sample → Analyzer
+mueller = Mueller(structure)
 mueller.set_incident_polarization('linear', angle=0)
 mueller.add_optical_component('linear_polarizer', 0)  # Input polarizer
 mueller.add_optical_component('anisotropic_sample')    # Sample

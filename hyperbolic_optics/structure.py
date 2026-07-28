@@ -143,6 +143,25 @@ class Structure:
         self.repaired_fraction = None
         self._minor_trust = None
 
+    def _reset(self) -> None:
+        """Clear per-run state so ``execute`` can be called more than once.
+
+        ``get_layers`` appends, so without this a second ``execute`` on the same
+        object stacked a whole new copy of the structure onto the old one --
+        two layers became four, then six. Reflection happened to survive it
+        (everything appended sits behind a semi-infinite exit and contributes
+        nothing), which is what made it dangerous: ``r_pp`` looked right while
+        ``layer_absorption`` returned an entry per phantom layer, negative values
+        among them, and the scattering cascade hit a singular interface.
+        """
+        self.layers = []
+        self.transfer_matrix = None
+        self.backend = None
+        self.repaired_fraction = None
+        self._minor_trust = None
+        for name in ("r_pp", "r_ss", "r_ps", "r_sp", "t_pp", "t_ss", "t_ps", "t_sp"):
+            setattr(self, name, None)
+
     def get_scenario(self, scenario_data: dict[str, Any]) -> None:
         """Parse and initialize scenario from configuration data.
 
@@ -511,6 +530,8 @@ class Structure:
         """
         if backend not in ("transfer", "scattering"):
             raise ValueError(f"Unknown backend {backend!r}; use 'transfer' or 'scattering'.")
+
+        self._reset()
 
         # Get the scenario data
         self.get_scenario(payload.get("ScenarioData"))
