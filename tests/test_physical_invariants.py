@@ -2,7 +2,7 @@
 Physics anchors that can actually fail.
 
 The suite's headline conservation check (``FieldProfile.summary``'s
-``conservation_residual``) is a telescoping identity -- the per-layer
+``flux_bookkeeping_residual``) is a telescoping identity -- the per-layer
 absorptances are defined as successive flux differences, so
 ``R + T + sum(A) - 1`` cancels algebraically and returns machine epsilon
 whatever the fields did. The checks here are chosen so that a wrong result

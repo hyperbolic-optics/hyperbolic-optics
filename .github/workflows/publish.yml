@@ -48,6 +48,13 @@ jobs:
     # saying 0.3.0 would have published 0.3.0 under the new release. That step
     # also committed and pushed to main mid-release, which is where the
     # "Auto-update version references [skip ci]" commits on main came from.
+    - name: Check every version reference agrees
+      run: |
+        # sync_versions.py is the single place that knows which files carry a
+        # version string. Running it in --check mode here means a stale
+        # CITATION.cff or docs citation fails the release rather than shipping.
+        python scripts/sync_versions.py --check
+
     - name: Verify the tag matches the package version
       run: |
         PACKAGE_VERSION=$(grep -oP '__version__ = "\K[^"]+' hyperbolic_optics/__init__.py)

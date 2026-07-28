@@ -72,7 +72,7 @@ class FieldProfile:
         >>> fp = FieldProfile(structure)
         >>> fp.transmittance("p")          # power transmittance T
         >>> fp.layer_absorption("p")       # per-interior-layer absorption
-        >>> fp.check_conservation("p")     # max |R + T + ΣA − 1|
+        >>> fp.check_flux_bookkeeping("p")     # max |R + T + ΣA − 1|
         >>> prof = fp.field_profile("p")   # dict: z, Ex..Hz, Sz, absorption_*
     """
 
@@ -281,7 +281,7 @@ class FieldProfile:
     def summary(self, polarization: str | tuple[complex, complex] = "p") -> dict[str, Any]:
         """One-call ``R``, ``T``, per-layer absorption, total, and conservation residual.
 
-        ``conservation_residual = max|R + T + ΣAᵢ − 1|`` over the batch.
+        ``flux_bookkeeping_residual = max|R + T + ΣAᵢ − 1|`` over the batch.
 
         Warning:
             This is a bookkeeping check, not a physics check. The per-layer
@@ -306,12 +306,12 @@ class FieldProfile:
                 {"index": i, "type": ty, "absorptance": present(a)} for i, ty, a in per_layer
             ],
             "total_absorption": present(total_abs),
-            "conservation_residual": float(np.max(residual)),
+            "flux_bookkeeping_residual": float(np.max(residual)),
         }
 
-    def check_conservation(self, polarization: str | tuple[complex, complex] = "p") -> float:
+    def check_flux_bookkeeping(self, polarization: str | tuple[complex, complex] = "p") -> float:
         """Return ``max|R + T + ΣAᵢ − 1|`` over the batch (≈ 0 when correct)."""
-        return self.summary(polarization)["conservation_residual"]
+        return self.summary(polarization)["flux_bookkeeping_residual"]
 
     # -- polarization-resolved power (experimental) ---------------------------
 

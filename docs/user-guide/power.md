@@ -46,8 +46,8 @@ interface gives the power crossing it.
 Any polarization works — pass `"p"`, `"s"`, or an explicit complex `(a_s, a_p)`
 Jones pair.
 
-!!! warning "`conservation_residual` is a bookkeeping check"
-    `summary()` reports `conservation_residual = max|R + T + ΣAᵢ − 1|`. This is
+!!! warning "`flux_bookkeeping_residual` is a bookkeeping check"
+    `summary()` reports `flux_bookkeeping_residual = max|R + T + ΣAᵢ − 1|`. This is
     **not** a physics check. The per-layer absorptances are defined as
     successive differences of the same interface fluxes `R` and `T` are built
     from, so the sum telescopes and the residual is algebraically zero however

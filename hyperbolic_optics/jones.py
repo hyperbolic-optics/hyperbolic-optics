@@ -125,6 +125,13 @@ class Jones:
                 (computing them via ``Structure.calculate_transmissivity`` if
                 needed) instead of the reflection coefficients.
 
+        Note:
+            With ``transmission=True`` the ``|t|²`` these amplitudes imply equals
+            true power transmittance only for a symmetric system (prism ==
+            substrate); into a lower-index medium it breaks in the evanescent
+            regime. Use :meth:`~hyperbolic_optics.fields.FieldProfile.transmittance`
+            for power there.
+
         Returns:
             The Jones matrix ``[..., 2, 2]`` in the scenario's presentation shape.
         """
