@@ -2,6 +2,8 @@
 Integration tests for complete workflows.
 """
 
+import copy
+
 import numpy as np
 import pytest
 
@@ -30,7 +32,7 @@ class TestCompleteWorkflows:
         # Verify we got all expected outputs
         assert "S0" in params
         assert "DOP" in params
-        assert params["S0"] is not None
+        assert np.all(np.isfinite(np.asarray(params["S0"])))
 
     def test_incident_workflow(self, incident_payload):
         """Test complete incident scenario workflow."""
@@ -104,7 +106,7 @@ class TestMultipleComponents:
         mueller.add_optical_component("anisotropic_sample")
 
         reflectivity = mueller.get_reflectivity()
-        assert reflectivity is not None
+        assert np.all(np.isfinite(np.asarray(reflectivity))), "reflectivity should be finite"
         assert 0 <= reflectivity <= 1
 
     def test_sample_polarizer_sequence(self, simple_payload):
@@ -118,7 +120,7 @@ class TestMultipleComponents:
         mueller.add_optical_component("linear_polarizer", 90)
 
         reflectivity = mueller.get_reflectivity()
-        assert reflectivity is not None
+        assert np.all(np.isfinite(np.asarray(reflectivity))), "reflectivity should be finite"
 
     def test_wave_plate_sample_sequence(self, simple_payload):
         """Test sequence with wave plate before sample."""
@@ -131,7 +133,8 @@ class TestMultipleComponents:
         mueller.add_optical_component("anisotropic_sample")
 
         params = mueller.get_all_parameters()
-        assert params["DOP"] is not None
+        assert np.all(np.isfinite(np.asarray(params["DOP"])))
+        assert np.all(np.asarray(params["DOP"]) <= 1.0 + 1e-9)
 
 
 @pytest.mark.integration
@@ -194,8 +197,8 @@ class TestDifferentMaterials:
         structure = Structure()
         structure.execute(payload)
 
-        assert structure.r_pp is not None
-        assert structure.r_ss is not None
+        assert np.all(np.isfinite(np.asarray(structure.r_pp))), "structure.r_pp should be finite"
+        assert np.all(np.isfinite(np.asarray(structure.r_ss))), "structure.r_ss should be finite"
 
     def test_gallium_oxide_workflow(self):
         """Test workflow with Gallium Oxide."""
@@ -222,7 +225,7 @@ class TestDifferentMaterials:
         structure = Structure()
         structure.execute(payload)
 
-        assert structure.r_pp is not None
+        assert np.all(np.isfinite(np.asarray(structure.r_pp))), "structure.r_pp should be finite"
 
 
 @pytest.mark.integration
@@ -272,7 +275,7 @@ class TestMultilayerStructures:
         structure.execute(payload)
 
         assert len(structure.layers) == 5
-        assert structure.r_pp is not None
+        assert np.all(np.isfinite(np.asarray(structure.r_pp))), "structure.r_pp should be finite"
 
     def test_complex_permittivity_airgap(self):
         """Test air gap with complex permittivity."""
@@ -303,7 +306,7 @@ class TestMultilayerStructures:
         structure = Structure()
         structure.execute(payload)
 
-        assert structure.r_pp is not None
+        assert np.all(np.isfinite(np.asarray(structure.r_pp))), "structure.r_pp should be finite"
 
 
 @pytest.mark.integration
@@ -317,8 +320,8 @@ class TestPhysicalConsistency:
 
         # For reciprocal media, certain relationships should hold
         # This is a basic check that both exist and are calculated
-        assert structure.r_ps is not None
-        assert structure.r_sp is not None
+        assert np.all(np.isfinite(np.asarray(structure.r_ps))), "structure.r_ps should be finite"
+        assert np.all(np.isfinite(np.asarray(structure.r_sp))), "structure.r_sp should be finite"
 
     def test_energy_conservation_across_scenarios(self):
         """Test energy conservation for different scenarios."""
@@ -414,16 +417,19 @@ class TestPhysicalConsistency:
         structure1 = Structure()
         structure1.execute(base_payload)
 
-        # Create payload with 180 degree rotation
-        rotated_payload = base_payload.copy()
+        # deepcopy, not copy: a shallow copy shares the nested Layers list, so
+        # this mutation would reach into base_payload too. Harmless only because
+        # structure1 executes first -- which is exactly the kind of ordering
+        # dependence that breaks the day someone reorders the test.
+        rotated_payload = copy.deepcopy(base_payload)
         rotated_payload["Layers"][2]["rotationZ"] = 180
 
         structure2 = Structure()
         structure2.execute(rotated_payload)
 
         # Both should produce valid results
-        assert structure1.r_pp is not None
-        assert structure2.r_pp is not None
+        assert np.all(np.isfinite(np.asarray(structure1.r_pp))), "structure1.r_pp should be finite"
+        assert np.all(np.isfinite(np.asarray(structure2.r_pp))), "structure2.r_pp should be finite"
 
 
 @pytest.mark.integration
