@@ -60,7 +60,9 @@ Shape:
     - [N, M, 3, 3] for scenario-dependent calculations
 
 Note:
-    The tensor is symmetric (ε_ij = ε_ji) for reciprocal media.
+    Symmetric (ε_ij = ε_ji) for reciprocal media, but the engine carries all
+    nine components independently, so non-reciprocal (gyrotropic, magneto-optic)
+    tensors are supported.
 """
 
 PermeabilityTensor: TypeAlias = ComplexArray
