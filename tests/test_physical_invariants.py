@@ -134,6 +134,80 @@ class TestAnisotropicSolverMatchesIsotropicClosedForm:
             )
 
 
+class TestPassivity:
+    """A passive stack absorbs a non-negative amount in every layer."""
+
+    @staticmethod
+    def _quartz_stack(frequency):
+        return {
+            "ScenarioData": {
+                "type": "Simple",
+                "incidentAngle": 40.0,
+                "azimuthal_angle": 0.0,
+                "frequency": frequency,
+            },
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 50.0},
+                {
+                    "type": "Crystal Layer",
+                    "material": "Quartz",
+                    "thickness": 1.0,
+                    "rotationY": 70,
+                },
+                {
+                    "type": "Semi Infinite Anisotropic Layer",
+                    "material": "Quartz",
+                    "rotationY": 90,
+                },
+            ],
+        }
+
+    @pytest.mark.parametrize("frequency", [450.0, 500.0, 550.0])
+    def test_layer_absorptance_is_non_negative(self, frequency):
+        """Inside every material's fitted band, no layer may supply power."""
+        structure = Structure()
+        structure.execute(self._quartz_stack(frequency))
+        profile = FieldProfile(structure)
+
+        for polarization in ("p", "s"):
+            for entry in profile.layer_absorption(polarization):
+                absorptance = np.asarray(entry["absorptance"])
+                assert np.all(absorptance >= -1e-9), (
+                    f"layer {entry['index']} has negative absorptance at "
+                    f"{frequency} cm^-1 for {polarization}: {absorptance.min()}"
+                )
+            assert np.all(np.asarray(profile.transmittance(polarization)) >= -1e-9)
+            assert np.all(np.asarray(profile.reflectance(polarization)) <= 1.0 + 1e-9)
+
+    def test_extrapolated_material_warns(self):
+        """Stacking materials with disjoint fitted ranges must not be silent.
+
+        Quartz is fitted over 410-600 cm^-1; pairing it with Sapphire resolves
+        the grid to Sapphire's range and evaluates Quartz far outside its own,
+        where the factorized form returns Im(eps) < 0 -- gain from a passive
+        crystal, which surfaces as negative layer absorptance.
+        """
+        payload = {
+            "ScenarioData": {"type": "Incident"},
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 50.0},
+                {
+                    "type": "Crystal Layer",
+                    "material": "Quartz",
+                    "thickness": 1.0,
+                    "rotationY": 70,
+                },
+                {
+                    "type": "Semi Infinite Anisotropic Layer",
+                    "material": "Sapphire",
+                    "rotationY": 90,
+                },
+            ],
+        }
+        with pytest.warns(UserWarning, match="outside the"):
+            Structure().execute(payload)
+
+
 class TestReflectanceConsistency:
     """``reflectance`` must equal the co- plus cross-polarized power it is built from."""
 
