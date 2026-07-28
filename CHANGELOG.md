@@ -67,6 +67,13 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —
   are expressible. Naming only the upper triangle keeps the previous symmetric
   behaviour, so existing payloads are unaffected.
+- **Swept angular axes are controllable.** `polar_points` / `azimuthal_points`
+  set the resolution (the design is taken from the Rust engine in the companion
+  desktop app, which already exposed both), and `incidentAngle` /
+  `azimuthal_angle` accept a list of degrees or a `{"min", "max", "points"}`
+  dict. Defaults are unchanged. A bare scalar on a swept axis used to be
+  accepted and then silently discarded -- a payload that looked like it fixed
+  the angle actually swept the full default range -- and now warns.
 - Structure **warns when a material is evaluated outside its fitted frequency
   range**. All layers share one grid, so a stack of two dispersive materials
   extrapolates at least one of them, where the factorized form can return

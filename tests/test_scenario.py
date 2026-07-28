@@ -3,6 +3,7 @@ Tests for scenario creation and configuration.
 """
 
 import numpy as np
+import pytest
 
 from hyperbolic_optics.scenario import ScenarioSetup
 
@@ -112,3 +113,41 @@ class TestScenarioTypes:
         # incident_angle should be array
         assert isinstance(scenario.incident_angle, np.ndarray)
         assert scenario.incident_angle.ndim == 1
+
+
+class TestAngularAxisControl:
+    """Swept angular axes are user-controllable, and a scalar is not discarded."""
+
+    def test_resolution_override(self):
+        assert ScenarioSetup({"type": "Incident", "polar_points": 41}).incident_angle.shape == (41,)
+        azimuthal = ScenarioSetup(
+            {"type": "Azimuthal", "incidentAngle": 30.0, "azimuthal_points": 12}
+        ).azimuthal_angle
+        assert azimuthal.shape == (12,)
+
+    def test_defaults_are_unchanged(self):
+        """The historical grids are what a payload without overrides still gets."""
+        assert ScenarioSetup({"type": "Incident"}).incident_angle.shape == (360,)
+        dispersion = ScenarioSetup({"type": "Dispersion", "frequency": 1460.0})
+        assert dispersion.incident_angle.shape == (180,)
+        assert dispersion.azimuthal_angle.shape == (480,)
+
+    def test_explicit_range_in_degrees(self):
+        scenario = ScenarioSetup(
+            {"type": "Incident", "incidentAngle": {"min": 20.0, "max": 60.0, "points": 5}}
+        )
+        assert np.allclose(np.degrees(scenario.incident_angle), [20.0, 30.0, 40.0, 50.0, 60.0])
+
+    def test_explicit_list_in_degrees(self):
+        scenario = ScenarioSetup({"type": "Incident", "incidentAngle": [10.0, 20.0, 30.0]})
+        assert np.allclose(np.degrees(scenario.incident_angle), [10.0, 20.0, 30.0])
+
+    def test_scalar_on_a_swept_axis_warns(self):
+        """It cannot be honoured, and silently sweeping instead is the worst option."""
+        with pytest.warns(UserWarning, match="cannot be honoured"):
+            scenario = ScenarioSetup({"type": "Incident", "incidentAngle": 45.0})
+        assert scenario.incident_angle.shape == (360,)
+
+    def test_degenerate_resolution_rejected(self):
+        with pytest.raises(ValueError, match="at least 2"):
+            ScenarioSetup({"type": "Incident", "polar_points": 1})
