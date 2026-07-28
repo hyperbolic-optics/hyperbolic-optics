@@ -147,8 +147,11 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   structurally rank-deficient, so `cond` is `inf` and the mask excused every
   point on 10 of 11 payloads. Enabling it exposed a transfer-backend precision
   defect, recorded as a strict `xfail`.
-- CI: `ruff` now gates instead of `continue-on-error`, and the golden battery
-  runs on a pinned platform rather than being deselected everywhere.
+- CI: `ruff` now gates instead of `continue-on-error`. The golden battery stays
+  out of CI — it snapshots LAPACK output and is pinned to the machine that
+  generated it, so a runner cannot reproduce it at `rtol=1e-7`. What locks
+  behaviour on every platform instead are the 83 physics tests added here, which
+  assert invariants rather than bit-values.
 - Release: `publish.yml` gates on the test suite and verifies the tag matches
   `__version__`. It no longer rewrites the version from `__init__.py` back into
   `__init__.py`, nor commits and pushes to `main` mid-release.
