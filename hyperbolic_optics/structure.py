@@ -19,6 +19,7 @@ Reference: Passler & Paarmann, JOSA B 34, 2128-2139 (2017)
 import functools
 import math as m
 import operator
+import warnings
 from typing import Any
 
 import numpy as np
@@ -115,6 +116,8 @@ class Structure:
         self.t_ps = None
         self.t_sp = None
         self.transfer_matrix = None
+        #: Which backend last populated the coefficients, or None before execute.
+        self.backend = None
 
     def get_scenario(self, scenario_data: dict[str, Any]) -> None:
         """Parse and initialize scenario from configuration data.
@@ -208,6 +211,7 @@ class Structure:
         # Resolve the frequency array once and share it with the scenario so
         # every layer evaluates its material over the same frequencies.
         self.frequency = self.resolve_frequency(layer_data_list)
+        self._warn_frequency_out_of_range(layer_data_list)
         self.scenario.frequency = self.frequency
         self.calculate_kx_k0()
 
@@ -231,6 +235,41 @@ class Structure:
                     self.k_0,
                 )
             )
+
+    def _warn_frequency_out_of_range(self, layer_data_list: list[dict[str, Any]]) -> None:
+        """Warn when the shared frequency grid leaves a material's fitted band.
+
+        Every layer is evaluated on one frequency grid, which
+        :meth:`resolve_frequency` takes from whichever layer supplies one. A
+        stack of two dispersive materials therefore evaluates at least one of
+        them outside the range its oscillator parameters were fitted over, where
+        the factorized form is an extrapolation and can return ``Im(eps) < 0``.
+        That is gain: it shows up downstream as negative layer absorptance and a
+        reflectance above 1, with nothing to indicate why.
+        """
+        low, high = float(np.min(self.frequency)), float(np.max(self.frequency))
+
+        for index, layer in enumerate(layer_data_list):
+            name = layer.get("material")
+            if not isinstance(name, str):
+                continue
+            band = getattr(create_material(name), "frequency", None)
+            if band is None:  # non-dispersive: valid everywhere
+                continue
+
+            band_low, band_high = float(np.min(band)), float(np.max(band))
+            if low < band_low or high > band_high:
+                warnings.warn(
+                    f"Layer {index} ({name}) is evaluated over "
+                    f"{low:.1f}-{high:.1f} cm^-1, outside the "
+                    f"{band_low:.1f}-{band_high:.1f} cm^-1 range its parameters "
+                    "were fitted over. Extrapolated permittivity can be "
+                    "unphysical (negative absorptance, reflectance above 1). "
+                    "Set ScenarioData['frequency'] to a range valid for every "
+                    "material in the stack.",
+                    UserWarning,
+                    stacklevel=3,
+                )
 
     @staticmethod
     def _validate_thickness_sweep(layer_data_list: list[dict[str, Any]]) -> None:
@@ -407,6 +446,7 @@ class Structure:
             with np.errstate(over="ignore", invalid="ignore"):
                 self.get_layers(payload.get("Layers", None))
                 self.calculate_scattering()
+            self.backend = backend
             return
 
         # Get the layers (builds each layer's eigenmodes / matrices)
@@ -417,3 +457,46 @@ class Structure:
 
         # Calculate the reflectivity
         self.calculate_reflectivity()
+        self.backend = backend
+        self._warn_if_ill_conditioned()
+
+    def _warn_if_ill_conditioned(self) -> None:
+        """Flag transfer-matrix results that the product has already ruined.
+
+        The transfer-matrix product carries growing exponentials for thick,
+        lossy or strongly evanescent layers. It does not fail cleanly: well
+        before the terms overflow to inf, cancellation between them costs enough
+        significant digits to return finite, plausible, wrong coefficients. Both
+        symptoms -- non-finite entries, and a passive stack reflecting more than
+        it receives -- point at the same fix, so name it.
+        """
+        coefficients = [self.r_pp, self.r_ss, self.r_ps, self.r_sp]
+        if any(c is None for c in coefficients):
+            return
+
+        arrays = [np.asarray(c) for c in coefficients]
+        if not all(np.isfinite(a).all() for a in arrays):
+            warnings.warn(
+                "The transfer-matrix product produced non-finite reflection "
+                "coefficients, which happens when a layer is thick, lossy or "
+                "strongly evanescent. Re-run with "
+                "structure.execute(payload, backend='scattering').",
+                UserWarning,
+                stacklevel=3,
+            )
+            return
+
+        reflected_p = np.abs(arrays[0]) ** 2 + np.abs(arrays[2]) ** 2
+        reflected_s = np.abs(arrays[1]) ** 2 + np.abs(arrays[3]) ** 2
+        excess = max(float(np.max(reflected_p)), float(np.max(reflected_s)))
+        if excess > 1.0 + 1e-6:
+            warnings.warn(
+                f"Reflectance reaches {excess:.3g} > 1 from a passive stack. "
+                "This is usually the transfer-matrix product losing precision to "
+                "a growing exponential; re-run with "
+                "structure.execute(payload, backend='scattering'). It can also "
+                "mean a material is being evaluated outside its fitted "
+                "frequency range.",
+                UserWarning,
+                stacklevel=3,
+            )

@@ -82,9 +82,19 @@ class FieldProfile:
             structure: A :class:`Structure` on which ``execute`` has already run.
 
         Raises:
-            ValueError: If the structure has not been executed (no transfer matrix).
+            ValueError: If the structure has not been executed.
+            NotImplementedError: If it was executed with ``backend="scattering"``,
+                which does not build the interface fields these quantities need.
         """
         if structure.transfer_matrix is None:
+            if getattr(structure, "backend", None) == "scattering":
+                raise NotImplementedError(
+                    "FieldProfile requires backend='transfer'. The scattering "
+                    "backend cascades reflection and transmission coefficients "
+                    "without forming the per-interface fields that transmittance, "
+                    "layer absorption and field profiles are computed from, so it "
+                    "cannot supply them yet."
+                )
             raise ValueError("Structure has not been executed; call structure.execute(payload).")
         self.structure = structure
         self.layers = structure.layers
