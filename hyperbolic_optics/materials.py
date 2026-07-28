@@ -779,7 +779,13 @@ class GalliumOxide(MonoclinicMaterial):
 
 
 class ArbitraryMaterial(BaseMaterial):
-    """Material with arbitrary permittivity and permeability tensor components."""
+    """Material with arbitrary permittivity and permeability tensor components.
+
+    Both tensors are fully general 3×3: all nine components of ε and μ may be
+    set independently, so non-reciprocal media (gyrotropic μ, magneto-optic ε)
+    are expressible, not just symmetric ones. Naming the upper triangle alone
+    (``eps_xy``/``eps_xz``/``eps_yz``) leaves the tensor symmetric.
+    """
 
     def __init__(self, material_data: dict[str, Any] | None = None) -> None:
         """Initialize material with arbitrary permittivity and permeability tensors.
@@ -796,6 +802,16 @@ class ArbitraryMaterial(BaseMaterial):
             ...     "mu_r": 1.0
             ... }
             >>> material = ArbitraryMaterial(mat_data)
+
+            A gyrotropic permeability (μ_xy = -μ_yx = iκ) needs the lower
+            triangle named explicitly:
+
+            >>> polder = {
+            ...     "mu_xx": 2.0, "mu_yy": 2.0, "mu_zz": 1.0,
+            ...     "mu_xy": {"real": 0.0, "imag": 0.6},
+            ...     "mu_yx": {"real": 0.0, "imag": -0.6},
+            ... }
+            >>> material = ArbitraryMaterial(polder)
         """
         super().__init__()
         self.name = "Arbitrary Material"
@@ -836,9 +852,11 @@ class ArbitraryMaterial(BaseMaterial):
             material_data: Dictionary with component values
 
         Note:
-            Sets attributes for eps_xx, eps_yy, eps_zz, eps_xy, eps_xz, eps_yz
-            and corresponding mu components. Missing values default to
-            appropriate identity-like values.
+            Sets attributes for all nine ε components (eps_xx … eps_zy) and the
+            nine corresponding μ components. Missing values default to
+            appropriate identity-like values, except the lower triangle, which
+            defaults to its transpose so a symmetric six-component payload keeps
+            its meaning.
         """
         # Permittivity components
         eps_components = {
@@ -866,6 +884,23 @@ class ArbitraryMaterial(BaseMaterial):
             value = material_data.get(key, default)
             setattr(self, key, self._to_complex(value))
 
+        # Lower triangle. Given explicitly the tensor is fully general (gyrotropic
+        # / magneto-optic media have ε_ij = -ε_ji); omitted it mirrors the upper
+        # triangle, which is the reciprocal case and the historical behaviour.
+        transpose_pairs = [
+            ("eps_yx", "eps_xy"),
+            ("eps_zx", "eps_xz"),
+            ("eps_zy", "eps_yz"),
+            ("mu_yx", "mu_xy"),
+            ("mu_zx", "mu_xz"),
+            ("mu_zy", "mu_yz"),
+        ]
+        for lower, upper in transpose_pairs:
+            if lower in material_data:
+                setattr(self, lower, self._to_complex(material_data[lower]))
+            else:
+                setattr(self, lower, getattr(self, upper))
+
         # Backward compatibility: if only mu_r is specified
         if "mu_r" in material_data:
             mu_r_val = self._to_complex(material_data["mu_r"])
@@ -879,8 +914,8 @@ class ArbitraryMaterial(BaseMaterial):
         """
         tensor_elements = [
             [self.eps_xx, self.eps_xy, self.eps_xz],
-            [self.eps_xy, self.eps_yy, self.eps_yz],
-            [self.eps_xz, self.eps_yz, self.eps_zz],
+            [self.eps_yx, self.eps_yy, self.eps_yz],
+            [self.eps_zx, self.eps_zy, self.eps_zz],
         ]
         return np.array(tensor_elements, dtype=np.complex128)
 
@@ -906,8 +941,8 @@ class ArbitraryMaterial(BaseMaterial):
         """
         tensor_elements = [
             [self.mu_xx, self.mu_xy, self.mu_xz],
-            [self.mu_xy, self.mu_yy, self.mu_yz],
-            [self.mu_xz, self.mu_yz, self.mu_zz],
+            [self.mu_yx, self.mu_yy, self.mu_yz],
+            [self.mu_zx, self.mu_zy, self.mu_zz],
         ]
         return np.array(tensor_elements, dtype=np.complex128)
 

@@ -149,6 +149,20 @@ custom_material = {
 }
 ```
 
+Both tensors are fully general 3×3. Naming the upper triangle alone leaves them
+symmetric (the reciprocal case above); naming the lower triangle too
+(`eps_yx`/`eps_zx`/`eps_zy`, and the `mu_` equivalents) makes them independent,
+which is what non-reciprocal media need — a gyrotropic permeability, for
+instance:
+
+```python
+gyrotropic = {
+    "mu_xx": 2.0, "mu_yy": 2.0, "mu_zz": 1.0,
+    "mu_xy": {"real": 0.0, "imag":  0.6},
+    "mu_yx": {"real": 0.0, "imag": -0.6},   # μ_yx = -μ_xy
+}
+```
+
 ### Multiple Scenario Types
 
 - **Incident:** Frequency vs incident angle analysis
