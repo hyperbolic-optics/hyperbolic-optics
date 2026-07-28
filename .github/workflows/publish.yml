@@ -24,7 +24,10 @@ jobs:
       run: uv sync --all-extras
 
     - name: Run tests
-      run: uv run pytest -m "not slow" --no-header
+      # Goldens are deselected here for the same reason tests.yml deselects
+      # them: they snapshot LAPACK output and are pinned to the machine that
+      # generated them, so they cannot pass on a runner.
+      run: uv run pytest -m "not slow and not golden" --no-header
 
     - name: Lint
       run: |

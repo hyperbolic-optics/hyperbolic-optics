@@ -24,11 +24,24 @@ Workflow
 Environment caveat
 ------------------
 Golden values depend on the NumPy/LAPACK eigensolver and are **environment
-pinned**. They were generated with:
+pinned**. Last regenerated with:
 
-    Python 3.12.11, numpy 2.3.3, scipy 1.16.2
+    Python 3.12.11, numpy 2.4.6
 
-Regenerate deliberately, never casually. If values drift across machines, pin
-``numpy``/``scipy`` in the dev environment (``pyproject.toml`` dev extras) and
-regenerate on the pinned versions.
+(The note here previously also cited scipy, which stopped being a dependency in
+0.3.0.)
+
+This is why the battery is **not** run in CI: a runner's LAPACK differs enough
+from the generating machine's to exceed ``rtol=1e-7 / atol=1e-9``, so a CI job
+would fail on every pull request while telling you nothing about the code. It
+is a local refactor lock -- run it before and after a change on one machine.
+
+What guards behaviour in CI instead are the tests that assert *physics* rather
+than bit-values, and so hold on any platform: ``test_physical_invariants.py``
+(cross-validation against the closed-form isotropic path, passivity),
+``test_material_literature.py`` (published band edges), ``test_general_tensors.py``
+(mode-partition invariants, gamma -> 0 continuity) and the cross-backend
+comparisons in ``test_scattering.py``.
+
+Regenerate deliberately, never casually.
 """
