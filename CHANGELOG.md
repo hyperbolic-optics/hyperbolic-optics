@@ -95,8 +95,16 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 - Structure **warns when the transfer product has lost conditioning** — non-finite
   coefficients, or a passive stack reflecting more than it receives — naming
   `backend="scattering"`.
-- `FieldProfile` now raises `NotImplementedError` when handed a
-  `backend="scattering"` structure, instead of claiming it "has not been executed".
+- **`FieldProfile` works under `backend="scattering"`.** Its power quantities
+  previously required the transfer product, so they were unavailable in exactly
+  the thick / lossy / evanescent regime that backend exists for. The interface
+  fields are now recovered from the Redheffer cascade — splitting the stack at
+  each interface and solving `c_f = (I − L₀₁·R₁₀)⁻¹·L₀₀·a` for the mode
+  amplitudes — so no growing exponential is ever formed. The two backends agree
+  to 1e-15 on the interface fields where both are sound, and on an Otto gap
+  thick enough to take the transfer route to `NaN` the cascade returns
+  `R = 1.0000000000`. Resolving the field with depth still needs
+  `backend="transfer"`, and now says so.
 - Test batteries for regimes that had no coverage: lossless, hyperbolic and
   gyrotropic media (`test_general_tensors.py`), passivity and cross-validation
   against the closed-form isotropic path (`test_physical_invariants.py`), and

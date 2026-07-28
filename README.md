@@ -282,7 +282,11 @@ structure.execute(payload, backend="scattering")
 ```
 
 It cascades per-layer scattering matrices with the Redheffer star product so only
-*decaying* exponentials ever appear. It returns the same reflection/transmission
+*decaying* exponentials ever appear. `FieldProfile` works under it too: the
+interface fields are recovered from the cascade rather than by propagating the
+per-layer transfer matrices, so transmittance, reflectance and layer-resolved
+absorption stay correct in exactly the regime the backend exists for. (Resolving
+the field *with depth* still needs `backend="transfer"`.) It returns the same reflection/transmission
 coefficients as the transfer method where that is well-conditioned, and correct
 ones where the transfer matrix is (near-)singular — e.g. a thick evanescent Otto
 gap, where `backend="transfer"` gives `NaN` but `backend="scattering"` correctly
