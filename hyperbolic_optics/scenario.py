@@ -12,6 +12,7 @@ arrays with correct dimensions for batch processing.
 """
 
 import math as m
+import warnings
 from abc import ABC
 from typing import Any
 
@@ -37,11 +38,62 @@ class ScenarioSetup(ABC):
             ...         "azimuthal_angle": 0.0, "frequency": 1460.0}
             >>> scenario = ScenarioSetup(data)
         """
+        self.data = data
         self.type = data.get("type")
         self.incident_angle = data.get("incidentAngle", None)
         self.azimuthal_angle = data.get("azimuthal_angle", None)
         self.frequency = data.get("frequency", None)
         self.create_scenario()
+
+    def _angle_axis(
+        self,
+        value: Any,
+        name: str,
+        default_min: float,
+        default_max: float,
+        default_points: int,
+        points_key: str,
+    ) -> np.ndarray:
+        """Resolve one swept angular axis, in radians.
+
+        Precedence mirrors :meth:`~hyperbolic_optics.structure.Structure.resolve_frequency`:
+        an explicit specification wins, otherwise the scenario's default grid is
+        used. Accepts
+
+        * a sequence of angles in degrees -- used verbatim,
+        * a ``{"min": .., "max": .., "points": ..}`` dict in degrees,
+        * nothing, giving the default grid at ``points_key`` resolution.
+
+        A bare scalar cannot define a swept axis. It used to be accepted and then
+        silently discarded, so a payload that looked like it fixed the angle
+        actually swept the full default range; that now warns rather than
+        quietly returning something else's answer.
+        """
+        points = int(self.data.get(points_key, default_points))
+        if points < 2:
+            raise ValueError(f"{points_key} must be at least 2, got {points}")
+
+        if value is None:
+            return np.linspace(default_min, default_max, points, dtype=np.float64)
+
+        if isinstance(value, dict):
+            low = m.radians(float(value["min"]))
+            high = m.radians(float(value["max"]))
+            return np.linspace(low, high, int(value.get("points", points)), dtype=np.float64)
+
+        if np.ndim(value) > 0:
+            return np.radians(np.asarray(value, dtype=np.float64))
+
+        warnings.warn(
+            f"{self.type} sweeps {name}, so the scalar {name}={value} cannot be "
+            f"honoured and the default grid is used instead. Pass a list of "
+            f"angles or {{'min': .., 'max': .., 'points': ..}} to control the "
+            f"axis, set '{points_key}' to change only its resolution, or use the "
+            f"'Simple' scenario for a single point.",
+            UserWarning,
+            stacklevel=4,
+        )
+        return np.linspace(default_min, default_max, points, dtype=np.float64)
 
     def create_scenario(self) -> None:
         """Create scenario-specific angle and frequency arrays.
@@ -75,8 +127,13 @@ class ScenarioSetup(ABC):
             Creates arrays suitable for generating kx vs frequency plots.
         """
 
-        self.incident_angle = np.linspace(
-            -m.pi / 2.0 + 1.0e-9, m.pi / 2.0 - 1.0e-9, 360, dtype=np.float64
+        self.incident_angle = self._angle_axis(
+            self.incident_angle,
+            "incidentAngle",
+            -m.pi / 2.0 + 1.0e-9,
+            m.pi / 2.0 - 1.0e-9,
+            360,
+            "polar_points",
         )
 
     def create_azimuthal_scenario(self) -> None:
@@ -90,8 +147,13 @@ class ScenarioSetup(ABC):
             incidentAngle must be provided in input data.
         """
         self.incident_angle = np.float64(m.radians(self.incident_angle))
-        self.azimuthal_angle = np.linspace(
-            0.0 + 1.0e-15, 2.0 * m.pi - 1.0e-15, 360, dtype=np.float64
+        self.azimuthal_angle = self._angle_axis(
+            self.azimuthal_angle,
+            "azimuthal_angle",
+            0.0 + 1.0e-15,
+            2.0 * m.pi - 1.0e-15,
+            360,
+            "azimuthal_points",
         )
 
     def create_dispersion_scenario(self) -> None:
@@ -104,9 +166,17 @@ class ScenarioSetup(ABC):
             Requires 'frequency' to be specified in input data.
             Generates data for kx vs ky momentum-space plots.
         """
-        self.incident_angle = np.linspace(0.0 + 1.0e-8, m.pi / 2.0 - 1.0e-8, 180, dtype=np.float64)
-
-        self.azimuthal_angle = np.linspace(1.0e-5, 2.0 * m.pi - 1.0e-5, 480, dtype=np.float64)
+        self.incident_angle = self._angle_axis(
+            self.incident_angle, "incidentAngle", 1.0e-8, m.pi / 2.0 - 1.0e-8, 180, "polar_points"
+        )
+        self.azimuthal_angle = self._angle_axis(
+            self.azimuthal_angle,
+            "azimuthal_angle",
+            1.0e-5,
+            2.0 * m.pi - 1.0e-5,
+            480,
+            "azimuthal_points",
+        )
 
         self.frequency = float(self.frequency)
 
@@ -135,10 +205,14 @@ class ScenarioSetup(ABC):
             Frequency range is determined by the material in the final layer.
             Output will have shape [N_freq, N_incident, N_azimuthal]
         """
-        # Incident angles - sweep from 0 to +90 degrees (90 points)
-        self.incident_angle = np.linspace(0.0 + 1.0e-9, m.pi / 2.0 - 1.0e-9, 180, dtype=np.float64)
-
-        # Azimuthal angles - full rotation 0 to 360 degrees (120 points)
-        self.azimuthal_angle = np.linspace(
-            0.0 + 1.0e-15, 2.0 * m.pi - 1.0e-15, 120, dtype=np.float64
+        self.incident_angle = self._angle_axis(
+            self.incident_angle, "incidentAngle", 1.0e-9, m.pi / 2.0 - 1.0e-9, 180, "polar_points"
+        )
+        self.azimuthal_angle = self._angle_axis(
+            self.azimuthal_angle,
+            "azimuthal_angle",
+            1.0e-15,
+            2.0 * m.pi - 1.0e-15,
+            120,
+            "azimuthal_points",
         )
