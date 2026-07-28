@@ -420,9 +420,8 @@ def compose_jones(*elements: Structure | np.ndarray) -> np.ndarray:
 
     Multiplies the 2×2 Jones matrices of the elements in **beam order** (the first
     argument is the element the light meets first), so the returned matrix is
-    ``J_last · … · J_first``. Heterogeneous scenario sweeps broadcast, so a fixed
-    sample composes with a swept one (and ideal components broadcast over any
-    sweep).
+    ``J_last · … · J_first``. Ideal components carry no angle and compose with
+    anything.
 
     Each element is either:
 
@@ -449,10 +448,12 @@ def compose_jones(*elements: Structure | np.ndarray) -> np.ndarray:
             ``kx`` / frequency grids.
 
     Note:
-        Both structures must currently resolve to broadcast-compatible
-        presentation shapes (e.g. a scalar ``Simple`` sample with a swept one).
-        Composing two *different* multi-axis sweeps whose squeezed shapes do not
-        align is not yet supported (it needs canonical-axis composition).
+        Two :class:`Structure` elements must currently share the *same* ``kx``
+        and frequency grids -- the guard below rejects anything else, because
+        composing samples evaluated at different angles is not a meaningful
+        product. Pairing a fixed sample with a swept one therefore does not
+        work, despite reading as though it should: it needs the fixed sample
+        resampled onto the swept grid, which is not implemented.
     """
     if not elements:
         raise ValueError("compose_jones requires at least one element.")
