@@ -178,13 +178,15 @@ class TestBiaxialAndPolarMaterials:
         assert np.real(tensor[0, 0]) < 0  # in-plane
         assert np.real(tensor[2, 2]) > 0  # out-of-plane
 
-    def test_moo3_eps_inf_corrected(self):
-        # eps_inf set to the Alvarez-Perez values (x=5.78, y=6.07, z=2.47), not
-        # the earlier 4.0/5.2/2.4 guess.
+    def test_moo3_eps_inf_matches_alvarez_perez(self):
+        # Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020), Table 1, in the
+        # paper's own axis convention (x=[100], y=[001], z=[010]). z was 2.47
+        # here, and its band was swapped with y's; see tests/test_material_literature.py
+        # for the band-edge checks that pin the assignment.
         params = MolybdenumTrioxide().permittivity_parameters()
         assert complex(params["x"]["high_freq"]).real == pytest.approx(5.78)
         assert complex(params["y"]["high_freq"]).real == pytest.approx(6.07)
-        assert complex(params["z"]["high_freq"]).real == pytest.approx(2.47)
+        assert complex(params["z"]["high_freq"]).real == pytest.approx(4.47)
 
 
 class TestMonoclinicMaterials:

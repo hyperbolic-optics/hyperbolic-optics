@@ -131,25 +131,25 @@
         },
         "hexagonal_boron_nitride": {
             "name": "hBN",
-            "_source": "Natural hBN, c-cut uniaxial. ordinary = in-plane E1u (E perp c), extraordinary = out-of-plane A2u (E parallel c). Standard values (Cai et al., Solid State Commun. 141, 262 (2007); Caldwell et al., Nat. Commun. 5, 5221 (2014)). Exact TO/LO/gamma/eps_inf vary slightly between references -- sanity-check for quantitative work.",
+            "_source": "Natural hBN, c-cut uniaxial. ordinary = in-plane E1u (E perp c), extraordinary = out-of-plane A2u (E parallel c). Values are the single self-consistent set from Caldwell et al., Nat. Commun. 5, 5221 (2014), Supplementary Table (eps_inf 4.90 / 2.95; TO-LO 1360-1614 in-plane, 760-825 out-of-plane; gamma 7 / 2), cross-checked against the same paper's main text. They were previously a mixture of that set and the slightly different Cai et al., Solid State Commun. 141, 262 (2007) values, which is why the two references used to be cited together.",
             "frequency_range": {
                 "default_min": 700.0,
                 "default_max": 1700.0
             },
             "parameters": {
                 "ordinary": {
-                    "high_freq": 4.87,
-                    "omega_tn": [1370.0],
-                    "gamma_tn": [5.0],
-                    "omega_ln": [1610.0],
-                    "gamma_ln": [5.0]
+                    "high_freq": 4.9,
+                    "omega_tn": [1360.0],
+                    "gamma_tn": [7.0],
+                    "omega_ln": [1614.0],
+                    "gamma_ln": [7.0]
                 },
                 "extraordinary": {
                     "high_freq": 2.95,
-                    "omega_tn": [780.0],
-                    "gamma_tn": [4.0],
-                    "omega_ln": [830.0],
-                    "gamma_ln": [4.0]
+                    "omega_tn": [760.0],
+                    "gamma_tn": [2.0],
+                    "omega_ln": [825.0],
+                    "gamma_ln": [2.0]
                 }
             }
         },
@@ -181,32 +181,32 @@
     "biaxial_materials": {
         "molybdenum_trioxide": {
             "name": "MoO3",
-            "_source": "alpha-MoO3 (orthorhombic, biaxial), factorized TO-LO model from Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020). Lab axes: x=[100], y=[010] in-plane; z=[001] out-of-plane (band assignment per Passler/Jeannin/Paarmann JOSA B 37, 1060 (2020) Fig. 2b). eps_inf corrected to the Alvarez-Perez values (was an earlier guess). Sanity-check exact eps_inf/gamma against the source for quantitative work.",
+            "_source": "alpha-MoO3 (orthorhombic, biaxial), factorized TO-LO model from Alvarez-Perez et al., Adv. Mater. 32, 1908176 (2020), Table 1, correlative far-/near-field experiment column. Axis convention is the paper's own (Fig. 1a): x=[100], y=[001], z=[010]. z=[010] is the van der Waals stacking axis, so it is the out-of-plane direction of a flake lying flat and the natural geometry needs no rotation. Band assignment per Fig. 5: RB1 545-850 on [001] (y), RB2 821-963 on [100] (x), RB3 957-1007 on [010] (z). eps_inf = 5.78 / 6.07 / 4.47; the [010] value is the paper's ab-initio value, which they held fixed.",
             "frequency_range": {
-                "default_min": 500.0,
-                "default_max": 1050.0
+                "default_min": 450.0,
+                "default_max": 1100.0
             },
             "parameters": {
                 "x": {
                     "high_freq": 5.78,
-                    "omega_tn": [820.0],
-                    "gamma_tn": [4.0],
-                    "omega_ln": [972.0],
-                    "gamma_ln": [4.0]
+                    "omega_tn": [506.7, 821.4, 998.7],
+                    "gamma_tn": [49.1, 6.0, 0.35],
+                    "omega_ln": [534.3, 963.0, 999.2],
+                    "gamma_ln": [49.1, 6.0, 0.35]
                 },
                 "y": {
                     "high_freq": 6.07,
-                    "omega_tn": [958.0],
-                    "gamma_tn": [2.0],
-                    "omega_ln": [1004.0],
-                    "gamma_ln": [2.0]
+                    "omega_tn": [544.6],
+                    "gamma_tn": [9.5],
+                    "omega_ln": [850.1],
+                    "gamma_ln": [9.5]
                 },
                 "z": {
-                    "high_freq": 2.47,
-                    "omega_tn": [545.0],
-                    "gamma_tn": [4.0],
-                    "omega_ln": [851.0],
-                    "gamma_ln": [4.0]
+                    "high_freq": 4.47,
+                    "omega_tn": [956.7],
+                    "gamma_tn": [1.5],
+                    "omega_ln": [1006.9],
+                    "gamma_ln": [1.5]
                 }
             }
         }
@@ -214,6 +214,7 @@
     "monoclinic_materials": {
         "gallium_oxide": {
             "name": "GalliumOxide",
+            "_source": "beta-Ga2O3 (monoclinic), Schubert et al., Phys. Rev. B 93, 125209 (2016). Au modes carry eps_zz; Bu modes couple x and y through their alpha_tn orientation angles, giving the off-diagonal eps_xy characteristic of a monoclinic crystal. The omega_ln / gamma_ln / alpha_ln entries are published Schubert quantities but are not read by the Bu/Au model implemented here -- they are kept for reference, and overwriting them changes no computed value. The default 350-800 range covers the Bu bands; eps_zz has structure from 297.6 and eps_yy from 213.9, so widen freq_min when those matter.",
             "frequency_range": {
                 "default_min": 350.0,
                 "default_max": 800.0

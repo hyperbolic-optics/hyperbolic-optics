@@ -41,7 +41,10 @@ PAYLOAD = {
             "type": "Crystal Layer",
             "material": "MoO3",
             "thickness": 1.2,
-            "rotationX": 90,
+            # No rotation: MoO3's z axis is [010], the van der Waals stacking
+            # direction, which is already out-of-plane for a flake lying flat.
+            # This used to carry rotationX=90 to compensate for [010] and [001]
+            # being attached to the wrong axes in material_params.json.
             "rotationZ": 0,
         },
         {
