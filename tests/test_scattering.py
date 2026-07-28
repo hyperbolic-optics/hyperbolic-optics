@@ -23,23 +23,48 @@ def _run(payload, backend):
 class TestBackendGuards:
     """The package must say which backend is at fault, and not lie about why."""
 
-    def test_transfer_backend_manufactures_cross_polarization(self):
-        """Documents the defect the cross-check above xfails on.
+    def test_lost_minors_are_repaired_not_reported(self):
+        """The raw transfer product invents cross-polarization; the default must not.
 
         With rotationZ = 0 the crystal axes stay in the plane of incidence, so
-        there is no p-s conversion and r_sp is zero by symmetry. The scattering
-        cascade returns ~1e-13; the transfer product returns ~9e-3, having lost
-        the precision to a growing exponential in the evanescent gap.
+        there is no p-s conversion and r_sp is zero by symmetry. At the handful
+        of points where a layer's propagation term drives the assembled matrix to
+        rank one, the r_sp minor cancels to the rounding floor and the raw
+        product returns ~9e-3 of it. Those points are recomputed via the cascade.
         """
         payload = PAYLOADS["multilayer_incident"]
-        transfer = np.abs(np.asarray(_run(payload, "transfer").r_sp))
-        scattering = np.abs(np.asarray(_run(payload, "scattering").r_sp))
 
-        assert scattering.max() < 1e-7, "symmetry-forbidden r_sp should vanish"
-        assert transfer.max() > 1e-3, (
-            "if the transfer product no longer manufactures r_sp here, its "
-            "conditioning has been fixed -- drop the xfail above"
+        stabilized = Structure()
+        stabilized.execute(payload)
+
+        raw = Structure()
+        raw.execute(payload)
+        raw.calculate_reflectivity(stabilize=False)
+
+        assert np.abs(np.asarray(raw.r_sp)).max() > 1e-3, (
+            "the raw transfer product no longer loses these minors; if its "
+            "conditioning has genuinely improved, this test can go"
         )
+        assert np.abs(np.asarray(stabilized.r_sp)).max() < 1e-7, (
+            "symmetry-forbidden r_sp survived the repair"
+        )
+        assert 0.0 < stabilized.repaired_fraction < 0.05, (
+            f"expected a sparse repair, got {stabilized.repaired_fraction:.4f}"
+        )
+
+    def test_repair_leaves_well_conditioned_points_untouched(self):
+        """A payload with no lost minors must be bit-identical to the raw product."""
+        payload = PAYLOADS["simple_calcite"]
+
+        stabilized = Structure()
+        stabilized.execute(payload)
+        assert stabilized.repaired_fraction == 0.0
+
+        raw = Structure()
+        raw.execute(payload)
+        raw.calculate_reflectivity(stabilize=False)
+        for key in ("r_pp", "r_ss", "r_ps", "r_sp"):
+            assert np.asarray(getattr(stabilized, key)) == np.asarray(getattr(raw, key))
 
     def test_ill_conditioned_transfer_result_warns(self):
         """A NaN from the transfer product must name the backend that fixes it."""
@@ -94,31 +119,7 @@ class TestBackendGuards:
 class TestCrossCheckVsTransfer:
     """Scattering r-coefficients match the transfer backend across the battery."""
 
-    @pytest.mark.parametrize(
-        "name",
-        [
-            pytest.param(
-                n,
-                marks=pytest.mark.xfail(
-                    strict=True,
-                    reason=(
-                        "Known transfer-backend precision loss. Its r_sp reaches "
-                        "9e-3 at points where symmetry (rotationZ=0, so the "
-                        "crystal axes stay in the plane of incidence) forbids any "
-                        "p-s conversion; the scattering backend gives 1e-13 there. "
-                        "The same payload reflects 1.000076 of the incident power. "
-                        "Fixing it means reformulating the transfer product, not "
-                        "adjusting this test -- see test_transfer_backend_"
-                        "manufactures_cross_polarization."
-                    ),
-                )
-                if n == "multilayer_incident"
-                else [],
-            )
-            for n in PAYLOADS
-            if n not in SLOW_PAYLOADS
-        ],
-    )
+    @pytest.mark.parametrize("name", [n for n in PAYLOADS if n not in SLOW_PAYLOADS])
     def test_reflection_matches(self, name):
         transfer = _run(PAYLOADS[name], "transfer")
         scattering = _run(PAYLOADS[name], "scattering")

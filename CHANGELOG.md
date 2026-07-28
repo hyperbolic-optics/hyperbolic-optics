@@ -41,6 +41,21 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   longer needs its compensating `rotationX=90`.
 - **hBN** parameters were a mixture of the two references cited; they are now the
   single self-consistent set from Caldwell et al., *Nat. Commun.* **5**, 5221 (2014).
+- **Reflection coefficients are no longer invented by cancellation.** Every
+  coefficient is a 2×2 minor over a denominator, and a layer carrying a growing
+  exponential drives the assembled matrix towards rank 1, where all such minors
+  vanish analytically. `r_pp` and `r_ss` survive that — numerator and denominator
+  lose precision together and the error cancels in the ratio — but a coefficient
+  that is zero by symmetry has no such partner, so its numerator cancels to the
+  rounding floor and the noise is returned as a confident value. On the
+  `multilayer_incident` battery payload `r_sp` came back as 9e-3 where symmetry
+  forbids any p–s conversion, and the stack reflected 1.000076 of the incident
+  power. Each subtraction now reports how much of it survived, and the affected
+  batch points — 1.5% of that sweep — are recomputed with the Redheffer cascade,
+  which reads the same eigenmodes but never forms a growing exponential.
+  Well-conditioned points are untouched and bit-identical; the repair is
+  best-effort and reports `Structure.repaired_fraction`. Pass
+  `calculate_reflectivity(stabilize=False)` for the literal transfer product.
 - Omitting `permittivity` on an isotropic exit layer silently produced an
   all-NaN spectrum: `np.float64(None)` is `nan` on NumPy 2, so the guard meant
   to catch it was unreachable.

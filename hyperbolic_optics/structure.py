@@ -30,6 +30,26 @@ from hyperbolic_optics.materials import create_material
 from hyperbolic_optics.scattering import scattering_coefficients
 from hyperbolic_optics.scenario import ScenarioSetup
 
+#: Fraction of a subtraction that must survive for its result to carry signal.
+#: Double precision holds ~2.2e-16; below this the difference is rounding noise.
+#: Well-conditioned points here sit around 1e-3, so there is no grey zone.
+MINOR_TRUST_FLOOR = 1e-11
+
+
+def _minor(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``a - b`` together with the fraction of it that survived.
+
+    A trust of 1 means no cancellation. A trust near the machine epsilon means
+    every significant digit was lost to the subtraction and what remains is the
+    rounding floor, not a small number.
+    """
+    difference = a - b
+    scale = np.maximum(np.abs(a), np.abs(b))
+    trust = np.divide(
+        np.abs(difference), scale, out=np.ones_like(scale, dtype=np.float64), where=scale > 0
+    )
+    return difference, trust
+
 
 class Structure:
     """Main interface for optical simulations.
@@ -118,6 +138,10 @@ class Structure:
         self.transfer_matrix = None
         #: Which backend last populated the coefficients, or None before execute.
         self.backend = None
+        #: Fraction of batch points the transfer path could not resolve and that
+        #: were recomputed with the scattering cascade. None before execute.
+        self.repaired_fraction = None
+        self._minor_trust = None
 
     def get_scenario(self, scenario_data: dict[str, Any]) -> None:
         """Parse and initialize scenario from configuration data.
@@ -308,8 +332,13 @@ class Structure:
         transfer_matrices = [layer.matrix for layer in self.layers]
         self.transfer_matrix = functools.reduce(operator.matmul, transfer_matrices)
 
-    def calculate_reflectivity(self) -> None:
+    def calculate_reflectivity(self, stabilize: bool = True) -> None:
         """Extract reflection coefficients from total transfer matrix.
+
+        Args:
+            stabilize: Recompute any batch point whose 2x2 minors cancelled to
+                the rounding floor using the scattering cascade. Pass ``False``
+                for the literal transfer-matrix result.
 
         Solves the system of equations to obtain r_pp, r_ss, r_ps, r_sp
         from the boundary conditions encoded in the transfer matrix.
@@ -321,26 +350,34 @@ class Structure:
         """
         # Boundary-out: the assembled transfer matrix is canonical [A, B, F, 4, 4].
         assert_canonical(self.transfer_matrix, matrix_ndim=2, name="transfer_matrix")
-        bottom_line = (
-            self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 2, 2]
-            - self.transfer_matrix[..., 0, 2] * self.transfer_matrix[..., 2, 0]
+        t = self.transfer_matrix
+        bottom_line, bottom_trust = _minor(t[..., 0, 0] * t[..., 2, 2], t[..., 0, 2] * t[..., 2, 0])
+        pp, pp_trust = _minor(t[..., 0, 0] * t[..., 3, 2], t[..., 3, 0] * t[..., 0, 2])
+        ps, ps_trust = _minor(t[..., 0, 0] * t[..., 1, 2], t[..., 1, 0] * t[..., 0, 2])
+        sp, sp_trust = _minor(t[..., 3, 0] * t[..., 2, 2], t[..., 3, 2] * t[..., 2, 0])
+        ss, ss_trust = _minor(t[..., 1, 0] * t[..., 2, 2], t[..., 1, 2] * t[..., 2, 0])
+
+        self.r_pp = pp / bottom_line
+        self.r_ps = ps / bottom_line
+        self.r_sp = sp / bottom_line
+        self.r_ss = ss / bottom_line
+
+        # Every coefficient is a 2x2 minor over a denominator. A layer carrying a
+        # growing exponential drives the assembled matrix towards rank 1, where
+        # all such minors vanish analytically -- so each is computed as the
+        # difference of two nearly equal products. r_pp and r_ss survive that
+        # because their numerator and the denominator lose precision together and
+        # the error cancels in the ratio. A coefficient that is zero by symmetry
+        # has no such partner: its numerator cancels all the way to the rounding
+        # floor and what is left is noise, returned as a confident 1e-2.
+        #
+        # _minor reports how much of each subtraction survived, so the points
+        # where that has happened are known exactly rather than guessed at.
+        self._minor_trust = np.minimum.reduce(
+            [bottom_trust, pp_trust, ps_trust, sp_trust, ss_trust]
         )
-        self.r_pp = (
-            self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 3, 2]
-            - self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 0, 2]
-        ) / bottom_line
-        self.r_ps = (
-            self.transfer_matrix[..., 0, 0] * self.transfer_matrix[..., 1, 2]
-            - (self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 0, 2])
-        ) / bottom_line
-        self.r_sp = (
-            self.transfer_matrix[..., 3, 0] * self.transfer_matrix[..., 2, 2]
-            - self.transfer_matrix[..., 3, 2] * self.transfer_matrix[..., 2, 0]
-        ) / bottom_line
-        self.r_ss = (
-            self.transfer_matrix[..., 1, 0] * self.transfer_matrix[..., 2, 2]
-            - self.transfer_matrix[..., 1, 2] * self.transfer_matrix[..., 2, 0]
-        ) / bottom_line
+        if stabilize:
+            self._repair_lost_minors()
 
         # Boundary-out (single presentation rule, see canonical-shape plan 4.6):
         # coefficients are canonical [A, B, F]; reorder to (F, A, B) then squeeze
@@ -351,6 +388,47 @@ class Structure:
         self.r_ps = self._present(self.r_ps)
         self.r_sp = self._present(self.r_sp)
         self.r_ss = self._present(self.r_ss)
+
+    def _repair_lost_minors(self) -> None:
+        """Recompute points whose minors cancelled away, via the stable cascade.
+
+        The substitution is per batch point, not per stack: within one sweep only
+        a handful of (frequency, angle) points usually cross into the regime
+        where a layer's propagation term has driven the assembled matrix to rank
+        one. Everywhere else the transfer product is exact and is kept, so this
+        changes nothing for a well-conditioned calculation.
+
+        The Redheffer cascade reads the same per-layer eigenmodes but never forms
+        a growing exponential, so it has digits left where the product has none.
+        """
+        lost = self._minor_trust < MINOR_TRUST_FLOOR
+        self.repaired_fraction = float(np.mean(lost))
+        if not np.any(lost):
+            return
+
+        # Best-effort: the cascade has its own singular cases, and failing to
+        # improve a point must not turn a returned answer into an exception.
+        try:
+            with np.errstate(over="ignore", invalid="ignore"):
+                stable = scattering_coefficients(self.layers, self.k_0)
+        except np.linalg.LinAlgError:
+            self.repaired_fraction = 0.0
+            warnings.warn(
+                f"{np.mean(lost):.1%} of batch points lost their reflection "
+                "coefficients to cancellation, and the scattering cascade could "
+                "not resolve them either (singular matrix). Those points are "
+                "unreliable.",
+                UserWarning,
+                stacklevel=4,
+            )
+            return
+
+        for name in ("r_pp", "r_ps", "r_sp", "r_ss"):
+            current = getattr(self, name)
+            replacement = np.broadcast_to(stable[name], np.shape(current))
+            # Only take a replacement that is itself a number.
+            usable = lost & np.isfinite(replacement)
+            setattr(self, name, np.where(usable, replacement, current))
 
     @staticmethod
     def _present(coefficient: np.ndarray) -> np.ndarray:
