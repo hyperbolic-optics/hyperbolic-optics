@@ -5,11 +5,11 @@ If you use this package in your research, please cite:
 ## Software Citation
 
 ```bibtex
-@software{cunningham2025hyperbolic,
+@software{cunningham2026hyperbolic,
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
-  year={2025},
-  version={0.2.3},
+  year={2026},
+  version={0.3.0},
   doi={10.5281/zenodo.14946556},
   url={https://pypi.org/project/hyperbolic-optics/},
   howpublished={PyPI},
@@ -49,13 +49,13 @@ Permanent archive: [10.5281/zenodo.14946556](https://doi.org/10.5281/zenodo.1494
 If you need to cite a specific version:
 
 ```bibtex
-@software{cunningham2025hyperbolic_v018,
+@software{cunningham2026hyperbolic_v030,
   title={Hyperbolic Optics Simulation Package},
   author={Mark Cunningham},
-  year={2025},
-  version={0.2.3},
+  year={2026},
+  version={0.3.0},
   doi={10.5281/zenodo.14946556},
-  url={https://pypi.org/project/hyperbolic-optics/0.1.8/}
+  url={https://pypi.org/project/hyperbolic-optics/0.3.0/}
 }
 ```
 
