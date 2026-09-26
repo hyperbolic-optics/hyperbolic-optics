@@ -263,5 +263,274 @@
             "name": "Air",
             "permittivity": 1.0
         }
+    },
+    "sellmeier_materials": {
+        "_form": "n² = constant + Σ a λ²/(λ² − b) + Σ d/(λ² − e), λ in µm; 'resonances' lists [a, b], 'poles' [d, e]. Lossless within wavelength_range_um.",
+        "lithium_niobate": {
+            "name": "LiNbO3",
+            "type": "uniaxial",
+            "wavelength_range_um": [
+                0.4,
+                5.0
+            ],
+            "_source": "Congruent LiNbO3 at 21 °C, Zelmon, Small & Jundt, JOSA B 14, 3319 (1997). n(1550 nm): no = 2.2111, ne = 2.1376.",
+            "ordinary": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        2.6734,
+                        0.01764
+                    ],
+                    [
+                        1.229,
+                        0.05914
+                    ],
+                    [
+                        12.614,
+                        474.6
+                    ]
+                ],
+                "poles": []
+            },
+            "extraordinary": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        2.9804,
+                        0.02047
+                    ],
+                    [
+                        0.5981,
+                        0.0666
+                    ],
+                    [
+                        8.9543,
+                        416.08
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "rutile": {
+            "name": "TiO2",
+            "type": "uniaxial",
+            "wavelength_range_um": [
+                0.43,
+                1.53
+            ],
+            "_source": "Rutile TiO2, DeVore, JOSA 41, 416 (1951).",
+            "ordinary": {
+                "constant": 5.913,
+                "resonances": [],
+                "poles": [
+                    [
+                        0.2441,
+                        0.0803
+                    ]
+                ]
+            },
+            "extraordinary": {
+                "constant": 7.197,
+                "resonances": [],
+                "poles": [
+                    [
+                        0.3322,
+                        0.0843
+                    ]
+                ]
+            }
+        },
+        "quartz_sellmeier": {
+            "name": "QuartzSellmeier",
+            "type": "uniaxial",
+            "wavelength_range_um": [
+                0.198,
+                2.05
+            ],
+            "_source": "Crystalline α-quartz in its transparency window, Ghosh, Opt. Commun. 163, 95 (1999). The IR phonon model is 'Quartz'.",
+            "ordinary": {
+                "constant": 1.28604141,
+                "resonances": [
+                    [
+                        1.07044083,
+                        0.0100585997
+                    ],
+                    [
+                        1.10202242,
+                        100.0
+                    ]
+                ],
+                "poles": []
+            },
+            "extraordinary": {
+                "constant": 1.28851804,
+                "resonances": [
+                    [
+                        1.09509924,
+                        0.0102101864
+                    ],
+                    [
+                        1.15662475,
+                        100.0
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "calcite_sellmeier": {
+            "name": "CalciteSellmeier",
+            "type": "uniaxial",
+            "wavelength_range_um": [
+                0.204,
+                2.172
+            ],
+            "_source": "Calcite in its transparency window, Ghosh, Opt. Commun. 163, 95 (1999). The IR phonon model is 'Calcite'.",
+            "ordinary": {
+                "constant": 1.73358749,
+                "resonances": [
+                    [
+                        0.96464345,
+                        0.0194325203
+                    ],
+                    [
+                        1.82831454,
+                        120.0
+                    ]
+                ],
+                "poles": []
+            },
+            "extraordinary": {
+                "constant": 1.35859695,
+                "resonances": [
+                    [
+                        0.8242783,
+                        0.0106689543
+                    ],
+                    [
+                        0.14429128,
+                        120.0
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "sapphire_sellmeier": {
+            "name": "SapphireSellmeier",
+            "type": "uniaxial",
+            "wavelength_range_um": [
+                0.2,
+                5.5
+            ],
+            "_source": "Sapphire (α-Al2O3) in its transparency window, Malitson & Dodge, JOSA 62, 1405 (1972). The IR phonon model is 'Sapphire'.",
+            "ordinary": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        1.4313493,
+                        0.005279926101609999
+                    ],
+                    [
+                        0.65054713,
+                        0.014238264705640002
+                    ],
+                    [
+                        5.3414021,
+                        325.017834119001
+                    ]
+                ],
+                "poles": []
+            },
+            "extraordinary": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        1.5039759,
+                        0.005480263229440001
+                    ],
+                    [
+                        0.55069141,
+                        0.014799428078409999
+                    ],
+                    [
+                        6.5927379,
+                        402.89513977350396
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "fused_silica": {
+            "name": "SiO2",
+            "type": "isotropic",
+            "wavelength_range_um": [
+                0.21,
+                6.7
+            ],
+            "_source": "Fused silica, Malitson, JOSA 55, 1205 (1965). n(1550 nm) = 1.4440.",
+            "index": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        0.6961663,
+                        0.00467914825849
+                    ],
+                    [
+                        0.4079426,
+                        0.013512063073959999
+                    ],
+                    [
+                        0.8974794,
+                        97.93400253792099
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "silicon_nitride": {
+            "name": "Si3N4",
+            "type": "isotropic",
+            "wavelength_range_um": [
+                0.31,
+                5.504
+            ],
+            "_source": "Stoichiometric LPCVD Si3N4, Luke et al., Opt. Lett. 40, 4823 (2015). n(1550 nm) = 1.9963.",
+            "index": {
+                "constant": 1.0,
+                "resonances": [
+                    [
+                        3.0249,
+                        0.01831707800836
+                    ],
+                    [
+                        40314.0,
+                        1537208.1849640002
+                    ]
+                ],
+                "poles": []
+            }
+        },
+        "silicon": {
+            "name": "Si",
+            "type": "isotropic",
+            "wavelength_range_um": [
+                1.36,
+                11.0
+            ],
+            "_source": "Crystalline silicon at room temperature, Salzberg & Villa, JOSA 47, 244 (1957): n² = 11.6858 + 0.939816/λ² + 0.00810461 λ1²/(λ² − λ1²), λ1 = 1.1071 µm. n(1550 nm) = 3.476.",
+            "index": {
+                "constant": 11.6858,
+                "resonances": [],
+                "poles": [
+                    [
+                        0.939816,
+                        0.0
+                    ],
+                    [
+                        0.0099335806615901,
+                        1.22567041
+                    ]
+                ]
+            }
+        }
     }
 }

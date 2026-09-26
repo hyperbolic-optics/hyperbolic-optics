@@ -1102,6 +1102,137 @@ class Air(IsotropicMaterial):
 
 # Single source of truth for the material name -> class mapping, shared by the
 # layer factory, frequency-range resolution, and list_materials().
+class SellmeierMaterial(UniaxialMaterial):
+    """A lossless uniaxial (or isotropic) crystal in its transparency window.
+
+    The phonon models above describe the infrared Reststrahlen bands. These
+    describe the same crystals' birefringence where photonic chips operate --
+    from the visible to the mid-infrared transparency edge -- with a Sellmeier
+    fit ``n² = C + Σ a λ²/(λ² − b) + Σ d/(λ² − e)`` (λ in µm) per principal axis,
+    from ``material_params.json``. Frequencies are in cm⁻¹ like every other
+    material, and the default range spans the fit's published validity, so the
+    usual out-of-range warning applies. The optic axis is along z:
+    ``diag(n_o², n_o², n_e²)``; an isotropic entry has ``n_o = n_e``.
+    """
+
+    def __init__(
+        self,
+        material_key: str,
+        freq_min: float | None = None,
+        freq_max: float | None = None,
+        mu_r: float = 1.0,
+    ) -> None:
+        super().__init__()
+        params = load_material_parameters()["sellmeier_materials"][material_key]
+        self.material_key = material_key
+        self.name = params["name"]
+        self.mu_r = mu_r
+        self.isotropic = params["type"] == "isotropic"
+        shortest, longest = params["wavelength_range_um"]
+        band = {"frequency_range": {"default_min": 1e4 / longest, "default_max": 1e4 / shortest}}
+        self._initialize_frequency_range(band, freq_min, freq_max)
+
+    def permittivity_parameters(self) -> dict[str, dict[str, Any]]:
+        """Sellmeier coefficients per axis: ``constant``, ``resonances``, ``poles``."""
+        params = load_material_parameters()["sellmeier_materials"][self.material_key]
+        axes = ("index", "index") if self.isotropic else ("ordinary", "extraordinary")
+
+        def coefficients(axis: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "constant": float(axis["constant"]),
+                "resonances": np.asarray(axis["resonances"], dtype=np.float64).reshape(-1, 2),
+                "poles": np.asarray(axis["poles"], dtype=np.float64).reshape(-1, 2),
+            }
+
+        return {
+            "ordinary": coefficients(params[axes[0]]),
+            "extraordinary": coefficients(params[axes[1]]),
+        }
+
+    @staticmethod
+    def sellmeier(axis: dict[str, Any], frequency: np.ndarray) -> np.ndarray:
+        """ε = n² from one axis's coefficients at ``frequency`` (cm⁻¹)."""
+        lam_sq = (1e4 / np.asarray(frequency, dtype=np.float64)) ** 2
+        eps = np.full_like(lam_sq, axis["constant"])
+        for a, b in axis["resonances"]:
+            eps = eps + a * lam_sq / (lam_sq - b)
+        for d, e in axis["poles"]:
+            eps = eps + d / (lam_sq - e)
+        return eps.astype(np.complex128)
+
+    def permittivity_fetch(self) -> tuple[np.ndarray, np.ndarray]:
+        """Extraordinary and ordinary ε over the material's frequency range."""
+        params = self.permittivity_parameters()
+        return (
+            self.sellmeier(params["extraordinary"], self.frequency),
+            self.sellmeier(params["ordinary"], self.frequency),
+        )
+
+    def fetch_permittivity_tensor_for_freq(self, requested_frequency: float) -> np.ndarray:
+        """Permittivity tensor ``[3, 3]`` at one frequency in cm⁻¹."""
+        params = self.permittivity_parameters()
+        frequency = np.array([requested_frequency], dtype=np.float64)
+        eps_ext = complex(self.sellmeier(params["extraordinary"], frequency)[0])
+        eps_ord = complex(self.sellmeier(params["ordinary"], frequency)[0])
+        return self._create_permittivity_tensor(eps_ext, eps_ord)
+
+
+class LithiumNiobate(SellmeierMaterial):
+    """Congruent LiNbO₃, 0.4–5 µm (Zelmon et al. 1997); negative uniaxial."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("lithium_niobate", freq_min, freq_max, mu_r)
+
+
+class Rutile(SellmeierMaterial):
+    """Rutile TiO₂, 0.43–1.53 µm (DeVore 1951); strongly positive uniaxial."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("rutile", freq_min, freq_max, mu_r)
+
+
+class QuartzSellmeier(SellmeierMaterial):
+    """α-quartz, 0.198–2.05 µm (Ghosh 1999). ``Quartz`` is its IR phonon model."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("quartz_sellmeier", freq_min, freq_max, mu_r)
+
+
+class CalciteSellmeier(SellmeierMaterial):
+    """Calcite, 0.204–2.172 µm (Ghosh 1999). ``Calcite`` is its IR phonon model."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("calcite_sellmeier", freq_min, freq_max, mu_r)
+
+
+class SapphireSellmeier(SellmeierMaterial):
+    """Sapphire, 0.2–5.5 µm (Malitson & Dodge 1972). ``Sapphire`` is its IR phonon model."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("sapphire_sellmeier", freq_min, freq_max, mu_r)
+
+
+class FusedSilica(SellmeierMaterial):
+    """Fused silica, isotropic, 0.21–6.7 µm (Malitson 1965)."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("fused_silica", freq_min, freq_max, mu_r)
+
+
+class SiliconNitride(SellmeierMaterial):
+    """Stoichiometric Si₃N₄, isotropic, 0.31–5.5 µm (Luke et al. 2015)."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("silicon_nitride", freq_min, freq_max, mu_r)
+
+
+class Silicon(SellmeierMaterial):
+    """Crystalline silicon, isotropic, 1.36–11 µm (Salzberg & Villa 1957)."""
+
+    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
+        super().__init__("silicon", freq_min, freq_max, mu_r)
+
+
 _MATERIAL_REGISTRY: dict[str, type[BaseMaterial]] = {
     "Quartz": Quartz,
     "Sapphire": Sapphire,
@@ -1113,6 +1244,15 @@ _MATERIAL_REGISTRY: dict[str, type[BaseMaterial]] = {
     "SiC": SiliconCarbide,
     "hBN": HexagonalBoronNitride,
     "GaN": GalliumNitride,
+    # transparency-window (Sellmeier) crystals and PIC materials
+    "LiNbO3": LithiumNiobate,
+    "TiO2": Rutile,
+    "QuartzSellmeier": QuartzSellmeier,
+    "CalciteSellmeier": CalciteSellmeier,
+    "SapphireSellmeier": SapphireSellmeier,
+    "SiO2": FusedSilica,
+    "Si3N4": SiliconNitride,
+    "Si": Silicon,
 }
 
 
@@ -1152,7 +1292,9 @@ def list_materials() -> dict[str, dict[str, Any]]:
     summary: dict[str, dict[str, Any]] = {}
     for name, cls in _MATERIAL_REGISTRY.items():
         material = cls()
-        if isinstance(material, BiaxialMaterial):  # subclass of UniaxialMaterial
+        if getattr(material, "isotropic", False):  # an isotropic Sellmeier entry
+            material_type = "isotropic"
+        elif isinstance(material, BiaxialMaterial):  # subclass of UniaxialMaterial
             material_type = "biaxial"
         elif isinstance(material, MonoclinicMaterial):
             material_type = "monoclinic"

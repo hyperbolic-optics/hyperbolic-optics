@@ -314,3 +314,82 @@ class TestMaterialPhysics:
         eps2 = mat.fetch_permittivity_tensor_for_freq(2000.0)
 
         assert np.allclose(eps1, eps2)
+
+
+class TestSellmeierMaterials:
+    """Transparency-window crystals and PIC materials against published indices.
+
+    The references are the values their papers (or standard tables) give at one
+    wavelength; 1e-3 is inside the spread between published fits and
+    measurement temperatures, and far tighter than any error that matters.
+    """
+
+    REFERENCE = [  # (material, wavelength µm, n_o or n, n_e or None)
+        ("LiNbO3", 1.55, 2.2111, 2.1376),
+        ("LiNbO3", 0.6328, 2.2864, 2.2030),
+        ("QuartzSellmeier", 0.6328, 1.5426, 1.5517),
+        ("CalciteSellmeier", 0.5893, 1.6584, 1.4864),
+        ("SapphireSellmeier", 0.6328, 1.7659, 1.7579),
+        ("TiO2", 0.6328, 2.584, 2.872),
+        ("SiO2", 1.55, 1.4440, None),
+        ("Si3N4", 1.55, 1.9963, None),
+        ("Si", 1.55, 3.4757, None),
+    ]
+
+    @pytest.mark.parametrize("name,wavelength,n_o,n_e", REFERENCE)
+    def test_published_indices(self, name, wavelength, n_o, n_e):
+        eps = np.asarray(create_material(name).fetch_permittivity_tensor_for_freq(1e4 / wavelength))
+        assert np.sqrt(eps[0, 0].real) == pytest.approx(n_o, abs=1e-3)
+        assert np.sqrt(eps[1, 1].real) == pytest.approx(n_o, abs=1e-3)
+        assert np.sqrt(eps[2, 2].real) == pytest.approx(n_e if n_e else n_o, abs=1e-3)
+        assert np.allclose(eps.imag, 0.0)  # lossless in the transparency window
+
+    def test_signs_of_birefringence(self):
+        at = {name: create_material(name).fetch_permittivity_tensor_for_freq(6451.6)
+              for name in ("LiNbO3", "SapphireSellmeier")}  # fmt: skip
+        assert at["LiNbO3"][2, 2].real < at["LiNbO3"][0, 0].real  # negative uniaxial
+        rutile = create_material("TiO2").fetch_permittivity_tensor_for_freq(1e4 / 0.8)
+        assert rutile[2, 2].real > rutile[0, 0].real  # positive uniaxial
+
+    def test_catalogue_types_and_ranges(self):
+        catalogue = list_materials()
+        assert catalogue["LiNbO3"]["type"] == "uniaxial"
+        assert catalogue["SiO2"]["type"] == "isotropic"
+        low, high = catalogue["LiNbO3"]["frequency_range"]
+        assert low == pytest.approx(1e4 / 5.0) and high == pytest.approx(1e4 / 0.4)
+
+    def test_usable_in_a_payload_across_a_band(self):
+        """An x-cut LiNbO3 film on SiO2, swept over telecom frequencies."""
+        from hyperbolic_optics.structure import Structure
+
+        payload = {
+            "ScenarioData": {
+                "type": "Incident",
+                "incidentAngle": [20.0],
+                "frequency": list(np.linspace(1e4 / 1.6, 1e4 / 1.5, 5)),
+            },
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 1.0},
+                {"type": "Crystal Layer", "material": "LiNbO3", "thickness": 0.6,
+                 "rotationY": 90, "rotationZ": 30},
+                {"type": "Semi Infinite Isotropic Layer", "permittivity": 1.444**2},
+            ],
+        }  # fmt: skip
+        structure = Structure()
+        structure.execute(payload)
+        assert np.isfinite(np.asarray(structure.r_pp)).all()
+        assert np.abs(np.asarray(structure.r_ps)).max() > 1e-3  # the tilted axis converts
+
+    def test_warns_outside_the_published_range(self):
+        from hyperbolic_optics.structure import Structure
+
+        payload = {
+            "ScenarioData": {"type": "Incident", "incidentAngle": [20.0], "frequency": [1000.0]},
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 1.0},
+                {"type": "Crystal Layer", "material": "LiNbO3", "thickness": 0.6},
+                {"type": "Semi Infinite Isotropic Layer", "permittivity": 2.0},
+            ],
+        }
+        with pytest.warns(UserWarning, match="outside"):
+            Structure().execute(payload)
