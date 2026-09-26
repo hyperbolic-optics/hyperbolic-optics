@@ -129,6 +129,7 @@ nav:
     - Materials: user-guide/materials.md
     - Transmission & Backends: user-guide/power.md
     - Differentiable Solver (JAX): user-guide/differentiable.md
+    - Gratings (RCWA): user-guide/gratings.md
     - Mueller Matrices: user-guide/mueller.md
     - Jones Calculus: user-guide/jones.md
   - Examples:
