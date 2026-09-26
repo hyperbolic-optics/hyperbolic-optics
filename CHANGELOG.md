@@ -95,6 +95,22 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **PDK layer stacks, gplugins-style** (`integrations.gdsfactory`, now a
+  subpackage with the same import path):
+  - `simulate_stack` reads the PDK `LayerStack` at a point of a layout
+    (`WAFER` levels everywhere, derived layers evaluated, overlaps by
+    `mesh_order`) and returns a `PlanarResponse` over wavelength, angle and
+    in-plane rotation, with Jones, Mueller and generalized ellipsometry;
+  - `simulate_grating` does the same under a line grating: ridge and gap
+    columns are compared, so etch depth and groove fill come from the PDK. It
+    returns per-order efficiencies and Mueller matrices;
+  - `Oriented`, `x_cut` and `z_cut` state a crystal's cut, which a PDK cannot.
+
+  Planar results run on the JAX solver or the NumPy engine, which agree to
+  rounding. `examples/tfln_gdsfactory.py` reads Luxtelligence's open-source
+  LNOI400 PDK (`lnoi400`): its rib waveguide columns, and a partial-etch
+  grating with SiO₂-filled grooves, under an assumed x-cut. Tests check the same
+  extraction when `lnoi400` is installed.
 - **Birefringent crystals at chip wavelengths**: LiNbO₃, rutile TiO₂, and
   quartz, calcite and sapphire in their transparency windows, with the PIC
   materials SiO₂, Si₃N₄ and Si. They are lossless Sellmeier fits from the

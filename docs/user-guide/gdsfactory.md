@@ -63,20 +63,124 @@ the snapped values are recorded in `component.info`.
 length, at equal pitch. It raises `ValueError` naming whatever else it finds,
 because a solver fed a guessed geometry returns a confident, wrong answer.
 
-## Materials
+## From a PDK: stacks and gratings (gplugins-style)
 
-A `StackLayer`'s `material` and `background` can each be:
+The functions below take a layout and the PDK's `LayerStack` and return
+labelled results, in the shape of gdsfactory's simulation plugins:
 
-- **A built-in material name:** `"hBN"`, `"MoO3"`, `"Calcite"`, `"Sapphire"`,
-  `"SiC"`, `"AlN"`, `"GaN"`, `"Quartz"` or `"GalliumOxide"`. These are the
-  package's phonon-polariton models, evaluated by
-  [`hyperbolic_optics.dispersion`](#dispersion-in-jax), and they match the
-  NumPy classes to rounding.
+```python
+from gdsfactory.technology import LayerLevel, LayerStack, LogicalLayer
+
+# x-cut thin-film LiNbO3 on insulator; ribs on layer (2, 0) etched 0.3 µm
+wafer = LogicalLayer(layer=gf.get_layer("WAFER"))
+tfln = LayerStack(layers={
+    "substrate": LayerLevel(layer=wafer, zmin=-3.0, thickness=1.0, material="si", mesh_order=100),
+    "box": LayerLevel(layer=wafer, zmin=-2.0, thickness=2.0, material="sio2", mesh_order=9),
+    "ln_slab": LayerLevel(layer=wafer, zmin=0.0, thickness=0.3, material="ln", mesh_order=2),
+    "ln_rib": LayerLevel(layer=LogicalLayer(layer=(2, 0)), zmin=0.3, thickness=0.3,
+                         material="ln", mesh_order=2),
+})
+materials = {"ln": hog.Oriented("LiNbO3", hog.x_cut(0.0))}   # the cut: yours to state
+
+ribs = hog.line_grating(period_um=1.2, fill=0.5, n_periods=12, layer=(2, 0))
+grating, stack, diffraction = hog.simulate_grating(
+    ribs, (2, 0), tfln, wavelengths_um=[1.55], angles_deg=[30.0], materials=materials,
+)
+slab, planar = hog.simulate_stack(
+    ribs, tfln, point_um=(0.9, 10.0), wavelengths_um=[1.55],
+    angles_deg=[0.0, 30.0, 60.0], azimuths_deg=[0.0, 45.0], materials=materials,
+)
+planar.mueller().shape      # (1, 3, 2, 4, 4): [wavelength, angle, azimuth, 4, 4]
+```
+
+### How a stack is read
+
+`vertical_stack` takes the PDK's column of materials at one point of the
+layout.
+
+- **Which levels are present.** Levels on `WAFER` are present everywhere.
+  Others are present where their layer has shapes, and derived (boolean)
+  layers are evaluated.
+- **Overlaps.** Where levels overlap in z, the lowest `mesh_order` wins, as
+  gdsfactory defines it.
+- **Half-spaces.** The lowest level becomes the exit half-space, and `ambient`
+  (air by default) the incident one.
+- **Ambiguity is refused.** A gap no level covers, or a mesh-order tie between
+  different materials, raises.
+
+`grating_stack` compares that column inside the ridges of a line grating with
+the column in its gaps. Where they differ, the layer is patterned: ridges of
+one material, grooves of the other. So etch depth, partial etches and what
+fills the grooves all come from the PDK. The ridges and gaps are sampled at
+several points in two periods, so a layer patterned some other way is refused
+rather than mistaken for part of the grating.
+
+### Materials and crystal orientation
+
+A PDK names its materials (`"si"`, `"sio2"`, `"ln"`, …), and `materials` maps
+those names to this package's models, on top of `DEFAULT_MATERIALS` (`si`,
+`sio2`, `sin` and `air`). A value can be:
+
+- **A built-in material name.** The birefringent crystals at chip wavelengths:
+  `"LiNbO3"`, `"TiO2"`, `"QuartzSellmeier"`, `"CalciteSellmeier"`,
+  `"SapphireSellmeier"`. The PIC materials: `"SiO2"`, `"Si3N4"`, `"Si"`. The
+  infrared hyperbolic phonon models: `"hBN"`, `"MoO3"`, `"Calcite"`, … All are
+  evaluated with their dispersion, and warn outside their fitted range.
 - **A number** (isotropic ε) or **a 3×3 tensor**.
 - **A callable** `wavelength_um → ε`, for example a Drude metal.
+- **`Oriented(material, rotation_deg)`**, a crystal with its orientation.
 
-`rotation_deg` sets a crystal's orientation, with the payload API's
-`rotationX/Y/Z` convention.
+Anisotropic PDK materials have no default, deliberately: the PDK can't know
+the wafer cut. State it with:
+
+- `x_cut(axis_azimuth_deg)`: optic axis in the wafer plane, at that angle from
+  layout x;
+- `z_cut()`: optic axis along the wafer normal;
+- or any payload-style rotation.
+
+### Results
+
+`simulate_stack` returns a `PlanarResponse` over
+`[wavelength, angle, azimuth]`:
+
+- `r`, `t` (complex Jones matrices) and `R`, `T` (powers), all
+  `[..., out, in]` with 0 = p and 1 = s;
+- `mueller()`, the Mueller matrices;
+- `ellipsometry()`: Ψ, Δ and the generalized anisotropy ratios.
+
+The azimuth turns the sample about the stack normal. `solver="jax"`
+(differentiable) is the default, and `solver="numpy"` runs the package's
+eigendecomposition engine instead. The two agree to rounding.
+
+`simulate_grating` returns a `GratingResponse` over `[wavelength, angle, order]`,
+with diffraction efficiencies per order and polarization, and `mueller(order)`.
+
+`examples/tfln_gdsfactory.py` runs both on
+[Luxtelligence's open-source LNOI400 PDK](https://github.com/Luxtelligence/lxt_pdk_gf)
+at 1550 nm:
+
+```bash
+uv run --with lnoi400 python examples/tfln_gdsfactory.py
+```
+
+- **Stacks come from the PDK's `LayerStack`:** under its rib waveguide
+  `straight_rwg1000`, in a slab region, and under a line grating on `LN_RIDGE`,
+  where the 0.2 µm partial etch with SiO₂-filled grooves is found automatically.
+- **The cut is an assumption.** The PDK doesn't record it, so the example assumes
+  x-cut, which is what its electro-optic cells imply.
+- **What it plots:**
+  - the slab's p→s conversion against crystal rotation and angle;
+  - a Mueller element that is zero for any isotropic stack;
+  - the grating's −1 order for the optic axis across and along the ridges.
+
+`tests/test_gdsfactory.py` checks the extraction against the same PDK when
+`lnoi400` is installed.
+
+## Hand-written stacks
+
+A `StackLayer`'s `material` and `background` take the same specifications, and
+`rotation_deg` orients a plain name. `VerticalStack(layers, incident, exit)`
+with `solve_stack` / `solve_grating` runs a stack written by hand.
 
 ## Optimisation
 

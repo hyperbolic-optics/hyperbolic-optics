@@ -136,3 +136,244 @@ class TestMaterialsAndStack:
         fd_w = (absorption(0.3, 1460.0 + h_w) - absorption(0.3, 1460.0 - h_w)) / (2 * h_w)
         assert float(grad[0]) == pytest.approx(float(fd_fill), rel=1e-5)
         assert float(grad[1]) == pytest.approx(float(fd_w), rel=1e-5)  # includes hBN dispersion
+
+
+# ---------------------------------------------------------------------------
+# PDK layer stacks and the gplugins-shaped entry points
+# ---------------------------------------------------------------------------
+
+from gdsfactory.technology import LayerLevel, LogicalLayer  # noqa: E402
+from gdsfactory.technology import LayerStack as PdkLayerStack  # noqa: E402
+
+RIB = (2, 0)
+
+
+def _wafer(zmin, thickness, material, mesh_order):
+    return LayerLevel(
+        layer=LogicalLayer(layer=gf.get_layer("WAFER")),
+        zmin=zmin,
+        thickness=thickness,
+        material=material,
+        mesh_order=mesh_order,
+    )
+
+
+def _tfln_stack():
+    """Thin-film LiNbO3 on insulator with a 0.3 µm partial etch on layer RIB."""
+    return PdkLayerStack(
+        layers={
+            "substrate": _wafer(-3.0, 1.0, "si", 100),
+            "box": _wafer(-2.0, 2.0, "sio2", 9),
+            "ln_slab": _wafer(0.0, 0.3, "ln", 2),
+            "ln_rib": LayerLevel(
+                layer=LogicalLayer(layer=RIB), zmin=0.3, thickness=0.3, material="ln", mesh_order=2
+            ),
+        }
+    )
+
+
+LN_X_CUT = {"ln": hog.Oriented("LiNbO3", hog.x_cut(30.0))}
+
+
+class TestPdkStacks:
+    def test_generic_pdk_on_and_off_a_waveguide(self):
+        stack = gf.get_active_pdk().layer_stack
+        component = gf.components.rectangle(size=(2, 10), layer="WG")
+        on = hog.vertical_stack(component, stack, (1.0, 5.0))
+        off = hog.vertical_stack(component, stack, (5.0, 5.0))
+        assert [(layer.name, round(layer.thickness_um, 6)) for layer in on.layers] == [
+            ("clad", 2.78), ("core", 0.22), ("box", 3.0)
+        ]  # fmt: skip
+        assert [layer.name for layer in off.layers] == ["clad", "box"]
+        assert on.layers[1].material == "Si" and on.exit == "Si" and on.incident == 1.0
+
+    def test_mesh_order_tie_between_materials_is_refused(self):
+        stack = PdkLayerStack(layers={
+            "a": _wafer(0.0, 1.0, "si", 5), "b": _wafer(0.5, 1.0, "sio2", 5),
+        })  # fmt: skip
+        with pytest.raises(ValueError, match="tie on mesh_order"):
+            hog.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
+
+    def test_a_gap_in_the_stack_is_refused(self):
+        stack = PdkLayerStack(layers={
+            "a": _wafer(0.0, 1.0, "si", 5), "b": _wafer(2.0, 1.0, "sio2", 5),
+        })  # fmt: skip
+        with pytest.raises(ValueError, match="No layer-stack level covers"):
+            hog.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
+
+    def test_unmapped_material_names_what_to_do(self):
+        with pytest.raises(KeyError, match="Oriented"):
+            hog.vertical_stack(hog.line_grating(layer=RIB), _tfln_stack(), (0.1, 1.0))
+
+    def test_exit_must_be_isotropic_and_lossless(self):
+        stack = hog.VerticalStack(layers=(), incident=1.0, exit=hog.Oriented("LiNbO3", hog.x_cut()))
+        with pytest.raises(ValueError, match="isotropic and lossless"):
+            hog.solve_stack(stack, [1.55], [0.0])
+
+    def test_crystal_cuts(self):
+        base = np.asarray(hog.material_tensor("LiNbO3", 1.55))
+        along_x = np.asarray(hog.material_tensor(hog.Oriented("LiNbO3", hog.x_cut(0.0)), 1.55))
+        along_y = np.asarray(hog.material_tensor(hog.Oriented("LiNbO3", hog.x_cut(90.0)), 1.55))
+        assert along_x[0, 0] == pytest.approx(base[2, 2]) and along_x[2, 2] == pytest.approx(
+            base[0, 0]
+        )
+        assert along_y[1, 1] == pytest.approx(base[2, 2])
+        np.testing.assert_allclose(
+            hog.material_tensor(hog.Oriented("LiNbO3", hog.z_cut()), 1.55), base
+        )
+
+    def test_warns_outside_a_materials_range(self):
+        with pytest.warns(UserWarning, match="outside"):
+            hog.material_tensor("LiNbO3", 6.0)
+
+
+class TestPlanarResponse:
+    @staticmethod
+    def _stack():
+        ln = hog.Oriented("LiNbO3", hog.x_cut(30.0))
+        return hog.VerticalStack(
+            layers=(hog.StackLayer(0.6, ln, name="ln"), hog.StackLayer(2.0, "SiO2", name="box")),
+            incident=1.0,
+            exit="Si",
+        )
+
+    def test_jax_and_numpy_engines_agree(self):
+        args = (self._stack(), np.linspace(1.5, 1.6, 4), [0.0, 35.0, 70.0], [0.0, 50.0])
+        jax_result = hog.solve_stack(*args, solver="jax")
+        numpy_result = hog.solve_stack(*args, solver="numpy")
+        # a Crystal Layer adds 1e-8 rad to rotationY, so the engines differ at that level
+        np.testing.assert_allclose(jax_result.r, numpy_result.r, atol=1e-7)
+        np.testing.assert_allclose(jax_result.t, numpy_result.t, atol=1e-7)
+        np.testing.assert_allclose(jax_result.R.sum(-2) + jax_result.T.sum(-2), 1.0, atol=1e-12)
+        assert jax_result.R[..., 1, 0].max() > 1e-3, "the rotated x-cut crystal converts p to s"
+
+    def test_mueller_carries_the_converted_power_in_the_right_channel(self):
+        result = hog.solve_stack(self._stack(), [1.55], [40.0], [20.0])
+        mueller = result.mueller()[0, 0, 0]
+        p_in = mueller @ np.array([1.0, 1.0, 0.0, 0.0])
+        assert (p_in[0] - p_in[1]) / 2 == pytest.approx(float(result.R[0, 0, 0, 1, 0]), rel=1e-12)
+        assert mueller[0, 0] == pytest.approx(0.5 * float(result.R[0, 0, 0].sum()), rel=1e-12)
+
+    def test_ellipsometry_matches_the_jones_class(self):
+        from hyperbolic_optics.jones import Jones
+        from hyperbolic_optics.structure import Structure
+
+        ours = hog.solve_stack(self._stack(), [1.55], [55.0], [20.0], solver="numpy").ellipsometry()
+        tensor = np.asarray(
+            hog.material_tensor(hog.Oriented("LiNbO3", (0.0, 90.0, 50.0)), 1.55)
+        )  # x_cut(30) turned by the 20° azimuth
+        keys = ("xx", "xy", "xz", "yx", "yy", "yz", "zx", "zy", "zz")
+        payload = {
+            "ScenarioData": {"type": "Simple", "incidentAngle": 55.0, "azimuthal_angle": 0.0,
+                             "frequency": 1e4 / 1.55},
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 1.0},
+                {"type": "Crystal Layer", "thickness": 0.6, "material": {
+                    f"eps_{k}": {"real": float(v.real), "imag": float(v.imag)}
+                    for k, v in zip(keys, tensor.reshape(-1))}},
+                {"type": "Crystal Layer", "thickness": 2.0, "material": "SiO2"},
+                {"type": "Semi Infinite Isotropic Layer",
+                 "permittivity": float(hog.material_tensor("Si", 1.55)[0, 0].real)},
+            ],
+        }  # fmt: skip
+        structure = Structure()
+        structure.execute(payload)
+        theirs = Jones(structure).ellipsometric_parameters()
+        for key in ("Psi", "Delta", "Psi_ps", "Delta_ps", "Psi_sp", "Delta_sp"):
+            assert float(ours[key].ravel()[0]) == pytest.approx(float(theirs[key]), abs=1e-5), key
+
+    def test_simulate_stack_from_a_layout(self):
+        stack, result = hog.simulate_stack(
+            gf.components.rectangle(size=(2, 10), layer="WG"),
+            gf.get_active_pdk().layer_stack,
+            (1.0, 5.0),
+            [1.55],
+            [0.0, 20.0],
+        )
+        assert result.R.shape == (1, 2, 1, 2, 2)
+        np.testing.assert_allclose(result.R.sum(-2) + result.T.sum(-2), 1.0, atol=1e-12)
+        assert [layer.name for layer in stack.layers] == ["clad", "core", "box"]
+
+
+class TestPdkGratings:
+    def test_partial_etch_is_found_from_the_stack(self):
+        component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        grating, stack = hog.grating_stack(component, RIB, _tfln_stack(), LN_X_CUT)
+        names = [(layer.name, round(layer.thickness_um, 6)) for layer in stack.layers]
+        assert names == [("ln_rib / ambient", 0.3), ("ln_slab", 0.3), ("box", 2.0)]
+        assert stack.layers[0].background == 1.0 and stack.layers[1].background is None
+        assert stack.exit == "Si"
+
+    def test_simulate_grating_equals_the_hand_built_stack(self):
+        component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        grating, _, response = hog.simulate_grating(
+            component, RIB, _tfln_stack(), [1.55], [10.0], max_order=12, materials=LN_X_CUT
+        )
+        ln = hog.material_tensor(LN_X_CUT["ln"], 1.55)
+        direct = rcwa.solve_grating(
+            [
+                rcwa.lamellar_layer(ln, jnp.eye(3), grating.fill, 0.3),
+                rcwa.uniform_layer(ln, 0.3),
+                rcwa.uniform_layer(hog.material_tensor("SiO2", 1.55), 2.0),
+            ],
+            grating.period_um, 1.55, np.radians(10.0), 1.0,
+            float(hog.material_tensor("Si", 1.55)[0, 0].real), 12,
+        )  # fmt: skip
+        np.testing.assert_allclose(response.R[0, 0], direct.R, atol=1e-12)
+        np.testing.assert_allclose(response.T[0, 0], direct.T, atol=1e-12)
+        total = response.R.sum((-3, -2)) + response.T.sum((-3, -2))
+        np.testing.assert_allclose(total, 1.0, atol=1e-10)
+        assert response.mueller(0).shape == (1, 1, 4, 4)
+
+    def test_a_second_pattern_inside_the_ridges_is_refused(self):
+        # a copy: PCell outputs are cached and locked against modification
+        component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB).copy()
+        stack = _tfln_stack()
+        extra = LayerLevel(layer=LogicalLayer(layer=(3, 0)), zmin=0.6, thickness=0.1,
+                           material="sio2", mesh_order=1)  # fmt: skip
+        stack.layers["cap"] = extra
+        component.add_polygon([(0.0, 0.0), (0.2, 0.0), (0.2, 20.0), (0.0, 20.0)], layer=(3, 0))
+        with pytest.raises(ValueError, match="varies within the ridges"):
+            hog.grating_stack(component, RIB, stack, LN_X_CUT)
+
+
+class TestLuxtelligencePdk:
+    """Against Luxtelligence's open-source LNOI400 PDK, when it is installed.
+
+    ``uv run --with lnoi400 pytest tests/test_gdsfactory.py -k Luxtelligence``.
+    It activates its own PDK, so it restores the generic one afterwards.
+    """
+
+    @pytest.fixture(autouse=True)
+    def lnoi400(self):
+        module = pytest.importorskip("lnoi400")
+        module.PDK.activate()
+        yield module
+        gf.gpdk.PDK.activate()
+
+    def test_the_pdks_rib_waveguide_columns(self, lnoi400):
+        rib = lnoi400.PDK.get_component("straight_rwg1000")
+        stack = lnoi400.PDK.layer_stack
+        ln = {"ln": hog.Oriented("LiNbO3", hog.x_cut())}
+        x = rib.dbbox().center().x
+        centre = hog.vertical_stack(rib, stack, (x, 0.0), ln)
+        beside = hog.vertical_stack(rib, stack, (x, 3.0), ln)
+        assert [(ly.name, round(ly.thickness_um, 6)) for ly in centre.layers] == [
+            ("clad", 1.6), ("ridge", 0.2), ("slab", 0.2), ("box", 4.7)
+        ]  # fmt: skip
+        assert [ly.name for ly in beside.layers] == ["clad", "slab", "box"]
+        assert centre.exit == "Si"
+
+    def test_a_grating_on_ln_ridge_is_a_clad_filled_partial_etch(self, lnoi400):
+        component = gf.Component()
+        component.add_ref(hog.line_grating(period_um=1.2, fill=0.5, n_periods=8, layer="LN_RIDGE"))
+        component.add_polygon([(-5, -5), (15, -5), (15, 25), (-5, 25)], layer="LN_SLAB")
+        _, stack, response = hog.simulate_grating(
+            component, "LN_RIDGE", lnoi400.PDK.layer_stack, [1.55], [30.0], max_order=10,
+            materials={"ln": hog.Oriented("LiNbO3", hog.x_cut(0.0))},
+        )  # fmt: skip
+        patterned = [layer for layer in stack.layers if layer.background is not None]
+        assert [(ly.name, round(ly.thickness_um, 6)) for ly in patterned] == [("ridge / clad", 0.2)]
+        assert patterned[0].background == "SiO2"
+        total = response.R.sum((-3, -2)) + response.T.sum((-3, -2))
+        np.testing.assert_allclose(total, 1.0, atol=1e-10)
