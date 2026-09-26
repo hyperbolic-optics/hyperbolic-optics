@@ -262,7 +262,14 @@ class Mueller:
         Applies ``M = A·F·A⁻¹`` where ``F`` is the coherency (Jones ⊗ Jones*)
         matrix built from the four amplitude coefficients (``pp, ps, sp, ss``).
         Shared by the reflection and transmission Mueller paths.
+
+        The coefficients use the package's input-first naming (``c_ps`` is p in,
+        s out), so the Jones matrix, rows output and columns input, is
+        ``[[c_pp, c_sp], [c_ps, c_ss]]``. Placing ``c_ps`` at ``[0, 1]`` instead
+        exchanges the two cross-polarized channels.
         """
+        # Jones elements by position [output, input]
+        c_ps, c_sp = c_sp, c_ps
         f_matrix = np.array(
             [
                 [

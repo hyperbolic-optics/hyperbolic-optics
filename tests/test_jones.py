@@ -9,6 +9,7 @@ machinery already validates, and behave correctly for textbook optical elements
 import numpy as np
 import pytest
 
+from hyperbolic_optics.fields import FieldProfile
 from hyperbolic_optics.jones import Jones, compose_jones
 from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
@@ -53,20 +54,67 @@ class TestJonesMatrix:
         structure = _converting()
         j = Jones(structure).calculate_jones_matrix()
         assert j.shape == (2, 2)
-        # rows = output (p, s), cols = input (p, s)
+        # rows = output (p, s), cols = input (p, s); r_ps is p in -> s out
         assert j[0, 0] == complex(structure.r_pp)
-        assert j[0, 1] == complex(structure.r_ps)
-        assert j[1, 0] == complex(structure.r_sp)
+        assert j[1, 0] == complex(structure.r_ps)
+        assert j[0, 1] == complex(structure.r_sp)
         assert j[1, 1] == complex(structure.r_ss)
 
     def test_incident_p_intensity_is_reflectance(self):
-        # |J @ [1,0]|^2 = |r_pp|^2 + |r_sp|^2 = R_p (the quantity FieldProfile checks)
+        """|J @ [1, 0]|² must be the power FieldProfile computes from the fields."""
         structure = _converting()
         jones = Jones(structure)
         jones.set_incident_polarization("linear", angle=0)
         jones.add_optical_component("sample")
-        expected = abs(complex(structure.r_pp)) ** 2 + abs(complex(structure.r_sp)) ** 2
+        expected = float(FieldProfile(structure).reflectance("p"))
         assert float(jones.get_intensity()) == pytest.approx(expected, abs=1e-12)
+
+
+class TestCrossPolarizedChannels:
+    """Jones and Mueller must put the converted power in the right output channel.
+
+    The package names coefficients input first (r_ps: p in, s out). Swapping the
+    off-diagonal Jones elements exchanges the two cross-polarized channels, which
+    only shows where p→s and s→p conversion differ -- so the stack is chosen
+    to make them differ, and the field solver supplies the truth.
+    """
+
+    @staticmethod
+    def _stack():
+        return _simple(
+            [
+                {"type": "Isotropic Middle-Stack Layer", "thickness": 1.0, "permittivity": 1.0},
+                {"type": "Crystal Layer", "material": "Calcite", "thickness": 1.0,
+                 "rotationY": 60, "rotationZ": 35},
+                {"type": "Semi Infinite Isotropic Layer", "permittivity": 2.0},
+            ]
+        )  # fmt: skip
+
+    def test_p_to_s_and_s_to_p_differ_here(self):
+        structure = self._stack()
+        a, b = abs(complex(structure.r_ps)) ** 2, abs(complex(structure.r_sp)) ** 2
+        # 4% apart here; a swap would miss the 1e-9 tolerances below by far more
+        assert max(a, b) > 1e-6, "the test needs appreciable conversion"
+        assert abs(a - b) > 0.01 * max(a, b), "the test needs unequal conversion"
+
+    @pytest.mark.parametrize("polarization,vector,cross", [("p", [1, 0], 1), ("s", [0, 1], 0)])
+    def test_jones_cross_channel_matches_the_fields(self, polarization, vector, cross):
+        structure = self._stack()
+        jones_matrix = Jones(structure).calculate_jones_matrix()
+        out = jones_matrix @ np.asarray(vector, dtype=complex)
+        truth = float(FieldProfile(structure).polarization_resolved(polarization)["R_cross"])
+        assert abs(out[cross]) ** 2 == pytest.approx(truth, rel=1e-9)
+
+    def test_mueller_cross_channel_matches_the_fields(self):
+        structure = self._stack()
+        mueller = Mueller(structure)
+        mueller.calculate_mueller_matrix()
+        fields = FieldProfile(structure)
+        for polarization, stokes in (("p", [1.0, 1.0, 0, 0]), ("s", [1.0, -1.0, 0, 0])):
+            out = mueller.mueller_matrix @ np.asarray(stokes)
+            converted = (out[0] - out[1]) / 2 if polarization == "p" else (out[0] + out[1]) / 2
+            truth = float(fields.polarization_resolved(polarization)["R_cross"])
+            assert converted == pytest.approx(truth, rel=1e-9)
 
 
 class TestJonesMuellerBridge:

@@ -8,8 +8,11 @@ and is the natural tool for fully-polarized, coherent light.
 
 A structure's reflection coefficients are already a Jones matrix,
 
-    J = [[r_pp, r_ps],
-         [r_sp, r_ss]]   (rows = output p/s, columns = input p/s),
+    J = [[r_pp, r_sp],
+         [r_ps, r_ss]]   (rows = output p/s, columns = input p/s),
+
+because the package names coefficients input first: ``r_ps`` is p in, s out,
+so it maps an incident p amplitude to a reflected s one and sits at ``[1, 0]``.
 
 so :class:`Jones` builds it directly, applies ideal 2×2 optical components
 (polarizer, wave plates, rotator) and an incident Jones vector, and exposes the
@@ -151,7 +154,8 @@ class Jones:
                 self.structure.r_sp,
                 self.structure.r_ss,
             )
-        jones = np.array([[pp, ps], [sp, ss]], dtype=np.complex128)
+        # r_ps is p in -> s out, so it belongs at [output s, input p] = [1, 0].
+        jones = np.array([[pp, sp], [ps, ss]], dtype=np.complex128)
         # 2x2 built as leading axes -> move to trailing so it broadcasts for any
         # batch rank (scalar Simple, 2-D Incident/Azimuthal/Dispersion, 3-D FullSweep).
         self.jones_matrix = np.moveaxis(jones, (0, 1), (-2, -1))
@@ -328,7 +332,10 @@ class Jones:
         (the amplitude-ratio angle, degrees, in ``[0, 90]``) and ``Delta`` (the
         phase difference, degrees, in ``(-180, 180]``). For anisotropic samples the
         cross-polarization ratios ``r_ps/r_ss`` and ``r_sp/r_pp`` are reported as
-        the generalized angles ``Psi_ps/Delta_ps`` and ``Psi_sp/Delta_sp``.
+        the generalized angles ``Psi_ps/Delta_ps`` and ``Psi_sp/Delta_sp``. With the
+        package's input-first naming these are the standard generalized-ellipsometry
+        anisotropy ratios: ``r_ps/r_ss`` is the p→s conversion normalised by r_ss
+        (``A_sp`` in the Woollam/Schubert notation, which names output first).
 
         Returns:
             Dict of ``Psi, Delta, Psi_ps, Delta_ps, Psi_sp, Delta_sp`` (degrees),
@@ -432,8 +439,8 @@ def compose_jones(*elements: Structure | np.ndarray) -> np.ndarray:
 
     Each element is either:
 
-    - a :class:`Structure` — its reflection Jones matrix ``[[r_pp, r_ps],
-      [r_sp, r_ss]]`` is used; or
+    - a :class:`Structure` — its reflection Jones matrix ``[[r_pp, r_sp],
+      [r_ps, r_ss]]`` (rows output, columns input) is used; or
     - a 2×2 array — an ideal component (polarizer / wave plate / rotator) or any
       precomputed Jones matrix, e.g.
       ``Jones(s).calculate_jones_matrix(transmission=True)``.
