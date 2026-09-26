@@ -83,6 +83,16 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **gdsfactory integration** (`hyperbolic_optics.integrations.gdsfactory`,
+  optional `gdsfactory` extra):
+  - a line-grating PCell whose period and width snap to the layout grid;
+  - extraction of a grating from any component or GDS file, which refuses
+    non-rectangles, uneven pitch or unequal widths rather than guessing;
+  - vertical stacks whose materials can be the built-in dispersive media.
+
+  `examples/hbn_absorber_gdsfactory.py` optimises an hBN ribbon absorber to 94%
+  absorption at 1500 cm⁻¹, exports it, and re-simulates the GDS (0.938 at 81 and
+  161 orders).
 - **Dispersion in JAX** (`hyperbolic_optics.dispersion`): every built-in
   material's oscillator model, matching the NumPy classes to 1e-12 and
   differentiable in frequency.
