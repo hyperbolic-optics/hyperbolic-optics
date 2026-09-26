@@ -59,6 +59,7 @@ __all__ = [
     "solve_crossed_grating",
     "solve_grating",
     "solve_stack",
+    "stack_sax_model",
 ]
 
 
@@ -464,3 +465,31 @@ def simulate_crossed_grating(
         cell, stack, wavelengths_um, angles_deg, azimuth_deg, max_order, factorization
     )
     return cell, stack, response
+
+
+# ---------------------------------------------------------------------------
+# SAX
+# ---------------------------------------------------------------------------
+
+
+def stack_sax_model(stack: VerticalStack, doublings: int = bcm.DEFAULT_DOUBLINGS):
+    """A SAX model of an unpatterned stack, e.g. from :func:`vertical_stack`.
+
+    Returns ``model(wl, kx, azimuth) -> SDict`` over ``top@p``, ``top@s``,
+    ``bottom@p`` and ``bottom@s`` (see :mod:`hyperbolic_optics.integrations.sax`),
+    with every material evaluated with its dispersion at SAX's ``wl``.
+    """
+    from hyperbolic_optics.integrations import sax as hsax
+
+    if stack.patterned:
+        raise ValueError("stack_sax_model takes an unpatterned stack; this one has a grating")
+
+    def evaluate(spec, rotation=(0.0, 0.0, 0.0)):
+        return lambda wl: material_tensor(spec, wl, rotation)
+
+    layers = [
+        (evaluate(layer.material, layer.rotation_deg), layer.thickness_um) for layer in stack.layers
+    ]
+    return hsax.planar_model(
+        layers, evaluate(stack.incident), evaluate(stack.exit), doublings=doublings
+    )

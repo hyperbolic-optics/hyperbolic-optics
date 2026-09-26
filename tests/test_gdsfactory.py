@@ -522,3 +522,24 @@ class TestUnitCells:
         grad = float(jax.grad(reflectance)(1.0))
         fd = float((reflectance(1.0 + 1e-5) - reflectance(1.0 - 1e-5)) / 2e-5)
         assert grad == pytest.approx(fd, rel=1e-5)
+
+
+def test_a_pdk_stack_as_a_sax_model():
+    from hyperbolic_optics import bcm
+
+    component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+    column = hog.vertical_stack(component, _tfln_stack(), (0.2, 10.0), LN_X_CUT)
+    model = hog.stack_sax_model(column)
+    sd = model(wl=1.55, kx=0.3, azimuth=0.2)
+    tensors, thickness = [], []
+    for layer in column.layers:
+        tensor = hog.material_tensor(layer.material, 1.55, layer.rotation_deg)
+        tensors.append(bcm.rotate_tensor(tensor, bcm.rotation_matrix(0.0, 0.0, 0.2)))
+        thickness.append(layer.thickness_um)
+    eps_si = float(hog.material_tensor("Si", 1.55)[0, 0].real)
+    direct = bcm.stack_smatrix(jnp.stack(tensors), jnp.array(thickness), 1.55, 0.3, 1.0, eps_si)
+    np.testing.assert_allclose(sd["top@p", "top@s"], direct.s[1, 0], atol=1e-13)
+    np.testing.assert_allclose(sd["bottom@s", "top@p"], direct.s[0, 3], atol=1e-13)
+    with pytest.raises(ValueError, match="unpatterned"):
+        _, stack = hog.grating_stack(component, RIB, _tfln_stack(), LN_X_CUT)
+        hog.stack_sax_model(stack)

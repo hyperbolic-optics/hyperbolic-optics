@@ -132,6 +132,7 @@ nav:
     - Gratings (RCWA): user-guide/gratings.md
     - Crossed Gratings (2D RCWA): user-guide/crossed-gratings.md
     - gdsfactory Integration: user-guide/gdsfactory.md
+    - Scattering Matrices and SAX: user-guide/sax.md
     - Mueller Matrices: user-guide/mueller.md
     - Jones Calculus: user-guide/jones.md
   - Examples:
@@ -147,6 +148,7 @@ nav:
     - api/rcwa2d.md
     - api/dispersion.md
     - api/gdsfactory.md
+    - api/sax.md
     - api/sweep.md
     - api/mueller.md
     - api/jones.md

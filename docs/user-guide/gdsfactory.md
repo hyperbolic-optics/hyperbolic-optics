@@ -207,6 +207,64 @@ include the material dispersion.
 It takes about 25 s on a laptop CPU and writes the GDS and a four-panel
 figure to `examples/output/`.
 
+## 2D-periodic patterns: pillars, holes, any polygons
+
+The same pattern of functions covers patterns that repeat in x and y:
+
+```python
+from hyperbolic_optics import rcwa2d
+
+disc = tuple(map(tuple, rcwa2d.ellipse((0.3, 0.25), (0.12, 0.08), 48).tolist()))
+array = hog.periodic_array(period_um=(0.6, 0.5), polygons=(disc,), n_cells=(20, 20),
+                           layer=(2, 0))
+cell = hog.extract_unit_cell(gf.import_gds("array.gds"), (2, 0))    # or from `array`
+cell, stack, response = hog.simulate_crossed_grating(
+    array, (2, 0), tfln, wavelengths_um=[1.55], angles_deg=[0.0, 10.0],
+    max_order=(5, 5), materials=materials,
+)
+response.R[0, 0, response.order(0, 0)]      # [out, in] of the zeroth order
+```
+
+- **`periodic_array`** repeats one cell's polygons on a rectangular lattice.
+  The period and every vertex are snapped to the layout grid, so each cell is
+  an exact translate of the first.
+- **`extract_unit_cell`** reads any 2D-periodic pattern back. The polygons are
+  grouped into translated copies; every group must fill the same complete
+  lattice, and the motif repeated on that lattice must be exactly what is
+  drawn. Overlapping shapes (including across cell edges), holes and missing
+  cells are refused. The period is inferred, unless a cell repeats a shape (a
+  dimer), in which case pass `period_um`.
+- **`crossed_grating_stack`** compares the `LayerStack` column inside the
+  shapes with the column around them, in two cells, as `grating_stack` does
+  for ridges and gaps.
+- **`crossed_grating_layers(cell, stack, wavelength)`** accepts JAX polygons,
+  so a shape can be optimised and then drawn with `periodic_array`.
+
+Stripes drawn as a 2D array (rectangles spanning the y period) give the line
+grating's result to 1e-12; `tests/test_gdsfactory.py` checks it.
+
+### Example: a hyperbolic α-MoO₃ polarization converter
+
+`examples/moo3_metasurface_gdsfactory.py` optimises elliptical MoO₃ pillars on
+a KBr spacer and gold mirror. MoO₃ is in-plane hyperbolic (ε_x < 0 < ε_y) at
+880–920 cm⁻¹. The objective is the mean cross-polarized reflectance over that
+band, at normal incidence.
+
+- **Parameters:** ellipse radii and rotation, the crystal's in-plane rotation,
+  and both thicknesses, at 81 harmonics.
+- **Result:** mean R_ps goes from 0.08 to 0.857.
+  - The optimiser turns the crystal to 44.9° and makes the ellipse nearly
+    round. The conversion comes from MoO₃'s hyperbolicity, not the shape: with
+    the ellipse along x it is still 0.83, and with the crystal along x it is
+    2e-5.
+- **Verification:** the design is written to GDS (15 × 15 cells), read back
+  with its stack from a `LayerStack`, and re-simulated.
+  - 0.861 at 81 harmonics;
+  - 0.81–0.85 at 225 harmonics.
+
+It takes about 5 minutes on a laptop CPU and writes the GDS and a four-panel
+figure to `examples/output/`.
+
 ## Negative refraction in tilted calcite
 
 `examples/calcite_negative_refraction_gdsfactory.py` is the grating counterpart
@@ -239,6 +297,13 @@ to `examples/output/`. The grating is infinitely periodic and plane-wave
 illuminated; FDTDX's finite beams and slab are the check on what a finite
 device does.
 
+## SAX models of PDK stacks
+
+`hog.stack_sax_model(vertical_stack(component, layer_stack, point))` turns the
+unpatterned stack at a point of a layout into a SAX model, with every material
+evaluated with its dispersion at SAX's `wl`. See
+[Scattering Matrices and SAX](sax.md).
+
 ## Dispersion in JAX
 
 `hyperbolic_optics.dispersion.permittivity("hBN", wavenumber_cm)` returns the
@@ -263,11 +328,10 @@ can make the truncated model's dependence on edge position ripple. See
 
 ## Scope
 
-- **Line gratings only:** parallel ridges, periodic in one direction, and one
-  etch shared by every patterned layer.
-- **2D-periodic layouts** (holes, pillars, arbitrary polygons) can be solved
-  with [`rcwa2d`](crossed-gratings.md), but are not yet read from a layout:
-  pass the unit cell's polygons yourself.
+- **One etch:** every patterned layer shares the same shapes, for line
+  gratings and for 2D patterns alike.
+- **2D-periodic layouts** use the [crossed-grating solver](crossed-gratings.md)
+  and need a rectangular lattice (see above).
 - **Infinitely periodic, plane-wave results.** The number of periods drawn does
   not enter, so this describes the interior of a large array, not a finite
   device such as a grating coupler.
