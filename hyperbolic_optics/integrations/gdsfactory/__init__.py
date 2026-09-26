@@ -4,19 +4,22 @@ Everything is importable from here::
 
     from hyperbolic_optics.integrations import gdsfactory as hog
 
-- **Geometry** (:mod:`.geometry`): :func:`line_grating`, a grid-snapped PCell,
-  and :func:`extract_line_grating`, which reads a line grating back from any
-  component or GDS and refuses anything else.
+- **Geometry** (:mod:`.geometry`, :mod:`.lattice`): :func:`line_grating` and
+  :func:`periodic_array`, grid-snapped PCells, and :func:`extract_line_grating`
+  and :func:`extract_unit_cell`, which read a line grating or a 2D-periodic
+  pattern back from any component or GDS and refuse anything else.
 - **Materials** (:mod:`.materials`): material specifications, :class:`Oriented`
   crystals with :func:`x_cut` / :func:`z_cut`, and the mapping from PDK material
   names (:data:`DEFAULT_MATERIALS`).
 - **Stacks** (:mod:`.stack`): :class:`VerticalStack` and :class:`StackLayer`,
   written by hand or read from a PDK ``LayerStack`` at a point of a layout
-  (:func:`vertical_stack`) or under a line grating (:func:`grating_stack`).
-- **Simulation** (:mod:`.simulate`): :func:`simulate_stack` and
-  :func:`simulate_grating` take a layout and PDK and return
-  :class:`PlanarResponse` / :class:`GratingResponse`, with Jones, Mueller and
-  ellipsometric analysis.
+  (:func:`vertical_stack`), under a line grating (:func:`grating_stack`) or
+  under a 2D-periodic pattern (:func:`crossed_grating_stack`).
+- **Simulation** (:mod:`.simulate`): :func:`simulate_stack`,
+  :func:`simulate_grating` and :func:`simulate_crossed_grating` take a layout
+  and PDK and return :class:`PlanarResponse`, :class:`GratingResponse` or
+  :class:`CrossedGratingResponse`, with Jones, Mueller and ellipsometric
+  analysis.
 
 Results describe an infinitely extended stack or grating under plane-wave
 illumination. Requires the ``gdsfactory`` extra and an active PDK.
@@ -26,6 +29,13 @@ from hyperbolic_optics.integrations.gdsfactory.geometry import (
     LineGrating,
     extract_line_grating,
     line_grating,
+)
+from hyperbolic_optics.integrations.gdsfactory.lattice import (
+    UnitCell,
+    crossed_grating_layers,
+    crossed_grating_stack,
+    extract_unit_cell,
+    periodic_array,
 )
 from hyperbolic_optics.integrations.gdsfactory.materials import (
     DEFAULT_MATERIALS,
@@ -37,11 +47,14 @@ from hyperbolic_optics.integrations.gdsfactory.materials import (
     z_cut,
 )
 from hyperbolic_optics.integrations.gdsfactory.simulate import (
+    CrossedGratingResponse,
     GratingResponse,
     PlanarResponse,
     simulate_component,
+    simulate_crossed_grating,
     simulate_grating,
     simulate_stack,
+    solve_crossed_grating,
     solve_grating,
     solve_stack,
 )
@@ -50,11 +63,13 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     VerticalStack,
     grating_layers,
     grating_stack,
+    patterned_stack,
     vertical_profile,
     vertical_stack,
 )
 
 __all__ = [
+    "CrossedGratingResponse",
     "DEFAULT_MATERIALS",
     "GratingResponse",
     "LineGrating",
@@ -62,16 +77,24 @@ __all__ = [
     "Oriented",
     "PlanarResponse",
     "StackLayer",
+    "UnitCell",
     "VerticalStack",
+    "crossed_grating_layers",
+    "crossed_grating_stack",
     "extract_line_grating",
+    "extract_unit_cell",
     "grating_layers",
     "grating_stack",
     "line_grating",
     "material_tensor",
+    "patterned_stack",
+    "periodic_array",
     "resolve_material",
     "simulate_component",
+    "simulate_crossed_grating",
     "simulate_grating",
     "simulate_stack",
+    "solve_crossed_grating",
     "solve_grating",
     "solve_stack",
     "vertical_profile",

@@ -377,3 +377,148 @@ class TestLuxtelligencePdk:
         assert patterned[0].background == "SiO2"
         total = response.R.sum((-3, -2)) + response.T.sum((-3, -2))
         np.testing.assert_allclose(total, 1.0, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# 2D-periodic patterns
+# ---------------------------------------------------------------------------
+
+from hyperbolic_optics import rcwa2d  # noqa: E402
+
+
+def _vertices(array):
+    return tuple(tuple(float(c) for c in row) for row in np.asarray(array))
+
+
+DISC = _vertices(rcwa2d.ellipse((0.2, 0.25), (0.12, 0.08), n_vertices=24, rotation_rad=0.4))
+BAR = ((0.45, 0.05), (0.55, 0.05), (0.55, 0.45), (0.45, 0.45))
+
+
+class TestUnitCells:
+    def test_round_trip_through_a_gds_file(self, tmp_path):
+        component = hog.periodic_array((0.6, 0.5), (DISC, BAR), (5, 4), layer=LAYER)
+        path = tmp_path / "array.gds"
+        component.write_gds(path)
+        cell = hog.extract_unit_cell(gf.import_gds(path), LAYER)
+        assert cell.period_um == pytest.approx((0.6, 0.5))
+        assert cell.n_cells == (5, 4)
+        drawn = component.info["polygons"]
+        origin = np.min([np.min(p, axis=0) for p in drawn], axis=0)
+        np.testing.assert_allclose(cell.origin_um, origin, atol=1e-9)
+        got = sorted(np.round(p + origin, 6).tolist() for p in cell.polygons)
+        want = sorted(np.round(np.asarray(p), 6).tolist() for p in drawn)
+        assert [sorted(map(tuple, p)) for p in got] == [sorted(map(tuple, p)) for p in want]
+
+    def test_a_repeated_shape_needs_the_period(self):
+        left = ((0.05, 0.1), (0.2, 0.1), (0.2, 0.4), (0.05, 0.4))
+        right = tuple((x + 0.25, y) for x, y in left)
+        component = hog.periodic_array((0.8, 0.5), (left, right), (4, 3), layer=LAYER)
+        with pytest.raises(ValueError, match="pass period_um"):
+            hog.extract_unit_cell(component, LAYER)  # inferred 0.25 µm: wrong
+        cell = hog.extract_unit_cell(component, LAYER, period_um=(0.8, 0.5))
+        assert len(cell.polygons) == 2 and cell.n_cells == (4, 3)
+
+    @pytest.mark.parametrize(
+        ("edit", "message"),
+        [
+            ("missing", "complete lattice"),
+            ("overlap", "overlap"),
+            ("hole", "hole"),
+        ],
+    )
+    def test_refuses_what_is_not_a_periodic_array(self, edit, message):
+        component = gf.Component()
+        for i in range(3):
+            for j in range(3):
+                if edit == "missing" and (i, j) == (1, 2):
+                    continue
+                x, y = i * 1.0, j * 1.0
+                component.add_polygon(
+                    [(x, y), (x + 0.5, y), (x + 0.5, y + 0.5), (x, y + 0.5)], layer=LAYER
+                )
+                if edit == "overlap":
+                    component.add_polygon(
+                        [(x + 0.4, y + 0.1), (x + 0.9, y + 0.1), (x + 0.9, y + 0.3),
+                         (x + 0.4, y + 0.3)],
+                        layer=LAYER,
+                    )  # fmt: skip
+        if edit == "hole":
+            ring = gf.kdb.Region(gf.kdb.Box(0, 0, 3000, 3000)) - gf.kdb.Region(
+                gf.kdb.Box(1000, 1000, 2000, 2000)
+            )
+            component = gf.Component()
+            for i in range(2):
+                component.shapes(component.kcl.layer(*LAYER)).insert(ring.moved(i * 4000, 0))
+        with pytest.raises(ValueError, match=message):
+            hog.extract_unit_cell(component, LAYER, period_um=(1.0, 1.0))
+
+    def test_etched_pillars_in_a_pdk_stack(self):
+        component = hog.periodic_array((0.6, 0.5), (DISC,), (6, 6), layer=RIB)
+        cell, stack = hog.crossed_grating_stack(component, RIB, _tfln_stack(), LN_X_CUT)
+        names = [(layer.name, round(layer.thickness_um, 6)) for layer in stack.layers]
+        assert names == [("ln_rib / ambient", 0.3), ("ln_slab", 0.3), ("box", 2.0)]
+        assert stack.exit == "Si" and cell.n_cells == (6, 6)
+
+    def test_simulate_equals_the_hand_built_cell(self):
+        component = hog.periodic_array((0.6, 0.5), (DISC, BAR), (4, 4), layer=RIB)
+        cell, _, response = hog.simulate_crossed_grating(
+            component, RIB, _tfln_stack(), [1.55], [10.0], azimuth_deg=20.0, max_order=(3, 3),
+            materials=LN_X_CUT,
+        )  # fmt: skip
+        ln = hog.material_tensor(LN_X_CUT["ln"], 1.55)
+        shapes = tuple(rcwa2d.Shape(jnp.asarray(p), ln) for p in cell.polygons)
+        eps_si = float(hog.material_tensor("Si", 1.55)[0, 0].real)
+        direct = rcwa2d.solve_crossed_grating(
+            [
+                rcwa2d.PatternedLayer(0.3, jnp.eye(3, dtype=complex), shapes),
+                rcwa2d.uniform(ln, 0.3),
+                rcwa2d.uniform(hog.material_tensor("SiO2", 1.55), 2.0),
+            ],
+            cell.period_um, 1.55, np.radians(10.0), 1.0, eps_si, (3, 3),
+            azimuth_rad=np.radians(20.0),
+        )  # fmt: skip
+        np.testing.assert_allclose(response.R[0, 0], direct.R, atol=1e-12)
+        np.testing.assert_allclose(response.T[0, 0], direct.T, atol=1e-12)
+        total = response.R.sum((-3, -2)) + response.T.sum((-3, -2))
+        np.testing.assert_allclose(total, 1.0, atol=1e-10)
+        assert response.mueller((0, 0)).shape == (1, 1, 4, 4)
+
+    def test_stripes_drawn_as_a_2d_array_are_the_line_grating(self):
+        """Rectangles spanning the y period touch across the cell edge: a line grating."""
+        stripe = ((0.0, 0.0), (0.45, 0.0), (0.45, 0.3), (0.0, 0.3))
+        array = hog.periodic_array((0.9, 0.3), (stripe,), (10, 20), layer=RIB)
+        _, _, crossed = hog.simulate_crossed_grating(
+            array, RIB, _tfln_stack(), [1.55], [10.0], max_order=(6, 1), materials=LN_X_CUT
+        )
+        lines = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        _, _, line = hog.simulate_grating(
+            lines, RIB, _tfln_stack(), [1.55], [10.0], max_order=6, materials=LN_X_CUT
+        )
+        row = crossed.orders[:, 1] == 0
+        np.testing.assert_allclose(crossed.R[0, 0][row], line.R[0, 0], atol=1e-12)
+        np.testing.assert_allclose(crossed.T[0, 0][row], line.T[0, 0], atol=1e-12)
+
+    def test_a_layer_patterned_differently_is_refused(self):
+        component = hog.periodic_array((0.6, 0.5), (DISC,), (6, 6), layer=RIB).copy()
+        component.add_polygon([(0, 0), (0.6, 0), (0.6, 0.5), (0, 0.5)], layer=(3, 0))
+        stack = _tfln_stack()
+        stack.layers["cap"] = LayerLevel(
+            layer=LogicalLayer(layer=(3, 0)), zmin=0.6, thickness=0.1, material="sio2",
+            mesh_order=1,
+        )  # fmt: skip
+        with pytest.raises(ValueError, match="varies"):
+            hog.crossed_grating_stack(component, RIB, stack, LN_X_CUT)
+
+    def test_differentiable_in_the_shape(self):
+        stack = [hog.StackLayer(0.3, hog.Oriented("LiNbO3", hog.x_cut(30.0)), background=1.0)]
+
+        def reflectance(scale):
+            polygon = jnp.asarray(DISC) * scale
+            cell = hog.UnitCell(period_um=(0.6, 0.5), polygons=(polygon,))
+            layers = hog.crossed_grating_layers(cell, stack, 1.55)
+            result = rcwa2d.solve_crossed_grating(layers, (0.6, 0.5), 1.55, 0.2, 1.0, 2.1, (2, 2))
+            return result.R.sum()
+
+        grad = float(jax.grad(reflectance)(1.0))
+        fd = float((reflectance(1.0 + 1e-5) - reflectance(1.0 - 1e-5)) / 2e-5)
+        assert grad == pytest.approx(fd, rel=1e-5)
