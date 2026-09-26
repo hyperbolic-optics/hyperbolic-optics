@@ -124,6 +124,8 @@ frequency rises. The ripple in the *slope* therefore does not fade.
 - **Tilted-axis hBN ridges** (period 8 µm, first diffracted order): the ripple
   in d/d(fill) is comparable to the true slope even at 161 orders. See panel (e)
   of `benchmarks/hyperbolic_grating/`.
+- **A subwavelength hBN ribbon absorber** with the flakes' natural orientation
+  (`examples/hbn_absorber_gdsfactory.py`) shows no ripple, even with hard edges.
 - **Dielectric ridges** show none either: silicon's d/d(fill) is identical at
   41, 81 and 161 orders.
 

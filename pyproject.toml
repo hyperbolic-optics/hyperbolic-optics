@@ -42,6 +42,13 @@ jax = [
     "jax>=0.4.30",
 ]
 
+# Design and GDS round trips for the grating solver
+# (hyperbolic_optics.integrations.gdsfactory). Optional, like JAX.
+gdsfactory = [
+    "jax>=0.4.30",
+    "gdsfactory>=9.0",
+]
+
 docs = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24.0",
@@ -49,16 +56,17 @@ docs = [
     "mdx-truly-sane-lists>=1.3",
 ]
 
-# The `dev` extra's tools, plus JAX so the bcm tests run, as a dependency group
-# so that a plain `uv sync` / `uv run pytest` installs them; uv only syncs extras
-# when asked, and `uv sync` without `--all-extras` removes them. The extra stays
-# for pip users.
+# The `dev` extra's tools, plus JAX and gdsfactory so their tests run, as a
+# dependency group so that a plain `uv sync` / `uv run pytest` installs them; uv
+# only syncs extras when asked, and `uv sync` without `--all-extras` removes them.
+# The extra stays for pip users.
 [dependency-groups]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
     "ruff",
     "jax>=0.4.30",
+    "gdsfactory>=9.0",
 ]
 
 [project.urls]
