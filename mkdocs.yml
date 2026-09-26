@@ -130,6 +130,7 @@ nav:
     - Transmission & Backends: user-guide/power.md
     - Differentiable Solver (JAX): user-guide/differentiable.md
     - Gratings (RCWA): user-guide/gratings.md
+    - Crossed Gratings (2D RCWA): user-guide/crossed-gratings.md
     - gdsfactory Integration: user-guide/gdsfactory.md
     - Mueller Matrices: user-guide/mueller.md
     - Jones Calculus: user-guide/jones.md
@@ -143,6 +144,7 @@ nav:
     - api/scattering.md
     - api/bcm.md
     - api/rcwa.md
+    - api/rcwa2d.md
     - api/dispersion.md
     - api/gdsfactory.md
     - api/sweep.md

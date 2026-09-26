@@ -77,3 +77,30 @@ Timing, for 41 orders, one wavelength and one grating layer on a CPU, both run
 without `jax.jit`: about 85 ms here and about 250 ms for FMMAX. FMMAX's figure
 includes the FFT of its 2000-sample grid. Neither has been tuned, so this is not
 a performance comparison.
+
+## Crossed gratings (`compare_2d.py`)
+
+The same comparison for `hyperbolic_optics.rcwa2d`, on four unit cells: a
+silicon-like square pillar and disc, and a disc of a birefringent and of a
+hyperbolic crystal with its axis in the plane of the layers (30° from x), at
+30° incidence, where only the crystal converts p to s.
+
+```bash
+uv run --with fmmax python benchmarks/fmmax/compare_2d.py
+```
+
+It takes about 7 minutes on a laptop CPU and writes `output/convergence_2d.png`:
+the zeroth-order reflectance against the number of harmonics, for FMMAX
+(`JONES_DIRECT`, 1200² raster, circular truncation) and for both of this
+package's factorisations (exact polygon coefficients, rectangular truncation).
+
+- **Silicon pillars.** The normal-vector rule approaches FMMAX's converged
+  value from below: within 3e-3 (square) and 3e-4 (disc) at 529 harmonics,
+  against 1e-2 and 4e-3 for Laurent's rule.
+- **Birefringent disc.** Within 5e-5 of FMMAX in every channel at 529
+  harmonics, cross-polarized included.
+- **Hyperbolic disc.** Neither code is converged: FMMAX's R_ps moves between
+  0.049 and 0.055 from 193 to 1605 terms, and this package's between 0.052 and
+  0.057. They agree to that spread.
+- **Energy.** Lossless cases conserve energy to 1e-12 at every truncation; the
+  script prints the absorbed fraction.

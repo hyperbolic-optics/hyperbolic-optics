@@ -186,8 +186,8 @@ Benchmarks, each of which writes PNG figures to its own `output/` folder:
 
 ## Limitations
 
-- Periodic in one direction only. 2D-periodic metasurfaces are not supported
-  yet.
+- Periodic in one direction only. For 2D-periodic metasurfaces see
+  [Crossed Gratings (2D RCWA)](crossed-gratings.md).
 - Incident and exit half-spaces must be isotropic and lossless.
 - ε_xx, ε_zz, μ_xx and μ_zz must not be exactly zero (see above).
 - Results are for an infinitely periodic structure under plane-wave
