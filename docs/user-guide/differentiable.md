@@ -122,10 +122,9 @@ reproduction of that method.
 
 - Incident and exit half-spaces must be isotropic and lossless. A
   `Semi Infinite Anisotropic Layer` exit is not supported yet.
-- Material dispersion is up to you. The built-in materials are NumPy and are
-  evaluated outside JAX, so a tensor taken from them carries no gradient with
-  respect to wavelength. Wavelength derivatives are complete only when ε(λ) is
-  written in JAX.
+- For wavelength derivatives that include the material's dispersion, take the
+  tensor from `hyperbolic_optics.dispersion` (the built-in materials in JAX), not
+  from the NumPy material classes, which carry no gradient.
 - Exact grazing cutoff in the exit medium (`kx` equal to its index) is singular,
   as in any plane-wave basis.
 - Field profiles and layer-resolved absorption are available from

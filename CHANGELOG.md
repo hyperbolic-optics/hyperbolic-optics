@@ -83,6 +83,9 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Dispersion in JAX** (`hyperbolic_optics.dispersion`): every built-in
+  material's oscillator model, matching the NumPy classes to 1e-12 and
+  differentiable in frequency.
 - **Edge smoothing** for grating layers (`edge_width`): an exact box
   convolution of the profile, for optimising the geometry of ridges whose
   gradients ripple under truncation.
