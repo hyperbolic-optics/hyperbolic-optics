@@ -409,14 +409,19 @@ class TestUnitCells:
         want = sorted(np.round(np.asarray(p), 6).tolist() for p in drawn)
         assert [sorted(map(tuple, p)) for p in got] == [sorted(map(tuple, p)) for p in want]
 
-    def test_a_repeated_shape_needs_the_period(self):
+    def test_a_repeated_shape_is_one_motif(self):
+        """A dimer of identical bars: the 0.25 µm spacing is not the period."""
         left = ((0.05, 0.1), (0.2, 0.1), (0.2, 0.4), (0.05, 0.4))
         right = tuple((x + 0.25, y) for x, y in left)
         component = hog.periodic_array((0.8, 0.5), (left, right), (4, 3), layer=LAYER)
-        with pytest.raises(ValueError, match="pass period_um"):
-            hog.extract_unit_cell(component, LAYER)  # inferred 0.25 µm: wrong
-        cell = hog.extract_unit_cell(component, LAYER, period_um=(0.8, 0.5))
-        assert len(cell.polygons) == 2 and cell.n_cells == (4, 3)
+        for cell in (
+            hog.extract_unit_cell(component, LAYER),
+            hog.extract_unit_cell(component, LAYER, period_um=(0.8, 0.5)),
+        ):
+            assert cell.period_um == pytest.approx((0.8, 0.5))
+            assert len(cell.polygons) == 2 and cell.n_cells == (4, 3)
+        with pytest.raises(ValueError, match="overlap|complete lattice"):
+            hog.extract_unit_cell(component, LAYER, period_um=(0.25, 0.5))
 
     @pytest.mark.parametrize(
         ("edit", "message"),
@@ -543,3 +548,62 @@ def test_a_pdk_stack_as_a_sax_model():
     with pytest.raises(ValueError, match="unpatterned"):
         _, stack = hog.grating_stack(component, RIB, _tfln_stack(), LN_X_CUT)
         hog.stack_sax_model(stack)
+
+
+HEX_UM = ((0.6, 0.0), (0.3, 0.6 * np.sqrt(3) / 2))
+SMALL_DISC = _vertices(rcwa2d.ellipse((0.0, 0.0), (0.12, 0.12), n_vertices=24))
+
+
+class TestOtherLattices:
+    def test_hexagonal_round_trip_infers_the_lattice(self, tmp_path):
+        component = hog.periodic_array(polygons=(SMALL_DISC,), n_cells=(6, 5), layer=LAYER,
+                                       lattice_um=HEX_UM)  # fmt: skip
+        path = tmp_path / "hex.gds"
+        component.write_gds(path)
+        cell = hog.extract_unit_cell(gf.import_gds(path), LAYER)
+        assert cell.period_um is None and cell.n_cells == (6, 5)
+        np.testing.assert_allclose(cell.lattice_um, component.info["lattice_um"], atol=1e-9)
+        np.testing.assert_allclose(cell.lattice_um, HEX_UM, atol=1e-3)  # snapped to 1 nm
+        assert isinstance(cell.lattice, rcwa2d.Lattice)
+
+    def test_oblique_lattice_and_a_two_shape_motif(self):
+        oblique = ((0.7, 0.0), (0.25, 0.55))
+        bar = ((0.3, -0.05), (0.42, -0.05), (0.42, 0.1), (0.3, 0.1))
+        component = hog.periodic_array(polygons=(SMALL_DISC, bar), n_cells=(4, 4), layer=LAYER,
+                                       lattice_um=oblique)  # fmt: skip
+        cell = hog.extract_unit_cell(component, LAYER)
+        np.testing.assert_allclose(cell.lattice_um, oblique, atol=1e-9)
+        assert len(cell.polygons) == 2 and cell.n_cells == (4, 4)
+
+    def test_a_hexagonal_dimer(self):
+        pair = (SMALL_DISC, tuple((x + 0.3, y) for x, y in SMALL_DISC))
+        wide = ((1.2, 0.0), (0.6, 1.2 * np.sqrt(3) / 2))
+        component = hog.periodic_array(polygons=pair, n_cells=(4, 4), layer=LAYER, lattice_um=wide)
+        for cell in (
+            hog.extract_unit_cell(component, LAYER),
+            hog.extract_unit_cell(component, LAYER, lattice_um=wide),
+        ):
+            np.testing.assert_allclose(cell.lattice_um, wide, atol=1e-3)
+            assert len(cell.polygons) == 2
+
+    def test_simulating_a_hexagonal_layout_equals_the_hand_built_cell(self):
+        component = hog.periodic_array(polygons=(SMALL_DISC,), n_cells=(6, 6), layer=RIB,
+                                       lattice_um=HEX_UM)  # fmt: skip
+        cell, stack, response = hog.simulate_crossed_grating(
+            component, RIB, _tfln_stack(), [1.55], [10.0], azimuth_deg=20.0, max_order=(3, 3),
+            materials=LN_X_CUT, truncation="circular",
+        )  # fmt: skip
+        assert [layer.name for layer in stack.layers][0] == "ln_rib / ambient"
+        ln = hog.material_tensor(LN_X_CUT["ln"], 1.55)
+        shapes = tuple(rcwa2d.Shape(jnp.asarray(p), ln) for p in cell.polygons)
+        direct = rcwa2d.solve_crossed_grating(
+            [
+                rcwa2d.PatternedLayer(0.3, jnp.eye(3, dtype=complex), shapes),
+                rcwa2d.uniform(ln, 0.3),
+                rcwa2d.uniform(hog.material_tensor("SiO2", 1.55), 2.0),
+            ],
+            cell.lattice, 1.55, np.radians(10.0), 1.0,
+            float(hog.material_tensor("Si", 1.55)[0, 0].real), (3, 3),
+            azimuth_rad=np.radians(20.0), truncation="circular",
+        )  # fmt: skip
+        np.testing.assert_allclose(response.R[0, 0], direct.R, atol=1e-12)

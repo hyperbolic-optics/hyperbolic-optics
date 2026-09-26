@@ -226,15 +226,21 @@ cell, stack, response = hog.simulate_crossed_grating(
 response.R[0, 0, response.order(0, 0)]      # [out, in] of the zeroth order
 ```
 
-- **`periodic_array`** repeats one cell's polygons on a rectangular lattice.
-  The period and every vertex are snapped to the layout grid, so each cell is
-  an exact translate of the first.
+- **`periodic_array`** repeats one cell's polygons on a lattice, which is
+  rectangular (`period_um`) or given by its vectors (`lattice_um`), e.g.
+  `((a, 0), (a/2, a·√3/2))` for a hexagonal one. The lattice vectors and every
+  vertex are snapped to the layout grid, so each cell is an exact translate of
+  the first.
 - **`extract_unit_cell`** reads any 2D-periodic pattern back. The polygons are
   grouped into translated copies; every group must fill the same complete
   lattice, and the motif repeated on that lattice must be exactly what is
   drawn. Overlapping shapes (including across cell edges), holes and missing
-  cells are refused. The period is inferred, unless a cell repeats a shape (a
-  dimer), in which case pass `period_um`.
+  cells are refused.
+  - The lattice is inferred: rectangular, hexagonal or oblique, dimers
+    included. It is the shortest basis under which the drawing is one motif
+    on a complete parallelogram of cells.
+  - Pass `period_um` or `lattice_um` to impose one instead.
+  - `cell.lattice` is the `rcwa2d.Lattice` to solve with.
 - **`crossed_grating_stack`** compares the `LayerStack` column inside the
   shapes with the column around them, in two cells, as `grating_stack` does
   for ridges and gaps.
@@ -332,7 +338,7 @@ can make the truncated model's dependence on edge position ripple. See
 - **One etch:** every patterned layer shares the same shapes, for line
   gratings and for 2D patterns alike.
 - **2D-periodic layouts** use the [crossed-grating solver](crossed-gratings.md)
-  and need a rectangular lattice (see above).
+  on any lattice (see above).
 - **Infinitely periodic, plane-wave results.** The number of periods drawn does
   not enter, so this describes the interior of a large array, not a finite
   device such as a grating coupler.

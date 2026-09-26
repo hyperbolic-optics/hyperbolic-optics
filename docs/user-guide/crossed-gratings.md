@@ -56,6 +56,38 @@ result.T.shape       # (121, 2, 2): [order, out, in], 0 = p and 1 = s
   dimensions, and the whole solve can be `jax.jit`-compiled (with
   `max_order` and `factorization` static).
 
+## Lattices
+
+Any Bravais lattice, given by its primitive vectors:
+
+```python
+hexagonal = rcwa2d.Lattice.hexagonal(0.6)                 # triangular, a1 along x
+oblique = rcwa2d.Lattice.oblique(0.7, 0.6, jnp.radians(75.0))
+custom = rcwa2d.Lattice((0.6, 0.0), (0.3, 0.52))
+
+holes = rcwa2d.PatternedLayer(0.25, 12.25 * eye,
+                              (rcwa2d.Shape(rcwa2d.ellipse((0.0, 0.0), (0.18, 0.18)), eye),))
+result = rcwa2d.solve_crossed_grating(
+    [holes], hexagonal, wavelength_um=1.0, incidence_rad=0.3, eps_incident=1.0,
+    eps_exit=2.1, max_order=(6, 6), truncation="circular",
+)
+```
+
+- **Harmonics.** They are `G = m·b₁ + n·b₂`, with `b₁`, `b₂` the reciprocal
+  vectors. A `(Λx, Λy)` period still means a rectangular lattice.
+- **Truncation.** `truncation="parallelogram"` (the default) keeps
+  `|m| ≤ M₁, |n| ≤ M₂`. `"circular"` keeps every `G` with
+  `|G| ≤ max(M₁, M₂)·g_min`, where `g_min` is the shortest reciprocal vector.
+  - It respects the lattice's point symmetry, which matters for hexagonal
+    lattices.
+  - It does not depend on the primitive vectors chosen: the same lattice in
+    two bases gives the same answer.
+  - It needs a concrete lattice (not a traced one) because the harmonics it
+    keeps depend on it. Optimise a lattice constant with the parallelogram
+    truncation.
+- **Shapes** are given in real space and periodised on the lattice. The normal
+  field is sampled on a grid of fractions `(u, v)` of the cell, `u·a₁ + v·a₂`.
+
 ## Fourier factorisation
 
 The two rules differ in how they expand the products of discontinuous
@@ -108,6 +140,25 @@ slowly under every Fourier factorisation, because the fields concentrate at
 corners and edges. Check your own design at two truncations before trusting a
 third digit.
 
+## Validation of other lattices
+
+In `tests/test_rcwa2d.py`:
+
+- **Exact reductions.** A uniform layer on a hexagonal lattice is the planar
+  solver (1e-12). A triangular lattice equals its rectangular supercell,
+  `(a, a√3)` with two discs per cell (1e-12, Laurent's rule).
+- **Basis independence.** A square lattice described by a skewed basis gives
+  the same answer under circular truncation: 1e-12 with Laurent's rule, 1e-5
+  with the normal-vector rule.
+- **Symmetry.** Hexagonal lattices are unchanged under 60° rotation: 1e-12
+  with Laurent's rule. With the normal-vector rule the error is 1e-4, limited
+  by its sampling grid, and falls with a finer `grid`.
+- **FMMAX.** Silicon discs on a 0.6 µm triangular lattice, at 0.3 rad. FMMAX,
+  at 1615 terms, gives R_p = 0.56889 and R_s = 0.99224. This package gives
+  R_p = 0.575 and R_s = 0.991 at 439 harmonics, still converging towards
+  FMMAX's values.
+- **Gradients** with respect to the lattice constant match finite differences.
+
 ## Validation
 
 In `tests/test_rcwa2d.py`:
@@ -141,7 +192,7 @@ Benchmarks, which write PNG figures to their own `output/` folders:
 
 ## Limitations
 
-- Rectangular lattices only.
+- Circular truncation needs a lattice that is not being optimised (see above).
 - Shapes must not overlap. A hole in a slab is a shape of the hole's material
   on the slab's background.
 - Incident and exit half-spaces must be isotropic and lossless.

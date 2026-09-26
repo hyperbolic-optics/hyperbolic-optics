@@ -418,8 +418,14 @@ def solve_crossed_grating(
     azimuth_deg: float = 0.0,
     max_order: tuple[int, int] = (5, 5),
     factorization: str = "normal",
+    truncation: str = "parallelogram",
 ) -> CrossedGratingResponse:
-    """Diffraction by a 2D-periodic pattern etched into a stack, over wavelength and angle."""
+    """Diffraction by a 2D-periodic pattern etched into a stack, over wavelength and angle.
+
+    The lattice is the cell's (:attr:`UnitCell.lattice`): rectangular,
+    hexagonal or oblique. ``truncation="circular"`` suits non-rectangular ones
+    (see :func:`hyperbolic_optics.rcwa2d.solve_crossed_grating`).
+    """
     wavelengths = np.atleast_1d(np.asarray(wavelengths_um, dtype=float))
     angles = np.atleast_1d(np.asarray(angles_deg, dtype=float))
     eps_in = stack.half_space_permittivity("incident", wavelengths)[:, None]  # [F, 1]
@@ -427,7 +433,7 @@ def solve_crossed_grating(
     layers = crossed_grating_layers(cell, stack, jnp.asarray(wavelengths)[:, None])
     result = rcwa2d.solve_crossed_grating(
         layers,
-        cell.period_um,
+        cell.lattice,
         jnp.asarray(wavelengths)[:, None],
         jnp.radians(jnp.asarray(angles))[None, :],
         jnp.asarray(eps_in),
@@ -435,6 +441,7 @@ def solve_crossed_grating(
         max_order,
         azimuth_rad=np.radians(azimuth_deg),
         factorization=factorization,
+        truncation=truncation,
     )
     size = result.orders.shape[0]
     shape = (len(wavelengths), len(angles), size, 2, 2)
@@ -456,13 +463,16 @@ def simulate_crossed_grating(
     ambient: MaterialSpec = 1.0,
     period_um: tuple[float, float] | None = None,
     factorization: str = "normal",
+    truncation: str = "parallelogram",
+    lattice_um: tuple[tuple[float, float], tuple[float, float]] | None = None,
 ) -> tuple[UnitCell, VerticalStack, CrossedGratingResponse]:
     """A 2D-periodic pattern in a layout, etched into the PDK's stack: cell, stack, response."""
     cell, stack = crossed_grating_stack(
-        component, pattern_layer, layer_stack, materials, ambient, period_um
-    )
+        component, pattern_layer, layer_stack, materials, ambient, period_um,
+        lattice_um=lattice_um,
+    )  # fmt: skip
     response = solve_crossed_grating(
-        cell, stack, wavelengths_um, angles_deg, azimuth_deg, max_order, factorization
+        cell, stack, wavelengths_um, angles_deg, azimuth_deg, max_order, factorization, truncation
     )
     return cell, stack, response
 
