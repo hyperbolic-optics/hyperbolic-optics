@@ -29,6 +29,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 ## Features
 
 - **4×4 transfer-matrix engine** for reflection coefficients of arbitrary anisotropic multilayers, plus an opt-in **numerically-stable scattering-matrix backend** for thick / lossy / evanescent stacks
+- **Differentiable solver in JAX** (`hyperbolic_optics.bcm`, optional `[jax]` extra): exact gradients with respect to thickness, tensor components, orientation, angle and wavelength, from an eigendecomposition-free cascade that matches the NumPy engine to ~1e-14
 - **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux
 - **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
 - **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors

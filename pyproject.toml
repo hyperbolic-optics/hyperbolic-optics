@@ -36,6 +36,12 @@ dev = [
     "ruff",
 ]
 
+# The differentiable solver (hyperbolic_optics.bcm). Optional: the NumPy solver
+# does not need it, and nothing imports it unless that module is used.
+jax = [
+    "jax>=0.4.30",
+]
+
 docs = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24.0",
@@ -43,14 +49,16 @@ docs = [
     "mdx-truly-sane-lists>=1.3",
 ]
 
-# The same tools as the `dev` extra, as a dependency group so that a plain
-# `uv sync` / `uv run pytest` installs them; uv only syncs extras when asked, and
-# `uv sync` without `--all-extras` removes them. The extra stays for pip users.
+# The `dev` extra's tools, plus JAX so the bcm tests run, as a dependency group
+# so that a plain `uv sync` / `uv run pytest` installs them; uv only syncs extras
+# when asked, and `uv sync` without `--all-extras` removes them. The extra stays
+# for pip users.
 [dependency-groups]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
     "ruff",
+    "jax>=0.4.30",
 ]
 
 [project.urls]

@@ -128,6 +128,7 @@ nav:
     - Scenarios: user-guide/scenarios.md
     - Materials: user-guide/materials.md
     - Transmission & Backends: user-guide/power.md
+    - Differentiable Solver (JAX): user-guide/differentiable.md
     - Mueller Matrices: user-guide/mueller.md
     - Jones Calculus: user-guide/jones.md
   - Examples:
@@ -138,6 +139,7 @@ nav:
     - api/layers.md
     - api/fields.md
     - api/scattering.md
+    - api/bcm.md
     - api/sweep.md
     - api/mueller.md
     - api/jones.md
