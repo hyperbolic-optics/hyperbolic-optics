@@ -140,6 +140,7 @@ nav:
     - api/fields.md
     - api/scattering.md
     - api/bcm.md
+    - api/rcwa.md
     - api/sweep.md
     - api/mueller.md
     - api/jones.md

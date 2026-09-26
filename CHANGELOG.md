@@ -83,6 +83,23 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Edge smoothing** for grating layers (`edge_width`): an exact box
+  convolution of the profile, for optimising the geometry of ridges whose
+  gradients ripple under truncation.
+- **Differentiable RCWA for 1D gratings** (`hyperbolic_optics.rcwa`, optional
+  `jax` extra): diffraction by x-periodic stacks in which every segment has a
+  full ε/μ tensor (including the xz/yz terms of a tilted axis), with conical
+  incidence. It uses Li's factorisation for anisotropic lamellar gratings and the
+  eigendecomposition-free layer engine of `bcm`, so gradients are exact with
+  respect to fill factor, ridge position, thickness, period, tensors,
+  orientation, wavelength and incidence; edges enter through exact Fourier
+  coefficients, not a pixel grid. Reduces to the planar solver to 1e-13 for
+  uniform layers, and agrees with FMMAX to 4e-7–2e-5 on isotropic gratings
+  (`benchmarks/fmmax/`). Validated for hyperbolic (in-plane MoO₃ against FMMAX,
+  tilted full-tensor hBN against an eigenmode solution and the NumPy engine) and
+  gyrotropic, non-symmetric tensors. Hyperbolic gratings converge slowly, and
+  their geometry gradients carry a truncation ripple; both are documented in
+  `docs/user-guide/gratings.md`.
 - **Differentiable planar solver** (`hyperbolic_optics.bcm`, optional `jax`
   extra): reflection and transmission of anisotropic stacks in JAX, with exact
   gradients with respect to thicknesses, full ε/μ tensors (including loss),
