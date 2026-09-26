@@ -77,6 +77,33 @@ Wrap repeated calls in `jax.jit(..., static_argnames="doublings")`.
 `examples/optimize_polarization_converter.py` optimises a film's thickness and
 axis angle with Adam, then re-checks the result with `Structure`.
 
+### Fields and layer-resolved absorption
+
+```python
+lossy = film + 0.05j * jnp.eye(3)
+fields = bcm.stack_fields(lossy[None], jnp.array([3.6]), 0.65, 0.3, 1.0, 1.52**2,
+                          samples_per_layer=100)
+fields.absorption      # [..., L, 2]: absorbed fraction per layer, for p and s in
+fields.R, fields.T     # [..., 2]
+fields.interface_flux  # [..., L + 1, 2]: S_z at each interface over the incident flux
+fields.z_um, fields.fields   # depths, and (Ex, Ey, Ez, Hx, Hy, Hz) there, per polarization
+```
+
+- **Stable.** The fields at each plane come from the scattering matrices of
+  the stack above and below it, never from transfer matrices. Thick, strongly
+  absorbing and evanescent layers stay finite.
+- **Differentiable.** Gradients go through all of it, thicknesses included.
+  The samples inside a layer sit at fixed fractions of its thickness
+  (`samples_per_layer`, static), so moving a layer boundary moves its samples
+  with it.
+- **Validated.** `tests/test_stack_fields.py` checks:
+  - R, T and each layer's absorption against the NumPy engine's
+    `FieldProfile`, and all six field components against depth, to 1e-12;
+  - each layer's absorption against the electric and magnetic loss density
+    `½(E†·ε_a·E + H†·μ_a·H)` integrated over its depth, with
+    `ε_a = (ε − ε†)/2i`. This check is independent of the interface fluxes,
+    whose differences alone would only telescope.
+
 ## Method
 
 Each layer's scattering matrix is built without eigendecomposition. The field

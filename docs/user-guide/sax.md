@@ -14,6 +14,8 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from hyperbolic_optics import bcm
 
+ln_tensor = bcm.rotate_tensor(jnp.diag(jnp.array([5.06, 5.46, 5.46], dtype=complex)),
+                              bcm.rotation_matrix(0.0, 0.7, 0.4))   # LiNbO3, axis tilted
 eps = jnp.stack([ln_tensor, 2.1 * jnp.eye(3)])        # [L, 3, 3], top down
 smatrix = bcm.stack_smatrix(eps, jnp.array([0.4, 0.2]), wavelength_um=0.8,
                             kx=0.479, eps_top=1.0, eps_bottom=2.25)

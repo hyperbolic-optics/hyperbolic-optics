@@ -217,6 +217,7 @@ from hyperbolic_optics import rcwa2d
 disc = tuple(map(tuple, rcwa2d.ellipse((0.3, 0.25), (0.12, 0.08), 48).tolist()))
 array = hog.periodic_array(period_um=(0.6, 0.5), polygons=(disc,), n_cells=(20, 20),
                            layer=(2, 0))
+array.write_gds("array.gds")
 cell = hog.extract_unit_cell(gf.import_gds("array.gds"), (2, 0))    # or from `array`
 cell, stack, response = hog.simulate_crossed_grating(
     array, (2, 0), tfln, wavelengths_um=[1.55], angles_deg=[0.0, 10.0],

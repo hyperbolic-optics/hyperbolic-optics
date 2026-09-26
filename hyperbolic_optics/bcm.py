@@ -69,10 +69,12 @@ __all__ = [
     "PORTS",
     "PlanarResult",
     "PlanarSMatrix",
+    "StackFields",
     "cascade",
     "rotate_tensor",
     "rotation_matrix",
     "solve_stack",
+    "stack_fields",
     "stack_smatrix",
     "system_matrix",
 ]
@@ -482,3 +484,171 @@ def cascade(upper: PlanarSMatrix, lower: PlanarSMatrix) -> PlanarSMatrix:
     )
     propagating = jnp.concatenate([upper.propagating[..., :2], lower.propagating[..., 2:]], axis=-1)
     return PlanarSMatrix(s=s, propagating=propagating)
+
+
+# ---------------------------------------------------------------------------
+# Fields and absorption
+# ---------------------------------------------------------------------------
+
+
+class StackFields(NamedTuple):
+    """Fields and power flow through a planar stack, for p and s light from the top.
+
+    The last axis of every array is the incident polarization (0 = p, 1 = s),
+    each of unit incident power.
+
+    Attributes:
+        R, T: ``[..., 2]`` total reflectance and transmittance (summed over the
+            outgoing polarizations).
+        absorption: ``[..., L, 2]`` fraction of the incident power absorbed in
+            each layer.
+        interface_flux: ``[..., L + 1, 2]`` normal energy flux ``S_z`` at each
+            interface, from the top of the first layer down, over the incident
+            flux: ``1 − R`` at the top and ``T`` at the bottom.
+        z_um: ``[..., L·S]`` depths of the field samples below the top of the
+            first layer (empty unless ``samples_per_layer`` was given).
+        fields: ``[..., L·S, 6, 2]`` complex ``(Ex, Ey, Ez, Hx, Hy, Hz)`` at those
+            depths, H scaled by the free-space impedance.
+    """
+
+    R: jax.Array
+    T: jax.Array
+    absorption: jax.Array
+    interface_flux: jax.Array
+    z_um: jax.Array
+    fields: jax.Array
+
+
+def _longitudinal(eps, mu, kx):
+    """Rows ``a``, ``b`` with ``Ez = a·F`` and ``Hz = b·F``, as in :func:`system_matrix`."""
+    batch = jnp.broadcast_shapes(eps.shape[:-2], mu.shape[:-2], jnp.shape(kx))
+    eps = jnp.broadcast_to(eps, batch + (3, 3))
+    mu = jnp.broadcast_to(mu, batch + (3, 3))
+    kx = jnp.broadcast_to(kx, batch)[..., None].astype(eps.dtype)
+    zero = jnp.zeros_like(kx)
+    a = jnp.concatenate([-eps[..., 2, 0:1], -eps[..., 2, 1:2], zero, -kx], -1) / eps[..., 2, 2:3]
+    b = jnp.concatenate([zero, kx, -mu[..., 2, 0:1], -mu[..., 2, 1:2]], -1) / mu[..., 2, 2:3]
+    return a, b
+
+
+def _poynting_z(field):
+    """``S_z = ½ Re(Ex·Hy* − Ey·Hx*)`` of tangential fields ``[..., 4, n]``."""
+    ex, ey, hx, hy = (field[..., i, :] for i in range(4))
+    return 0.5 * jnp.real(ex * jnp.conj(hy) - ey * jnp.conj(hx))
+
+
+def _plane_fields(above, below, w_ref):
+    """Tangential fields at a plane from the scattering matrices above and below it.
+
+    With unit p and s amplitudes incident from the top, the downward amplitude
+    ``f`` at the plane satisfies ``f = A₀₀ + A₀₁·B₁₀·f``: every matrix involved is
+    bounded, so no growing exponential enters.
+    """
+    a00, a01, _, _ = above
+    _, _, b10, _ = below
+    eye = jnp.eye(a00.shape[-1], dtype=a00.dtype)
+    down = _solve(eye - a01 @ b10, a00)  # [..., 2, 2]: columns are p and s in
+    up = b10 @ down
+    return w_ref @ jnp.concatenate([down, up], axis=-2)  # [..., 4, 2]
+
+
+def stack_fields(
+    eps: jax.Array,
+    thickness_um: jax.Array,
+    wavelength_um: jax.Array,
+    incidence_rad: jax.Array,
+    eps_incident: jax.Array,
+    eps_exit: jax.Array,
+    mu: jax.Array | None = None,
+    samples_per_layer: int = 0,
+    doublings: int = DEFAULT_DOUBLINGS,
+) -> StackFields:
+    """Fields, interface fluxes and layer-resolved absorption of a planar stack.
+
+    The fields at each plane come from the scattering matrices of the stack
+    above and below it, never from transfer matrices, so thick, evanescent and
+    strongly absorbing layers stay stable. Everything is differentiable,
+    including with respect to thicknesses: the samples inside a layer sit at
+    fixed fractions of its thickness.
+
+    Args:
+        eps, thickness_um, wavelength_um, incidence_rad, eps_incident, eps_exit,
+        mu, doublings: As in :func:`solve_stack`.
+        samples_per_layer: Field samples per layer (static), evenly spaced from
+            its top to its bottom, both included. ``0`` skips the depth profile.
+
+    Returns:
+        :class:`StackFields`.
+    """
+    complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
+    eps = jnp.asarray(eps, dtype=complex_dtype)
+    mu = (
+        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps.shape)
+        if mu is None
+        else jnp.asarray(mu, dtype=complex_dtype)
+    )
+    thickness_um = jnp.asarray(thickness_um)
+    eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
+    n_layers = eps.shape[-3]
+    kx = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+    k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
+    w_ref = _reference_modes(kx)
+
+    deltas = []
+    for index in range(n_layers):
+        delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
+        deltas.append(_solve(w_ref, delta @ w_ref))
+    layers = [_layer(deltas[i], k0 * thickness_um[..., i], doublings) for i in range(n_layers)]
+    above = [_interface(_isotropic_modes(eps_incident, kx), w_ref)]
+    for layer in layers:
+        above.append(_star(above[-1], layer))
+    below = [_interface(w_ref, _isotropic_modes(eps_exit, kx))]
+    for layer in reversed(layers):
+        below.insert(0, _star(layer, below[0]))
+
+    incident_flux = 0.5 * jnp.real(_kz(eps_incident, kx))[..., None]
+    planes = [_plane_fields(above[j], below[j], w_ref) for j in range(n_layers + 1)]
+    flux = jnp.stack([_poynting_z(f) for f in planes], axis=-2) / incident_flux[..., None, :]
+    absorption = flux[..., :-1, :] - flux[..., 1:, :]
+
+    batch = flux.shape[:-2]
+    z_um = jnp.zeros(batch + (0,))
+    fields = jnp.zeros(batch + (0, 6, 2), dtype=complex_dtype)
+    if samples_per_layer and n_layers:
+        fractions = jnp.linspace(0.0, 1.0, samples_per_layer)
+        tops = jnp.cumsum(thickness_um, axis=-1) - thickness_um
+        depths, samples = [], []
+        for i in range(n_layers):
+            k0d = (k0 * thickness_um[..., i])[..., None]
+            delta = deltas[i][..., None, :, :]
+            upper = _layer(delta, k0d * fractions, doublings)
+            lower = _layer(delta, k0d * (1 - fractions), doublings)
+
+            def expand(blocks):
+                return tuple(block[..., None, :, :] for block in blocks)
+
+            tangential = _plane_fields(
+                _star(expand(above[i]), upper), _star(lower, expand(below[i + 1])),
+                w_ref[..., None, :, :],
+            )  # fmt: skip
+            a, b = _longitudinal(eps[..., i, :, :], mu[..., i, :, :], kx)
+            ez = jnp.einsum("...j,...sjn->...sn", a, tangential)
+            hz = jnp.einsum("...j,...sjn->...sn", b, tangential)
+            full = jnp.stack(
+                [tangential[..., 0, :], tangential[..., 1, :], ez,
+                 tangential[..., 2, :], tangential[..., 3, :], hz],
+                axis=-2,
+            )  # fmt: skip
+            samples.append(full)
+            depths.append(tops[..., i, None] + thickness_um[..., i, None] * fractions)
+        fields = jnp.concatenate(jnp.broadcast_arrays(*samples), axis=-3)
+        z_um = jnp.concatenate(jnp.broadcast_arrays(*depths), axis=-1)
+
+    return StackFields(
+        R=1.0 - flux[..., 0, :],
+        T=flux[..., -1, :],
+        absorption=absorption,
+        interface_flux=flux,
+        z_um=z_um,
+        fields=fields,
+    )
