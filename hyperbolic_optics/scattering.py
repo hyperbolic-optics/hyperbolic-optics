@@ -210,6 +210,11 @@ def scattering_interface_fields(
         else:
             backward = (below[i][..., 2:, :2] @ forward[..., np.newaxis])[..., 0]
 
+        # The prism's incident amplitude carries only the batch axes of its own
+        # interface; the backward wave returned by the cascade below carries
+        # them all. A non-dispersive first layer has no F axis, so the two
+        # differ on a frequency sweep and must be broadcast before joining.
+        forward, backward = np.broadcast_arrays(forward, backward)
         amplitudes = np.concatenate([forward, backward], axis=-1)  # [..., 4]
         fields.append((media[i][0] @ amplitudes[..., np.newaxis])[..., 0])
 

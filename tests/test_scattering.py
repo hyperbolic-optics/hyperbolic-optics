@@ -136,6 +136,51 @@ class TestBackendGuards:
                     atol=1e-12,
                 )
 
+    @pytest.mark.parametrize(
+        "first_layer",
+        [
+            {"type": "Isotropic Middle-Stack Layer", "thickness": 1.0, "permittivity": 2.0},
+            {
+                "type": "Crystal Layer",
+                "thickness": 1.0,
+                "material": {"eps_xx": 2.0, "eps_yy": 3.0, "eps_zz": 2.5, "eps_xz": 0.3},
+            },
+        ],
+        ids=["isotropic_gap", "arbitrary_tensor"],
+    )
+    def test_field_profile_on_a_frequency_sweep(self, first_layer):
+        """A non-dispersive first layer has frequency-independent modes.
+
+        Its eigenvectors then carry no F axis while the cascade below it does, so
+        the prism's forward and backward amplitudes arrive with different batch
+        shapes. Every Simple-scenario test has F = 1 and cannot see that.
+        """
+        payload = {
+            "ScenarioData": {
+                "type": "Incident",
+                "incidentAngle": [30.0],
+                "frequency": [1000.0, 1100.0, 1200.0],
+            },
+            "Layers": [
+                {"type": "Ambient Incident Layer", "permittivity": 1.0},
+                first_layer,
+                {"type": "Semi Infinite Isotropic Layer", "permittivity": 2.0},
+            ],
+        }
+        transfer = FieldProfile(_run(payload, "transfer"))
+        cascade = FieldProfile(_run(payload, "scattering"))
+        for polarization in ("p", "s"):
+            for quantity in ("reflectance", "transmittance"):
+                expected = np.asarray(getattr(transfer, quantity)(polarization))
+                assert expected.shape == (3,)
+                np.testing.assert_allclose(
+                    np.asarray(getattr(cascade, quantity)(polarization)),
+                    expected,
+                    rtol=1e-9,
+                    atol=1e-12,
+                    err_msg=f"{quantity}('{polarization}') differs between backends",
+                )
+
     def test_transmission_coefficients_agree_for_an_isotropic_exit(self):
         """Both are in the clean s/p basis only there; a crystal exit uses its own."""
         payload = {
