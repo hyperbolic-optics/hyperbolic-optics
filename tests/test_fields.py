@@ -111,6 +111,37 @@ class TestFresnel:
         assert fp.transmittance("p") == pytest.approx(1.0 - rp, abs=1e-6)
         assert fp.transmittance("s") == pytest.approx(1.0 - rs, abs=1e-6)
 
+    def test_normal_incidence(self):
+        """The isotropic exit once recovered eps_prism as (kx / sin theta)^2 -> 0/0."""
+        eps1, eps2 = 4.0, 1.0
+        structure = _simple(
+            eps1, [{"type": "Semi Infinite Isotropic Layer", "permittivity": eps2}], angle=0.0
+        )
+        fp = FieldProfile(structure)
+        expected = ((2.0 - 1.0) / (2.0 + 1.0)) ** 2
+        for polarization in ("p", "s"):
+            assert fp.reflectance(polarization) == pytest.approx(expected, abs=1e-12)
+            assert fp.transmittance(polarization) == pytest.approx(1.0 - expected, abs=1e-12)
+
+    def test_sweep_starting_at_normal_incidence(self):
+        """Only the first angle was used to recover eps_prism, so 0 poisoned the sweep."""
+        eps1, eps2 = 4.0, 1.0
+        angles = [0.0, 10.0, 20.0]
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {"type": "Incident", "incidentAngle": angles, "frequency": 1460.0},
+                "Layers": [
+                    {"type": "Ambient Incident Layer", "permittivity": eps1},
+                    {"type": "Semi Infinite Isotropic Layer", "permittivity": eps2},
+                ],
+            }
+        )
+        fp = FieldProfile(structure)
+        expected = np.array([_fresnel_R(eps1, eps2, np.radians(a)) for a in angles])
+        np.testing.assert_allclose(np.ravel(fp.reflectance("s")), expected[:, 0], atol=1e-12)
+        np.testing.assert_allclose(np.ravel(fp.reflectance("p")), expected[:, 1], atol=1e-12)
+
 
 class TestEnergyConservation:
     """R + T + sum(A) == 1 (structural) across material/scenario paths."""

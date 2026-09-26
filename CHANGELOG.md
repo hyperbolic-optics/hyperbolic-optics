@@ -67,6 +67,10 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 - Omitting `permittivity` on an isotropic exit layer silently produced an
   all-NaN spectrum: `np.float64(None)` is `nan` on NumPy 2, so the guard meant
   to catch it was unreachable.
+- An angle sweep **starting at normal incidence** with an isotropic exit was
+  all-NaN. The exit layer recovered the prism permittivity as `(kx / sin θ)²`
+  from the first angle only, which is 0/0 at θ = 0; it now uses the angle
+  furthest from normal.
 - A plain `uv sync` removed pytest and ruff, which were declared only as the
   `dev` extra; they are now also a `dev` dependency group, which uv installs by
   default.

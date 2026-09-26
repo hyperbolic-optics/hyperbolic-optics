@@ -638,10 +638,18 @@ class IsotropicSemiInfiniteLayer(Layer):
         super().__init__(data, scenario, kx, k0)
         # eps_incident equals the prism permittivity (kx = sqrt(eps)*sin(theta)),
         # constant across the angle sweep; recover it as a scalar from canonical
-        # kx [A, 1, 1] and the incident angle.
+        # kx [A, 1, 1] and the incident angle. Use the angle furthest from normal:
+        # at theta = 0 the ratio is 0/0, which made a sweep starting at normal
+        # incidence all-NaN. If every angle is normal, eps_incident only ever
+        # multiplies sin(theta) = 0, so any finite value is exact.
         kx_flat = np.atleast_1d(np.asarray(kx, dtype=np.float64)).reshape(-1)
         inc_flat = np.atleast_1d(np.asarray(self.incident_angle, dtype=np.float64)).reshape(-1)
-        self.eps_incident = float((kx_flat[0] / np.sin(inc_flat[0])) ** 2)
+        sin_flat = np.sin(inc_flat)
+        best = int(np.argmax(np.abs(sin_flat)))
+        if sin_flat[best] == 0.0:
+            self.eps_incident = 1.0
+        else:
+            self.eps_incident = float((kx_flat[best] / sin_flat[best]) ** 2)
         # Check before the cast, not after: np.float64(None) is nan on numpy 2,
         # not an error, so the guard below never fired and a missing
         # permittivity silently produced an all-NaN spectrum.
