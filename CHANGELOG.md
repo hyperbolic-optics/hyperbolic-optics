@@ -95,6 +95,11 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Payloads into SAX** (`integrations.sax.structure_smatrix` /
+  `structure_sdict`): the four-port S-matrix of an executed `Structure` on its
+  scenario grid `[angle, azimuth, frequency, thickness]`, built from the
+  payload's own tensors. It completes the engine's incident-side Jones
+  matrices with light from below, and its r and t match the engine's to 1e-11.
 - **Differentiable fields and absorption** (`bcm.stack_fields`):
   - layer-resolved absorption, interface fluxes, and the six field components
     against depth, for p and s light, from partial scattering matrices;
