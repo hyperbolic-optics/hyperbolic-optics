@@ -28,6 +28,10 @@ pinned**. Last regenerated with:
 
     Python 3.12.11, numpy 2.4.6
 
+except the 13 snapshots with a cross-polarizing Mueller matrix, regenerated with
+Python 3.12.14, numpy 2.4.6 when the Jones/Mueller placement of r_ps and r_sp was
+corrected. Only their ``mueller`` arrays changed, each by exactly that swap.
+
 (The note here previously also cited scipy, which stopped being a dependency in
 0.3.0.)
 

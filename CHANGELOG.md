@@ -67,6 +67,18 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 - Omitting `permittivity` on an isotropic exit layer silently produced an
   all-NaN spectrum: `np.float64(None)` is `nan` on NumPy 2, so the guard meant
   to catch it was unreachable.
+- **Jones and Mueller exchanged the two cross-polarized channels.** The
+  solvers name coefficients input first (`r_ps` is p in, s out), but `Jones`
+  built its matrix as `[[r_pp, r_ps], [r_sp, r_ss]]` with rows as outputs, and
+  `Mueller` did the same, so every Jones vector, Mueller matrix, Stokes output,
+  Jones–Mueller bridge and `compose_jones` product reported p→s conversion as
+  s→p and the reverse. It shows wherever the two differ: any anisotropic sample
+  whose optic axis is out of the plane of incidence. The tests couldn't see it.
+  One asserted the swapped placement; every other used geometry with no
+  conversion. New tests check the converted power in each channel against
+  `FieldProfile.polarization_resolved`. The generalized ellipsometric ratios were
+  already right, and are now documented as the standard anisotropy ratios. 13
+  golden snapshots are regenerated; only their Mueller arrays change.
 - An angle sweep **starting at normal incidence** with an isotropic exit was
   all-NaN. The exit layer recovered the prism permittivity as `(kx / sin θ)²`
   from the first angle only, which is 0/0 at θ = 0; it now uses the angle
