@@ -95,6 +95,20 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Differentiable RCWA for 2D-periodic metasurfaces** (`hyperbolic_optics.rcwa2d`):
+  - layers of a background material and polygons (pillars, holes, anything
+    drawn), each with a full ε/μ tensor;
+  - exact polygon Fourier coefficients, so gradients reach every vertex;
+  - the normal-vector factorisation, generalised to full tensors with Li's
+    rule in the local edge frame. It is averaged with its product-reversed
+    twin, so energy is conserved to rounding in lossless structures.
+
+  It reduces exactly (1e-12) to the planar solver for uniform layers and to
+  the 1D solver for stripes along x or y. It agrees with FMMAX on silicon and
+  birefringent pillars (within 3e-3 and 5e-5 at 529 harmonics), and brackets
+  arXiv:2608.06185's tilted-axis LiNbO₃ nanofins to within 0.4%.
+  `benchmarks/fmmax/compare_2d.py` and `benchmarks/crossed_grating/` have
+  the figures.
 - **PDK layer stacks, gplugins-style** (`integrations.gdsfactory`, now a
   subpackage with the same import path):
   - `simulate_stack` reads the PDK `LayerStack` at a point of a layout

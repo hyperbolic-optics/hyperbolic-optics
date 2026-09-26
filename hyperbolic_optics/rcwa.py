@@ -235,15 +235,19 @@ def _fourier_system_matrix(eps: jax.Array, mu: jax.Array, kx: jax.Array, ky: jax
     """Fourier-space Berreman operator on ``F = [Ex, Ey, Hx, Hy]`` (N each), ``[..., 4N, 4N]``.
 
     The planar derivation of :func:`hyperbolic_optics.bcm.system_matrix` with
-    ``∂x → i·diag(kx)``, ``∂y → i·ky`` and each tensor component a block.
+    ``∂x → i·diag(kx)``, ``∂y → i·diag(ky)`` and each tensor component a block.
+    ``kx`` and ``ky`` are per harmonic, ``[..., N]``; a scalar ``ky`` (a 1D grating's
+    shared one) broadcasts.
     """
     size = kx.shape[-1]
-    batch = jnp.broadcast_shapes(eps.shape[:-4], mu.shape[:-4], kx.shape[:-1], jnp.shape(ky))
+    ky = jnp.asarray(ky)
+    ky_batch = ky.shape[:-1] if ky.ndim else ()
+    batch = jnp.broadcast_shapes(eps.shape[:-4], mu.shape[:-4], kx.shape[:-1], ky_batch)
     eps = jnp.broadcast_to(eps, batch + eps.shape[-4:])
     mu = jnp.broadcast_to(mu, batch + mu.shape[-4:])
     eye = jnp.eye(size, dtype=eps.dtype)
     big_kx = jnp.broadcast_to(kx, batch + (size,))[..., :, None] * eye
-    big_ky = jnp.broadcast_to(ky, batch)[..., None, None] * eye
+    big_ky = jnp.broadcast_to(ky, batch + (size,))[..., :, None] * eye
     zero = jnp.zeros_like(big_kx)
 
     def e(i, j):
@@ -276,13 +280,11 @@ def _harmonic_modes(eps, qx, qy, direction):
     Args:
         eps: Permittivity per harmonic (broadcasts to ``qx``).
         qx: In-plane x wavevector per harmonic ``[..., N]``.
-        qy: In-plane y wavevector ``[...]``, shared by all harmonics.
+        qy: In-plane y wavevector per harmonic ``[..., N]``; a scalar broadcasts.
         direction: ``(ux, uy)`` used where the in-plane wavevector vanishes.
     """
-    qy = jnp.broadcast_to(
-        jnp.asarray(qy)[..., None], jnp.broadcast_shapes(qx.shape, jnp.shape(qy) + (1,))
-    )
-    qx = jnp.broadcast_to(qx, qy.shape)
+    shape = jnp.broadcast_shapes(jnp.shape(qx), jnp.shape(qy))
+    qx, qy = jnp.broadcast_to(qx, shape), jnp.broadcast_to(qy, shape)
     k_par_sq = qx**2 + qy**2
     moving = k_par_sq > 1e-24
     k_par = jnp.where(moving, jnp.sqrt(jnp.where(moving, k_par_sq, 1.0)), 0.0)
@@ -398,7 +400,8 @@ def solve_grating(
     # Reference medium per harmonic with kz = √(1 + k∥²), scaled to unit power:
     # always propagating, and impedance-matched to the evanescent and high-k
     # waves of the high orders (see bcm._reference_modes).
-    k_par_sq = kx**2 + jnp.asarray(ky)[..., None] ** 2
+    ky = jnp.asarray(ky)[..., None]  # shared by every harmonic of a 1D grating
+    k_par_sq = kx**2 + ky**2
     w_ref, flux_ref = _harmonic_modes(2.0 * k_par_sq + 1.0, kx, ky, direction)
     w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
     w_in, flux_in = _harmonic_modes(eps_incident[..., None], kx, ky, direction)
