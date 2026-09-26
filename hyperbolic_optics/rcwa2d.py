@@ -94,9 +94,12 @@ class PatternedLayer(NamedTuple):
 
 
 class CrossedGratingResult(NamedTuple):
-    """Amplitudes and efficiencies ``[..., order, out, in]``; ``orders`` is ``[N, 2]``."""
+    """Amplitudes and efficiencies ``[..., order, out, in]``.
 
-    orders: jax.Array
+    ``orders`` is ``[N, 2]``, a NumPy array (static, so it can index inside ``jit``).
+    """
+
+    orders: np.ndarray
     r: jax.Array
     t: jax.Array
     R: jax.Array
@@ -563,4 +566,4 @@ def solve_crossed_grating(
     power_in = jnp.stack([forward_in[..., zeroth], forward_in[..., size + zeroth]], -1)
     R = jnp.abs(r) ** 2 * per_order(flux_in)[..., :, :, None] / power_in[..., None, None, :]
     T = jnp.abs(t) ** 2 * per_order(flux_out)[..., :, :, None] / power_in[..., None, None, :]
-    return CrossedGratingResult(orders=jnp.asarray(orders), r=r, t=t, R=R, T=T)
+    return CrossedGratingResult(orders=orders, r=r, t=t, R=R, T=T)

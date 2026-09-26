@@ -4,7 +4,10 @@
   PDK's LayerStack), swept in wavelength, angle and in-plane orientation;
 - :func:`simulate_grating` -- a line grating in the layout, etched into that
   stack, swept in wavelength and angle;
-- :func:`solve_stack` / :func:`solve_grating` -- the same for a
+- :func:`simulate_crossed_grating` -- a 2D-periodic pattern (pillars, holes,
+  any polygons) etched into that stack;
+- :func:`solve_stack` / :func:`solve_grating` / :func:`solve_crossed_grating`
+  -- the same for a
   :class:`~hyperbolic_optics.integrations.gdsfactory.stack.VerticalStack` you
   wrote yourself.
 
@@ -29,8 +32,13 @@ import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack
 from numpy.typing import ArrayLike
 
-from hyperbolic_optics import bcm, rcwa
+from hyperbolic_optics import bcm, rcwa, rcwa2d
 from hyperbolic_optics.integrations.gdsfactory.geometry import LineGrating, extract_line_grating
+from hyperbolic_optics.integrations.gdsfactory.lattice import (
+    UnitCell,
+    crossed_grating_layers,
+    crossed_grating_stack,
+)
 from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec, material_tensor
 from hyperbolic_optics.integrations.gdsfactory.stack import (
     VerticalStack,
@@ -41,11 +49,14 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
 from hyperbolic_optics.mueller import Mueller
 
 __all__ = [
+    "CrossedGratingResponse",
     "GratingResponse",
     "PlanarResponse",
     "simulate_component",
+    "simulate_crossed_grating",
     "simulate_grating",
     "simulate_stack",
+    "solve_crossed_grating",
     "solve_grating",
     "solve_stack",
 ]
@@ -361,3 +372,95 @@ def simulate_component(
         azimuth_rad=azimuth_rad,
     )
     return grating, result
+
+
+# ---------------------------------------------------------------------------
+# 2D-periodic patterns
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CrossedGratingResponse:
+    """A 2D-periodic pattern's response over ``[wavelength, angle, order]``.
+
+    Attributes:
+        wavelength_um, angle_deg: The sweep axes; ``azimuth_deg`` the fixed
+            plane of incidence, from the lattice's x axis.
+        orders: ``[N, 2]``, the diffraction orders ``(m, n)`` kept.
+        r, t, R, T: ``[F, A, N, out, in]``, 0 = p and 1 = s, in each order's
+            own p/s basis; R and T are diffraction efficiencies.
+    """
+
+    wavelength_um: np.ndarray
+    angle_deg: np.ndarray
+    azimuth_deg: float
+    orders: np.ndarray
+    r: np.ndarray
+    t: np.ndarray
+    R: np.ndarray
+    T: np.ndarray
+
+    def order(self, m: int, n: int) -> int:
+        return int(np.flatnonzero((self.orders[:, 0] == m) & (self.orders[:, 1] == n))[0])
+
+    def mueller(self, order: tuple[int, int] = (0, 0), transmission: bool = False) -> np.ndarray:
+        """Mueller matrices ``[F, A, 4, 4]`` of one diffraction order."""
+        amplitudes = self.t if transmission else self.r
+        return _mueller(amplitudes[..., self.order(*order), :, :])
+
+
+def solve_crossed_grating(
+    cell: UnitCell,
+    stack: VerticalStack,
+    wavelengths_um: ArrayLike,
+    angles_deg: ArrayLike,
+    azimuth_deg: float = 0.0,
+    max_order: tuple[int, int] = (5, 5),
+    factorization: str = "normal",
+) -> CrossedGratingResponse:
+    """Diffraction by a 2D-periodic pattern etched into a stack, over wavelength and angle."""
+    wavelengths = np.atleast_1d(np.asarray(wavelengths_um, dtype=float))
+    angles = np.atleast_1d(np.asarray(angles_deg, dtype=float))
+    eps_in = stack.half_space_permittivity("incident", wavelengths)[:, None]  # [F, 1]
+    eps_out = stack.half_space_permittivity("exit", wavelengths)[:, None]
+    layers = crossed_grating_layers(cell, stack, jnp.asarray(wavelengths)[:, None])
+    result = rcwa2d.solve_crossed_grating(
+        layers,
+        cell.period_um,
+        jnp.asarray(wavelengths)[:, None],
+        jnp.radians(jnp.asarray(angles))[None, :],
+        jnp.asarray(eps_in),
+        jnp.asarray(eps_out),
+        max_order,
+        azimuth_rad=np.radians(azimuth_deg),
+        factorization=factorization,
+    )
+    size = result.orders.shape[0]
+    shape = (len(wavelengths), len(angles), size, 2, 2)
+    arrays = [np.broadcast_to(np.asarray(getattr(result, k)), shape) for k in ("r", "t", "R", "T")]
+    return CrossedGratingResponse(
+        wavelengths, angles, azimuth_deg, np.asarray(result.orders), *arrays
+    )
+
+
+def simulate_crossed_grating(
+    component: gf.Component,
+    pattern_layer: gf.typings.LayerSpec,
+    layer_stack: LayerStack,
+    wavelengths_um: ArrayLike,
+    angles_deg: ArrayLike,
+    azimuth_deg: float = 0.0,
+    max_order: tuple[int, int] = (5, 5),
+    materials: Mapping[str, MaterialSpec] | None = None,
+    ambient: MaterialSpec = 1.0,
+    period_um: tuple[float, float] | None = None,
+    factorization: str = "normal",
+) -> tuple[UnitCell, VerticalStack, CrossedGratingResponse]:
+    """A 2D-periodic pattern in a layout, etched into the PDK's stack: cell, stack, response."""
+    cell, stack = crossed_grating_stack(
+        component, pattern_layer, layer_stack, materials, ambient, period_um
+    )
+    response = solve_crossed_grating(
+        cell, stack, wavelengths_um, angles_deg, azimuth_deg, max_order, factorization
+    )
+    return cell, stack, response

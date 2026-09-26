@@ -38,6 +38,7 @@ __all__ = [
     "VerticalStack",
     "grating_layers",
     "grating_stack",
+    "patterned_stack",
     "vertical_profile",
     "vertical_stack",
 ]
@@ -266,6 +267,22 @@ def grating_stack(
     ridge = column(lambda i: width * (i + 0.5) / samples, "ridges")
     gap = column(lambda i: width + (period - width) * (i + 0.5) / samples, "gaps")
 
+    return grating, patterned_stack(ridge, gap, materials, ambient)
+
+
+def patterned_stack(
+    inside: Sequence[_Interval],
+    outside: Sequence[_Interval],
+    materials: Mapping[str, MaterialSpec] | None = None,
+    ambient: MaterialSpec = 1.0,
+) -> VerticalStack:
+    """The stack from the PDK columns inside and outside a pattern's shapes.
+
+    Where the two columns differ, the layer is patterned: the inside material
+    in the shapes, the outside one around them. The lowest level, which must
+    be the same in both, is the exit half-space.
+    """
+    ridge, gap = list(inside), list(outside)
     edges = sorted({z for part in (ridge, gap) for iv in part for z in (iv.zmin, iv.zmax)})
 
     def material_at(profile, low, high):
@@ -304,4 +321,4 @@ def grating_stack(
             )
         )
     exit_spec = spec(exit_ridge)
-    return grating, VerticalStack(layers=tuple(layers), incident=ambient, exit=exit_spec)
+    return VerticalStack(layers=tuple(layers), incident=ambient, exit=exit_spec)
