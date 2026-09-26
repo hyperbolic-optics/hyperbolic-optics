@@ -83,6 +83,18 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Differentiable planar solver** (`hyperbolic_optics.bcm`, optional `jax`
+  extra): reflection and transmission of anisotropic stacks in JAX, with exact
+  gradients with respect to thicknesses, full ε/μ tensors (including loss),
+  orientations, incidence and wavelength. Layers are built without
+  eigendecomposition by bisection doubling, as in arXiv:2608.06185, but in a
+  reference-medium wave basis in which a passive layer's scattering matrix is
+  power-normalised, so the quarter-wave singularities of that paper's mixed
+  E/H representation cannot occur. The reference's `kz = √(1 + kx²)` tracks the
+  impedance of evanescent and high-k waves: a fixed `kz = 1` reference cost up to
+  1e-3 in accuracy on high-order hyperbolic gratings. Matches the NumPy engine's
+  complex coefficients to ~1e-14; `examples/optimize_polarization_converter.py`
+  optimises a LiNbO₃ film into a half-wave plate with it.
 - **Fully general ε/μ tensors**: `ArbitraryMaterial` accepts all nine components
   of each tensor (`eps_yx`, `eps_zx`, `eps_zy` and the `mu_` counterparts), so
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —
