@@ -207,6 +207,38 @@ include the material dispersion.
 It takes about 25 s on a laptop CPU and writes the GDS and a four-panel
 figure to `examples/output/`.
 
+## Negative refraction in tilted calcite
+
+`examples/calcite_negative_refraction_gdsfactory.py` is the grating counterpart
+of FDTDX's
+[`hyperbolic_asymmetric_refraction.py`](https://github.com/ymahlau/fdtdx/blob/main/examples/hyperbolic_asymmetric_refraction.py).
+The setting is calcite at 1470.17 cm⁻¹, inside its ordinary Reststrahlen band,
+with the optic axis 25° above the surface. It is stated as
+`Oriented("Calcite", (0, -65, 0))`, because this package's z points into the
+stack and FDTDX's out of it.
+
+1. **Refraction.** From the 4×4 Berreman eigenmodes, TM beams at +45° and
+   −45° carry energy at +23.1° and +53.3°: one positive, one negative
+   refraction. FDTDX's closed form gives the same values. The package's calcite
+   model is the one FDTDX's two-pole fit was matched to (ε agrees to 1e-3).
+2. **A grating that uses it.** With the period λ / sin 45° = 9.62 µm, a
+   symmetric rectangular calcite grating at normal incidence sends its ±1
+   orders into the crystal with the wavevectors of those two beams. Both then
+   carry energy towards +x, and they leave the slab unequally.
+3. **Design and verification.** Gradient ascent on fill, etch depth and slab
+   thickness, through calcite's dispersion, gives T₋₁ = 0.214 and
+   T₊₁ = 0.067. Written to GDS, read back through a `LayerStack` (calcite
+   slab on `WAFER`, ridges on layer (1, 0), air below) and re-simulated at 81
+   orders, it gives T₋₁ = 0.214 and T₊₁ = 0.068.
+4. **Both effects need the tilt.** With the axis along the normal the same
+   grating transmits 7e-4 in each order, because the TM wave is evanescent
+   (ε_xx < 0 < ε_zz).
+
+It takes about 30 s and writes `calcite_grating.gds` and a four-panel figure
+to `examples/output/`. The grating is infinitely periodic and plane-wave
+illuminated; FDTDX's finite beams and slab are the check on what a finite
+device does.
+
 ## Dispersion in JAX
 
 `hyperbolic_optics.dispersion.permittivity("hBN", wavenumber_cm)` returns the
@@ -233,8 +265,9 @@ can make the truncated model's dependence on edge position ripple. See
 
 - **Line gratings only:** parallel ridges, periodic in one direction, and one
   etch shared by every patterned layer.
-- **2D-periodic layouts** (holes, pillars, arbitrary polygons) need 2D RCWA,
-  which is not implemented.
+- **2D-periodic layouts** (holes, pillars, arbitrary polygons) can be solved
+  with [`rcwa2d`](crossed-gratings.md), but are not yet read from a layout:
+  pass the unit cell's polygons yourself.
 - **Infinitely periodic, plane-wave results.** The number of periods drawn does
   not enter, so this describes the interior of a large array, not a finite
   device such as a grating coupler.
