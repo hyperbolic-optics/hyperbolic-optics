@@ -95,6 +95,26 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Scattering-matrix contract** (`bcm.stack_smatrix`, `bcm.cascade`):
+  - the four-port (`top@p`, `top@s`, `bottom@p`, `bottom@s`) bidirectional
+    S-matrix of a planar stack, power-normalized between propagating ports;
+  - evanescent ports flagged but carried, so stacks compose through a
+    tunnelling gap.
+
+  Tests check that it is unitary when lossless and passive when lossy, that
+  reciprocity takes the form `s(kx) = D s(−kx)ᵀ D`, that it agrees with
+  `solve_stack`, and that cascading equals the stack of both, including
+  frustrated total internal reflection against its closed form.
+- **SAX models** (`hyperbolic_optics.integrations.sax`, and
+  `hog.stack_sax_model` for PDK stacks). SAX is not imported (it pins an
+  older JAX); tests with SAX run via `uv run --with sax`.
+  `examples/sax_otto_calcite.py` couples a prism to calcite's surface phonon
+  polaritons as a SAX circuit, and tunes it to critical coupling by gradient
+  descent through the circuit.
+- **2D-periodic layouts in the gdsfactory bridge**: `periodic_array`,
+  `extract_unit_cell`, `crossed_grating_stack`, `simulate_crossed_grating`.
+  `examples/moo3_metasurface_gdsfactory.py` designs a hyperbolic α-MoO₃
+  polarization converter and verifies it from the GDS.
 - **Differentiable RCWA for 2D-periodic metasurfaces** (`hyperbolic_optics.rcwa2d`):
   - layers of a background material and polygons (pillars, holes, anything
     drawn), each with a full ε/μ tensor;

@@ -65,7 +65,17 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
-__all__ = ["PlanarResult", "rotate_tensor", "rotation_matrix", "solve_stack", "system_matrix"]
+__all__ = [
+    "PORTS",
+    "PlanarResult",
+    "PlanarSMatrix",
+    "cascade",
+    "rotate_tensor",
+    "rotation_matrix",
+    "solve_stack",
+    "stack_smatrix",
+    "system_matrix",
+]
 
 #: Doublings per layer unless told otherwise: each layer is split into 2**20
 #: slices. The fourth-order start then leaves a relative error of order
@@ -80,6 +90,36 @@ class PlanarResult(NamedTuple):
     t: jax.Array
     R: jax.Array
     T: jax.Array
+
+
+#: Port order of :class:`PlanarSMatrix`: each side of the stack, each polarization.
+PORTS = ("top@p", "top@s", "bottom@p", "bottom@s")
+
+
+class PlanarSMatrix(NamedTuple):
+    """The full bidirectional scattering matrix of a planar stack.
+
+    Attributes:
+        s: ``[..., 4, 4]`` indexed ``[out, in]`` over :data:`PORTS`. ``top`` is
+            the incident-side half-space, ``bottom`` the exit side; p and s are
+            defined in each half-space's own plane of incidence (x-z). Reference
+            planes are the stack's two outer interfaces.
+        propagating: ``[..., 4]``, whether each port's wave propagates (it is
+            evanescent in a half-space whose index is below ``kx``).
+
+    Amplitudes are scaled by ``√kz`` of their half-space, so between propagating
+    ports ``|s|²`` is the fraction of power transferred, and a lossless stack
+    has a unitary ``s``. Reciprocal media (symmetric ε and μ) give
+    ``s(kx) = D · s(−kx)ᵀ · D`` with ``D = diag(−1, 1, −1, 1)``: reversing a wave
+    reverses its in-plane wavevector, and the p waves' sign convention (they
+    share the sign of Hy) flips on reversal. For an evanescent port the same scaling still applies
+    (with complex ``kz``), so matrices of stacks that share a half-space
+    compose correctly through it -- frustrated total internal reflection
+    included -- but ``|s|²`` is not a power there.
+    """
+
+    s: jax.Array
+    propagating: jax.Array
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +359,16 @@ def solve_stack(
             UserWarning,
             stacklevel=2,
         )
+    kx = jnp.sqrt(jnp.asarray(eps_incident)) * jnp.sin(jnp.asarray(incidence_rad))
+    t, _, r, _ = _scattering(
+        eps, thickness_um, wavelength_um, kx, eps_incident, eps_exit, mu, doublings
+    )
+    flux = jnp.real(_kz(eps_exit, kx)) / jnp.real(_kz(eps_incident, kx))
+    return PlanarResult(r=r, t=t, R=jnp.abs(r) ** 2, T=jnp.abs(t) ** 2 * flux[..., None, None])
+
+
+def _scattering(eps, thickness_um, wavelength_um, kx, eps_incident, eps_exit, mu, doublings):
+    """Scattering blocks between the half-spaces' mode amplitudes, at in-plane ``kx``."""
     complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
     eps = jnp.asarray(eps, dtype=complex_dtype)
     mu = (
@@ -331,7 +381,7 @@ def solve_stack(
     eps_exit = jnp.asarray(eps_exit)
     n_layers = eps.shape[-3]
 
-    kx = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+    kx = jnp.asarray(kx)
     k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
     w_ref = _reference_modes(kx)
 
@@ -343,6 +393,92 @@ def solve_stack(
         scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
     scattering = _star(scattering, _interface(w_ref, _isotropic_modes(eps_exit, kx)))
 
-    t, _, r, _ = scattering
-    flux = jnp.real(_kz(eps_exit, kx)) / jnp.real(_kz(eps_incident, kx))
-    return PlanarResult(r=r, t=t, R=jnp.abs(r) ** 2, T=jnp.abs(t) ** 2 * flux[..., None, None])
+    return scattering
+
+
+def stack_smatrix(
+    eps: jax.Array,
+    thickness_um: jax.Array,
+    wavelength_um: jax.Array,
+    kx: jax.Array,
+    eps_top: jax.Array,
+    eps_bottom: jax.Array,
+    mu: jax.Array | None = None,
+    doublings: int = DEFAULT_DOUBLINGS,
+) -> PlanarSMatrix:
+    """The bidirectional, power-normalized scattering matrix of a planar stack.
+
+    Where :func:`solve_stack` gives the response to light from the incident
+    side, this gives all four ports: light from either side, in either
+    polarization, as needed to connect stacks to one another (for instance in a
+    SAX circuit, :mod:`hyperbolic_optics.integrations.sax`).
+
+    Args:
+        eps: Layer permittivity tensors ``[..., L, 3, 3]``, from the top down.
+        thickness_um: Layer thicknesses in µm, ``[..., L]``.
+        wavelength_um: Vacuum wavelength in µm.
+        kx: In-plane wavevector over k₀ (``n·sin θ``, conserved through the
+            stack), rather than an angle, so stacks sharing a half-space share
+            it too.
+        eps_top, eps_bottom: Real, positive permittivities of the half-spaces.
+        mu: Layer permeability tensors; identity if omitted.
+        doublings: Doublings per layer (static).
+
+    Returns:
+        :class:`PlanarSMatrix` over :data:`PORTS`.
+    """
+    kx = jnp.asarray(kx)
+    s00, s01, s10, s11 = _scattering(
+        eps, thickness_um, wavelength_um, kx, eps_top, eps_bottom, mu, doublings
+    )
+    raw = jnp.concatenate(
+        [jnp.concatenate([s10, s11], axis=-1), jnp.concatenate([s00, s01], axis=-1)], axis=-2
+    )  # rows: out at top, out at bottom; columns: in at top, in at bottom
+    kz_top = _kz(jnp.asarray(eps_top), kx) + 0j
+    kz_bottom = _kz(jnp.asarray(eps_bottom), kx) + 0j
+    root = jnp.stack(
+        jnp.broadcast_arrays(*(jnp.sqrt(k) for k in (kz_top,) * 2 + (kz_bottom,) * 2)), -1
+    )
+    s = raw * root[..., :, None] / root[..., None, :]
+    tolerance = 1e-12
+    propagating = jnp.stack(
+        jnp.broadcast_arrays(
+            *(jnp.abs(jnp.imag(k)) < tolerance for k in (kz_top,) * 2 + (kz_bottom,) * 2)
+        ),
+        -1,
+    )
+    propagating = jnp.broadcast_to(propagating, s.shape[:-1])
+    return PlanarSMatrix(s=s, propagating=propagating)
+
+
+def cascade(upper: PlanarSMatrix, lower: PlanarSMatrix) -> PlanarSMatrix:
+    """Connect ``upper``'s bottom port to ``lower``'s top port.
+
+    The two must share that half-space (same permittivity, same ``kx``): the
+    result is the stack of both, with the shared medium of zero thickness --
+    what a SAX circuit computes, without SAX. Evanescent channels in the shared
+    medium are carried, so a gap below total internal reflection tunnels.
+    """
+
+    def blocks(m):
+        s = m.s
+        return s[..., :2, :2], s[..., 2:, :2], s[..., :2, 2:], s[..., 2:, 2:]
+
+    a_tt, a_bt, a_tb, a_bb = blocks(upper)  # [out side][in side]: t = top, b = bottom
+    b_tt, b_bt, b_tb, b_bb = blocks(lower)
+    eye = jnp.eye(2, dtype=a_tt.dtype)
+    down = _solve(eye - b_tt @ a_bb, b_tt @ a_bt)  # lower's reflection seen from above
+    up = _solve(eye - a_bb @ b_tt, a_bb)
+    top_top = a_tt + a_tb @ down
+    bottom_top = b_bt @ _solve(eye - a_bb @ b_tt, a_bt)
+    top_bottom = a_tb @ _solve(eye - b_tt @ a_bb, b_tb)
+    bottom_bottom = b_bb + b_bt @ up @ b_tb
+    s = jnp.concatenate(
+        [
+            jnp.concatenate([top_top, top_bottom], axis=-1),
+            jnp.concatenate([bottom_top, bottom_bottom], axis=-1),
+        ],
+        axis=-2,
+    )
+    propagating = jnp.concatenate([upper.propagating[..., :2], lower.propagating[..., 2:]], axis=-1)
+    return PlanarSMatrix(s=s, propagating=propagating)

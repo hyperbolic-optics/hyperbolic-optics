@@ -57,6 +57,7 @@ from hyperbolic_optics.integrations.gdsfactory.simulate import (
     solve_crossed_grating,
     solve_grating,
     solve_stack,
+    stack_sax_model,
 )
 from hyperbolic_optics.integrations.gdsfactory.stack import (
     StackLayer,
@@ -97,6 +98,7 @@ __all__ = [
     "solve_crossed_grating",
     "solve_grating",
     "solve_stack",
+    "stack_sax_model",
     "vertical_profile",
     "vertical_stack",
     "x_cut",
