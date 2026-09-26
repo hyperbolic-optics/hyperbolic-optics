@@ -95,6 +95,14 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Any lattice for 2D RCWA** (`rcwa2d.Lattice`): hexagonal (triangular),
+  oblique and rectangular lattices.
+  - A circular truncation respects the lattice's symmetry and does not depend
+    on the choice of primitive vectors.
+  - A triangular lattice matches its rectangular supercell to 1e-12, and
+    silicon discs on one agree with FMMAX to within both codes' convergence.
+  - The gdsfactory bridge draws (`periodic_array(lattice_um=…)`) and infers
+    such lattices (`extract_unit_cell`), dimers included.
 - **Payloads into SAX** (`integrations.sax.structure_smatrix` /
   `structure_sdict`): the four-port S-matrix of an executed `Structure` on its
   scenario grid `[angle, azimuth, frequency, thickness]`, built from the

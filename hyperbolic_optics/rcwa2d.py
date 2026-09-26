@@ -1,6 +1,7 @@
 """Differentiable RCWA for 2D-periodic (crossed) gratings of full-tensor media.
 
-Layers periodic in x and y on a rectangular lattice, layered in z. Each
+Layers periodic in the plane on any Bravais lattice -- square, rectangular,
+hexagonal (triangular) or oblique (:class:`Lattice`) -- and layered in z. Each
 patterned layer is a background material and non-overlapping polygons, each
 with its own 3×3 permittivity and permeability -- any orientation. Circles and
 rectangles are polygons (:func:`ellipse`, :func:`rectangle`), and a GDS
@@ -11,7 +12,11 @@ sum over its edges (the divergence theorem), so every coefficient is exact and
 differentiable with respect to every vertex -- a fill factor, a radius or a
 polygon exported from a layout. Layers are solved by the eigendecomposition-free
 cascade of :mod:`hyperbolic_optics.bcm` on ``4N × 4N`` Fourier-space operators
-for ``N = (2Mx + 1)(2My + 1)`` harmonics.
+for ``N`` harmonics ``G = m·b₁ + n·b₂`` of the reciprocal lattice: all
+``|m| ≤ M₁, |n| ≤ M₂`` (``truncation="parallelogram"``), or every ``G`` with
+``|G| ≤ max(M₁, M₂)·g_min`` for the shortest reciprocal vector ``g_min``
+(``"circular"``), which depends only on the lattice, not on the primitive
+vectors chosen to describe it.
 
 Fourier factorisation
 ---------------------
@@ -43,8 +48,9 @@ inclusions (Re ε < 0) converge slowly under every Fourier factorisation, this
 one included.
 
 Conventions follow :mod:`hyperbolic_optics.rcwa`: order ``(m, n)`` has in-plane
-wavevector ``(kx₀ + m·λ/Λx, ky₀ + n·λ/Λy)``, resolved into that order's own p
-and s; results are ``[..., order, out, in]`` with 0 = p and 1 = s.
+wavevector ``k∥₀ + (m·b₁ + n·b₂)/k₀`` (on a rectangular lattice,
+``(kx₀ + m·λ/Λx, ky₀ + n·λ/Λy)``), resolved into that order's own p and s;
+results are ``[..., order, out, in]`` with 0 = p and 1 = s.
 """
 
 import warnings
@@ -59,6 +65,7 @@ from hyperbolic_optics.rcwa import _fourier_system_matrix, _harmonic_modes, defa
 
 __all__ = [
     "CrossedGratingResult",
+    "Lattice",
     "PatternedLayer",
     "Shape",
     "ellipse",
@@ -67,6 +74,59 @@ __all__ = [
     "solve_crossed_grating",
     "uniform",
 ]
+
+
+class Lattice(NamedTuple):
+    """A 2D Bravais lattice: primitive vectors ``a1``, ``a2`` as ``(x, y)`` in µm.
+
+    Use the constructors: :meth:`rectangular`, :meth:`square`, :meth:`hexagonal`
+    (the triangular lattice) and :meth:`oblique`. A ``(Λx, Λy)`` tuple passed as
+    a period means :meth:`rectangular`. Components may be JAX values (to
+    optimise the lattice) except under ``truncation="circular"``.
+    """
+
+    a1: tuple
+    a2: tuple
+
+    @classmethod
+    def rectangular(cls, period_x, period_y) -> "Lattice":
+        return cls((period_x, 0.0), (0.0, period_y))
+
+    @classmethod
+    def square(cls, period) -> "Lattice":
+        return cls.rectangular(period, period)
+
+    @classmethod
+    def hexagonal(cls, period, rotation_rad=0.0) -> "Lattice":
+        """Triangular lattice of nearest-neighbour distance ``period``; ``a1`` along x, rotated."""
+        c, s = jnp.cos(rotation_rad), jnp.sin(rotation_rad)
+        h = jnp.sqrt(3.0) / 2
+
+        def turn(x, y):
+            return (period * (c * x - s * y), period * (s * x + c * y))
+
+        return cls(turn(1.0, 0.0), turn(0.5, h))
+
+    @classmethod
+    def oblique(cls, a, b, angle_rad) -> "Lattice":
+        """``|a1| = a`` along x and ``|a2| = b`` at ``angle_rad`` from it."""
+        return cls((a, 0.0), (b * jnp.cos(angle_rad), b * jnp.sin(angle_rad)))
+
+
+def _as_lattice(period_um) -> Lattice:
+    if isinstance(period_um, Lattice):
+        return period_um
+    return Lattice.rectangular(*period_um)
+
+
+def _vectors(lattice: Lattice):
+    """``(a1, a2, b1, b2, area)``: primitive and reciprocal vectors, cell area."""
+    a1 = jnp.asarray(lattice.a1, dtype=float)
+    a2 = jnp.asarray(lattice.a2, dtype=float)
+    cross = a1[0] * a2[1] - a1[1] * a2[0]
+    b1 = 2 * jnp.pi * jnp.stack([a2[1], -a2[0]]) / cross
+    b2 = 2 * jnp.pi * jnp.stack([-a1[1], a1[0]]) / cross
+    return a1, a2, b1, b2, jnp.abs(cross)
 
 
 class Shape(NamedTuple):
@@ -181,19 +241,20 @@ def polygon_fourier(vertices: jax.Array, gx: jax.Array, gy: jax.Array) -> jax.Ar
     return jnp.where(zero, jnp.abs(signed_area)[..., None] + 0j, winding * transform)
 
 
-def _grid_wavevectors(kx_max: int, ky_max: int, period):
-    m = jnp.arange(-kx_max, kx_max + 1)
-    n = jnp.arange(-ky_max, ky_max + 1)
-    mm, nn = jnp.meshgrid(m, n, indexing="ij")
-    gx = 2 * jnp.pi * mm.reshape(-1) / period[0]
-    gy = 2 * jnp.pi * nn.reshape(-1) / period[1]
-    return gx, gy, mm.shape
+def _grid_wavevectors(k1_max: int, k2_max: int, lattice: Lattice):
+    """``G = m·b₁ + n·b₂`` for ``|m| ≤ k1_max, |n| ≤ k2_max``, as ``[2K₁+1, 2K₂+1]`` grids."""
+    _, _, b1, b2, _ = _vectors(lattice)
+    m = jnp.arange(-k1_max, k1_max + 1)[:, None]
+    n = jnp.arange(-k2_max, k2_max + 1)[None, :]
+    return m * b1[0] + n * b2[0], m * b1[1] + n * b2[1]
 
 
-def _indicators(layer: PatternedLayer, kx_max: int, ky_max: int, period) -> list[jax.Array]:
-    """Exact coefficients of each shape's indicator on ``|m| ≤ kx_max, |n| ≤ ky_max``."""
-    gx, gy, shape = _grid_wavevectors(kx_max, ky_max, period)
-    area = period[0] * period[1]
+def _indicators(layer: PatternedLayer, k1_max: int, k2_max: int, lattice) -> list[jax.Array]:
+    """Exact coefficients of each shape's indicator on ``|m| ≤ k1_max, |n| ≤ k2_max``."""
+    gx, gy = _grid_wavevectors(k1_max, k2_max, lattice)
+    shape = gx.shape
+    gx, gy = gx.reshape(-1), gy.reshape(-1)
+    area = _vectors(lattice)[4]
     return [
         (polygon_fourier(jnp.asarray(s.vertices), gx, gy) / area).reshape(
             jnp.shape(s.vertices)[:-2] + shape
@@ -315,19 +376,27 @@ def _kron3(a: jax.Array) -> jax.Array:
     return _full(jnp.stack([jnp.stack(r, -3) for r in rows], -4))
 
 
-def _normal_field(indicators, period, grid, sigma):
-    """Unit normal ``(nx, ny)`` of the pattern's edges on a cell-centred grid."""
-    chi = sum(indicators)  # union (shapes do not overlap); [..., 2Kx+1, 2Ky+1]
-    kx_max, ky_max = chi.shape[-2] // 2, chi.shape[-1] // 2
-    gx = 2 * jnp.pi * jnp.arange(-kx_max, kx_max + 1) / period[0]
-    gy = 2 * jnp.pi * jnp.arange(-ky_max, ky_max + 1) / period[1]
-    smooth = chi * jnp.exp(-0.5 * sigma**2 * (gx[:, None] ** 2 + gy[None, :] ** 2))
-    x = (jnp.arange(grid[0]) + 0.5) / grid[0] * period[0]
-    y = (jnp.arange(grid[1]) + 0.5) / grid[1] * period[1]
-    ex = jnp.exp(1j * x[:, None] * gx[None, :])  # [Gx, 2Kx+1]
-    ey = jnp.exp(1j * y[:, None] * gy[None, :])
-    dx = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gx[:, None] * smooth, ex, ey))
-    dy = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gy[None, :] * smooth, ex, ey))
+def _phases(fractions: jax.Array, k_max: int, sign: float) -> jax.Array:
+    """``exp(sign·2πi·f·m)`` for sample fractions ``f`` and ``|m| ≤ k_max``: ``[F, 2K+1]``."""
+    m = jnp.arange(-k_max, k_max + 1)
+    return jnp.exp(sign * 2j * jnp.pi * fractions[:, None] * m[None, :])
+
+
+def _normal_field(indicators, lattice, grid, sigma):
+    """Unit normal ``(nx, ny)`` of the pattern's edges at cell-centred points.
+
+    The points are ``u·a₁ + v·a₂`` on a regular grid of fractions ``(u, v)``,
+    which samples a cell of any shape uniformly.
+    """
+    chi = sum(indicators)  # union (shapes do not overlap); [..., 2K₁+1, 2K₂+1]
+    k1_max, k2_max = chi.shape[-2] // 2, chi.shape[-1] // 2
+    gx, gy = _grid_wavevectors(k1_max, k2_max, lattice)
+    smooth = chi * jnp.exp(-0.5 * sigma**2 * (gx**2 + gy**2))
+    u = (jnp.arange(grid[0]) + 0.5) / grid[0]
+    v = (jnp.arange(grid[1]) + 0.5) / grid[1]
+    eu, ev = _phases(u, k1_max, 1.0), _phases(v, k2_max, 1.0)
+    dx = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gx * smooth, eu, ev))
+    dy = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gy * smooth, eu, ev))
     squared = dx**2 + dy**2
     flat = squared < 1e-18 * jnp.max(squared)  # only the field's isolated zeros
     safe = jnp.sqrt(jnp.where(flat, 1.0, squared))  # differentiable everywhere
@@ -338,16 +407,13 @@ def _normal_field(indicators, period, grid, sigma):
     # regions (the medial lines), where every factor is continuous.
     nx = jnp.where(flat, 1.0, dx / safe)
     ny = jnp.where(flat, 0.0, dy / safe)
-    return nx, ny, x, y
+    return nx, ny, u, v
 
 
-def _grid_coefficients(samples, x, y, period, kx_max, ky_max):
-    """Fourier coefficients ``|m| ≤ kx_max, |n| ≤ ky_max`` of cell-centred samples."""
-    gx = 2 * jnp.pi * jnp.arange(-kx_max, kx_max + 1) / period[0]
-    gy = 2 * jnp.pi * jnp.arange(-ky_max, ky_max + 1) / period[1]
-    ex = jnp.exp(-1j * x[:, None] * gx[None, :])
-    ey = jnp.exp(-1j * y[:, None] * gy[None, :])
-    return jnp.einsum("...ij,im,jn->...mn", samples + 0j, ex, ey) / (x.size * y.size)
+def _grid_coefficients(samples, u, v, k1_max, k2_max):
+    """Fourier coefficients ``|m| ≤ k1_max, |n| ≤ k2_max`` of samples at fractions ``(u, v)``."""
+    eu, ev = _phases(u, k1_max, -1.0), _phases(v, k2_max, -1.0)
+    return jnp.einsum("...ij,im,jn->...mn", samples + 0j, eu, ev) / (u.size * v.size)
 
 
 def _convolve(chi, g_hat, out_x: int, out_y: int):
@@ -364,7 +430,7 @@ def _convolve(chi, g_hat, out_x: int, out_y: int):
     return jnp.einsum("...abcd,...cd->...ab", gathered, g_hat)
 
 
-def _factorize(layer: PatternedLayer, which: str, max_order, period, orders, rule, grid):
+def _factorize(layer: PatternedLayer, which: str, max_order, lattice, orders, rule, grid):
     """``[[ε]]`` (or ``[[μ]]``) as ``[..., 3, 3, N, N]`` blocks."""
     mx, my = max_order
     size = orders.shape[0]
@@ -382,7 +448,7 @@ def _factorize(layer: PatternedLayer, which: str, max_order, period, orders, rul
         return jnp.einsum("...ij,mn->...ijmn", background, ident)
 
     if rule == "laurent":
-        indicators = _indicators(layer, 2 * mx, 2 * my, period)
+        indicators = _indicators(layer, 2 * mx, 2 * my, lattice)
         shape = indicators[0].shape[-2:]
         blocks = [
             [
@@ -403,11 +469,12 @@ def _factorize(layer: PatternedLayer, which: str, max_order, period, orders, rul
 
     # frame-dependent parts are smooth: keep their harmonics up to q = 2·max_order
     qx_max, qy_max = 2 * mx, 2 * my
-    wide = _indicators(layer, 2 * mx + qx_max, 2 * my + qy_max, period)
+    wide = _indicators(layer, 2 * mx + qx_max, 2 * my + qy_max, lattice)
     # smoothed over a tenth of the cell, so the field's direction is defined
     # everywhere but isolated points, and is the edge normal along straight edges
-    sigma = 0.1 * jnp.minimum(period[0], period[1])
-    nx, ny, x, y = _normal_field(wide, period, grid, sigma)
+    a1, a2, _, _, _ = _vectors(lattice)
+    sigma = 0.1 * jnp.minimum(jnp.linalg.norm(a1), jnp.linalg.norm(a2))
+    nx, ny, u, v = _normal_field(wide, lattice, grid, sigma)
     zero, one = jnp.zeros_like(nx), jnp.ones_like(nx)
     projector_grid = jnp.stack(
         [jnp.stack([nx * nx, nx * ny, zero], -1), jnp.stack([nx * ny, ny * ny, zero], -1),
@@ -423,10 +490,10 @@ def _factorize(layer: PatternedLayer, which: str, max_order, period, orders, rul
     )
 
     def coefficients(field):  # [..., Gx, Gy] -> [..., 4Mx+1, 4My+1], one material
-        return _grid_coefficients(field, x, y, period, qx_max, qy_max)
+        return _grid_coefficients(field, u, v, qx_max, qy_max)
 
     p_coefficients = _grid_coefficients(
-        jnp.moveaxis(projector_grid, (-2, -1), (0, 1)), x, y, period, 2 * mx, 2 * my
+        jnp.moveaxis(projector_grid, (-2, -1), (0, 1)), u, v, 2 * mx, 2 * my
     )  # [3, 3, ..., 4Mx+1, 4My+1]
     p_blocks = jnp.moveaxis(_toeplitz(p_coefficients, orders, centre), (0, 1), (-4, -3))
 
@@ -469,9 +536,39 @@ def _factorize(layer: PatternedLayer, which: str, max_order, period, orders, rul
 # ---------------------------------------------------------------------------
 
 
-def _orders(mx: int, my: int) -> np.ndarray:
+def _orders(mx: int, my: int, lattice=None, truncation: str = "parallelogram") -> np.ndarray:
+    """Harmonic indices ``(m, n)`` kept, ``[N, 2]``, in lexicographic order."""
     m, n = np.meshgrid(np.arange(-mx, mx + 1), np.arange(-my, my + 1), indexing="ij")
-    return np.stack([m.reshape(-1), n.reshape(-1)], axis=-1)
+    orders = np.stack([m.reshape(-1), n.reshape(-1)], axis=-1)
+    if truncation == "parallelogram":
+        return orders
+    if truncation != "circular":
+        raise ValueError(f"Unknown truncation {truncation!r}; use 'parallelogram' or 'circular'.")
+    try:
+        a1 = np.asarray(lattice.a1, dtype=float)
+        a2 = np.asarray(lattice.a2, dtype=float)
+    except (TypeError, jax.errors.TracerArrayConversionError) as error:
+        raise ValueError(
+            "circular truncation needs a concrete lattice (the harmonics kept depend on it); "
+            "use truncation='parallelogram' to optimise the lattice itself"
+        ) from error
+    cross = a1[0] * a2[1] - a1[1] * a2[0]
+    b1 = 2 * np.pi * np.array([a2[1], -a2[0]]) / cross
+    b2 = 2 * np.pi * np.array([-a1[1], a1[0]]) / cross
+    # the radius, from the lattice's shortest reciprocal vector, is basis-independent;
+    # the index box is then whatever holds that circle (m = G·a₁/2π, n = G·a₂/2π)
+    small = np.stack(np.meshgrid(np.arange(-3, 4), np.arange(-3, 4), indexing="ij"), -1).reshape(
+        -1, 2
+    )
+    small = small[(small != 0).any(axis=1)]
+    shortest = np.min(np.linalg.norm(small[:, :1] * b1 + small[:, 1:] * b2, axis=1))
+    radius = max(mx, my) * shortest * (1 + 1e-9)
+    m1 = int(np.ceil(radius * np.linalg.norm(a1) / (2 * np.pi)))
+    m2 = int(np.ceil(radius * np.linalg.norm(a2) / (2 * np.pi)))
+    m, n = np.meshgrid(np.arange(-m1, m1 + 1), np.arange(-m2, m2 + 1), indexing="ij")
+    orders = np.stack([m.reshape(-1), n.reshape(-1)], axis=-1)
+    g = orders[:, :1] * b1 + orders[:, 1:] * b2
+    return orders[np.linalg.norm(g, axis=1) <= radius]
 
 
 def solve_crossed_grating(
@@ -486,20 +583,27 @@ def solve_crossed_grating(
     factorization: str = "normal",
     doublings: int | None = None,
     grid: tuple[int, int] | None = None,
+    truncation: str = "parallelogram",
 ) -> CrossedGratingResult:
     """Diffraction of a plane wave by a stack of 2D-periodic anisotropic layers.
 
     Args:
         layers: :class:`PatternedLayer` s from the incident side down.
-        period_um: ``(Λx, Λy)`` in µm.
+        period_um: A :class:`Lattice`, or ``(Λx, Λy)`` in µm for a rectangular one.
         wavelength_um: Vacuum wavelength in µm.
         incidence_rad: Polar angle of incidence in the incident medium.
         eps_incident, eps_exit: Real, positive permittivities of the half-spaces.
-        max_order: ``(Mx, My)``: orders ``|m| ≤ Mx``, ``|n| ≤ My`` (static).
+        max_order: ``(M₁, M₂)``: orders ``|m| ≤ M₁``, ``|n| ≤ M₂`` along ``b₁``, ``b₂`` (static).
         azimuth_rad: Plane of incidence, from the x axis.
         factorization: ``"normal"`` (default) or ``"laurent"`` (static).
         doublings: Doublings per layer (static); by default grows with the order.
-        grid: Sampling ``(Gx, Gy)`` for the normal-vector method's smooth parts.
+        grid: Sampling ``(G₁, G₂)`` of the cell (along ``a₁``, ``a₂``) for the
+            normal-vector method's smooth parts.
+        truncation: ``"parallelogram"`` (default) or ``"circular"`` (static).
+            Circular keeps ``|G| ≤ max(M₁, M₂)·g_min``, with ``g_min`` the
+            shortest reciprocal lattice vector: it respects the lattice's
+            symmetry (hexagonal included), and the results do not depend on the
+            primitive vectors chosen to describe it.
 
     Returns:
         :class:`CrossedGratingResult`: ``orders`` ``[N, 2]`` and ``r``, ``t``,
@@ -513,8 +617,12 @@ def solve_crossed_grating(
             stacklevel=2,
         )
     mx, my = max_order
-    period = (jnp.asarray(period_um[0], dtype=float), jnp.asarray(period_um[1], dtype=float))
-    orders = _orders(mx, my)
+    lattice = _as_lattice(period_um)
+    _, _, b1, b2, _ = _vectors(lattice)
+    orders = _orders(mx, my, lattice, truncation)
+    # the index box the kept harmonics span (circular truncation may widen it)
+    mx, my = int(np.abs(orders[:, 0]).max()), int(np.abs(orders[:, 1]).max())
+    max_order = (mx, my)
     size = orders.shape[0]
     zeroth = int(np.flatnonzero((orders[:, 0] == 0) & (orders[:, 1] == 0))[0])
     if doublings is None:
@@ -525,12 +633,11 @@ def solve_crossed_grating(
     eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
     wavelength_um, azimuth_rad = jnp.asarray(wavelength_um), jnp.asarray(azimuth_rad)
     k_par = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
-    kx = (k_par * jnp.cos(azimuth_rad))[..., None] + orders[:, 0] * (wavelength_um / period[0])[
-        ..., None
-    ]
-    ky = (k_par * jnp.sin(azimuth_rad))[..., None] + orders[:, 1] * (wavelength_um / period[1])[
-        ..., None
-    ]
+    scale = (wavelength_um / (2 * jnp.pi))[..., None]
+    gx = orders[:, 0] * b1[0] + orders[:, 1] * b2[0]
+    gy = orders[:, 0] * b1[1] + orders[:, 1] * b2[1]
+    kx = (k_par * jnp.cos(azimuth_rad))[..., None] + gx * scale
+    ky = (k_par * jnp.sin(azimuth_rad))[..., None] + gy * scale
     direction = (jnp.cos(azimuth_rad)[..., None], jnp.sin(azimuth_rad)[..., None])
     k0 = 2 * jnp.pi / wavelength_um
 
@@ -542,8 +649,8 @@ def solve_crossed_grating(
 
     scattering = _interface(w_in, w_ref)
     for layer in layers:
-        eps = _factorize(layer, "eps", max_order, period, orders, factorization, grid)
-        mu = _factorize(layer, "mu", max_order, period, orders, factorization, grid)
+        eps = _factorize(layer, "eps", max_order, lattice, orders, factorization, grid)
+        mu = _factorize(layer, "mu", max_order, lattice, orders, factorization, grid)
         delta = _fourier_system_matrix(eps, mu, kx, ky)
         delta_ref = _solve(w_ref, delta @ w_ref)
         k0d = k0 * jnp.asarray(layer.thickness_um)

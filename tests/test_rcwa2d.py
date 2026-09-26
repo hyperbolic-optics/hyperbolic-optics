@@ -332,3 +332,144 @@ def test_unknown_factorization_raises():
         rcwa2d.solve_crossed_grating(
             [_pillar(SILICON)], (0.6, 0.6), 1.0, 0.0, 1.0, 2.1, (1, 1), factorization="li"
         )
+
+
+# ---------------------------------------------------------------------------
+# General lattices
+# ---------------------------------------------------------------------------
+
+
+def _silicon_disc(centre=(0.0, 0.0), radius=0.2):
+    return rcwa2d.Shape(rcwa2d.ellipse(centre, (radius, radius), 48), SILICON)
+
+
+HEX = rcwa2d.Lattice.hexagonal(0.6)
+
+
+class TestLattices:
+    def test_constructors(self):
+        a1, a2 = np.asarray(HEX.a1), np.asarray(HEX.a2)
+        assert np.linalg.norm(a1) == pytest.approx(0.6)
+        assert np.linalg.norm(a2) == pytest.approx(0.6)
+        assert np.degrees(np.arccos(a1 @ a2 / 0.36)) == pytest.approx(60.0)
+        assert rcwa2d.Lattice.square(0.5) == rcwa2d.Lattice((0.5, 0.0), (0.0, 0.5))
+
+    def test_uniform_layers_are_the_planar_solver_on_any_lattice(self):
+        result = rcwa2d.solve_crossed_grating(
+            [rcwa2d.uniform(LN_TILTED, 0.4)], HEX, 0.8, 0.4, 1.0, 2.25, (3, 3), azimuth_rad=0.3
+        )
+        rotation = bcm.rotation_matrix(0.0, 0.0, -0.3)
+        planar = bcm.solve_stack(
+            bcm.rotate_tensor(LN_TILTED[None], rotation), jnp.array([0.4]), 0.8, 0.4, 1.0, 2.25
+        )
+        np.testing.assert_allclose(result.r[_zeroth(result)], planar.r, atol=1e-12)
+
+    @pytest.mark.parametrize(("factorization", "atol"), [("laurent", 1e-12), ("normal", 1e-5)])
+    def test_circular_truncation_does_not_depend_on_the_basis(self, factorization, atol):
+        """One square lattice, two primitive bases: the same harmonics, the same answer."""
+        shape = rcwa2d.Shape(rcwa2d.ellipse((0.2, 0.15), (0.17, 0.12), 48, 0.3), LN_TILTED)
+        layer = rcwa2d.PatternedLayer(0.25, EYE, (shape,))
+        results = [
+            rcwa2d.solve_crossed_grating(
+                [layer],
+                lattice,
+                1.0,
+                0.4,
+                1.0,
+                2.1,
+                (5, 5),
+                azimuth_rad=0.3,
+                factorization=factorization,
+                truncation="circular",
+            )  # fmt: skip
+            for lattice in (rcwa2d.Lattice.square(0.6), rcwa2d.Lattice((0.6, 0.0), (0.6, 0.6)))
+        ]
+        assert results[0].orders.shape == results[1].orders.shape
+        np.testing.assert_allclose(
+            results[0].R[_zeroth(results[0])], results[1].R[_zeroth(results[1])], atol=atol
+        )
+
+    def test_hexagonal_is_its_rectangular_supercell(self):
+        """A triangular lattice is a rectangular one (a, a√3) with two discs per cell."""
+        a = 0.6
+        hexagonal = rcwa2d.solve_crossed_grating(
+            [rcwa2d.PatternedLayer(0.25, EYE, (_silicon_disc(),))], HEX, 1.0, 0.3, 1.0, 2.1,
+            (5, 5), factorization="laurent", truncation="circular",
+        )  # fmt: skip
+        pair = (_silicon_disc(), _silicon_disc((a / 2, a * np.sqrt(3) / 2)))
+        supercell = rcwa2d.solve_crossed_grating(
+            [rcwa2d.PatternedLayer(0.25, EYE, pair)],
+            rcwa2d.Lattice.rectangular(a, a * np.sqrt(3)),
+            1.0,
+            0.3,
+            1.0,
+            2.1,
+            (10, 10),
+            factorization="laurent",
+            truncation="circular",
+        )  # fmt: skip  -- its shortest reciprocal vector is half the hexagonal one
+        np.testing.assert_allclose(
+            hexagonal.R[_zeroth(hexagonal)], supercell.R[_zeroth(supercell)], atol=1e-12
+        )
+
+    @pytest.mark.parametrize(("factorization", "atol"), [("laurent", 1e-12), ("normal", 3e-4)])
+    def test_sixfold_symmetry(self, factorization, atol):
+        layer = rcwa2d.PatternedLayer(0.25, EYE, (_silicon_disc(),))
+
+        def zeroth(azimuth, incidence=0.4):
+            result = rcwa2d.solve_crossed_grating(
+                [layer], HEX, 1.0, incidence, 1.0, 2.1, (5, 5), azimuth_rad=azimuth,
+                factorization=factorization, truncation="circular",
+            )  # fmt: skip
+            return np.asarray(result.R[_zeroth(result)])
+
+        np.testing.assert_allclose(zeroth(0.3), zeroth(0.3 + np.pi / 3), atol=atol)
+        normal = zeroth(0.0, incidence=0.0)
+        assert normal[0, 0] == pytest.approx(normal[1, 1], abs=atol)
+
+    def test_hexagonal_against_fmmax(self):
+        """Si discs (r = 0.2 µm) on a 0.6 µm triangular lattice, 0.3 rad incidence.
+
+        FMMAX (JONES_DIRECT, 1615 terms, 1000² raster): R_p 0.56889, R_s 0.99224.
+        """
+        result = rcwa2d.solve_crossed_grating(
+            [rcwa2d.PatternedLayer(0.25, EYE, (_silicon_disc(),))], HEX, 1.0, 0.3, 1.0, 2.1,
+            (8, 8), truncation="circular",
+        )  # fmt: skip
+        reflected = np.asarray(result.R[_zeroth(result)]).sum(0)
+        assert reflected[0] == pytest.approx(0.56889, abs=0.015)  # still converging from above
+        assert reflected[1] == pytest.approx(0.99224, abs=4e-3)
+        np.testing.assert_allclose(_total(result), 1.0, atol=1e-11)
+
+    def test_gradient_in_the_lattice_constant(self):
+        def reflectance(period):
+            result = rcwa2d.solve_crossed_grating(
+                [rcwa2d.PatternedLayer(0.25, EYE, (_silicon_disc(),))],
+                rcwa2d.Lattice.hexagonal(period),
+                1.0,
+                0.3,
+                1.0,
+                2.1,
+                (3, 3),
+            )
+            return result.R[_zeroth(result)].sum()
+
+        grad = float(jax.grad(reflectance)(0.6))
+        fd = float((reflectance(0.6 + 1e-5) - reflectance(0.6 - 1e-5)) / 2e-5)
+        assert grad == pytest.approx(fd, rel=1e-5)
+
+    def test_circular_truncation_needs_a_concrete_lattice(self):
+        def traced(period):
+            return rcwa2d.solve_crossed_grating(
+                [rcwa2d.uniform(SILICON, 0.1)],
+                rcwa2d.Lattice.hexagonal(period),
+                1.0,
+                0.3,
+                1.0,
+                2.1,
+                (2, 2),
+                truncation="circular",
+            ).R.sum()
+
+        with pytest.raises(ValueError, match="concrete lattice"):
+            jax.grad(traced)(0.6)
