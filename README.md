@@ -35,7 +35,7 @@ This package provides a comprehensive suite of tools to study the reflective pro
 - **Scattering matrices and SAX** (`bcm.stack_smatrix`, `hyperbolic_optics.integrations.sax`): the full four-port, power-normalized S-matrix of any anisotropic stack, and SAX models of it for differentiable circuits of stacks, evanescent (tunnelling) connections included
 - **gdsfactory integration** (`hyperbolic_optics.integrations.gdsfactory`, optional `[gdsfactory]` extra), gplugins-style: read a PDK `LayerStack` at any point of a layout or under a line grating, give crystals their cut (`x_cut`, `z_cut`), and get reflection, transmission, diffraction, Mueller and ellipsometry — plus a grid-snapped grating PCell and design → GDS → re-simulation
 - **Differentiable dispersion** (`hyperbolic_optics.dispersion`): the built-in phonon-polariton materials (hBN, α-MoO₃, calcite, …) in JAX, so wavelength gradients include the Reststrahlen dispersion
-- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux
+- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux, also differentiable in JAX (`bcm.stack_fields`)
 - **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
 - **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors
 - **Scenarios:** incident-angle, azimuthal, k-space dispersion (kₓ–k_y), full 3-D sweep, single-point — and a swept **layer-thickness** axis

@@ -95,6 +95,14 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Differentiable fields and absorption** (`bcm.stack_fields`):
+  - layer-resolved absorption, interface fluxes, and the six field components
+    against depth, for p and s light, from partial scattering matrices;
+  - stable for thick, absorbing and evanescent layers, and differentiable
+    (thicknesses included).
+
+  Tests check it against the NumPy `FieldProfile` (1e-12) and against the
+  electric and magnetic loss density integrated over each layer.
 - **Scattering-matrix contract** (`bcm.stack_smatrix`, `bcm.cascade`):
   - the four-port (`top@p`, `top@s`, `bottom@p`, `bottom@s`) bidirectional
     S-matrix of a planar stack, power-normalized between propagating ports;
