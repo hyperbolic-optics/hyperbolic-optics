@@ -109,6 +109,13 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   arXiv:2608.06185's tilted-axis LiNbO₃ nanofins to within 0.4%.
   `benchmarks/fmmax/compare_2d.py` and `benchmarks/crossed_grating/` have
   the figures.
+- **`examples/calcite_negative_refraction_gdsfactory.py`**: tilted calcite at
+  1470 cm⁻¹, the setting of FDTDX's asymmetric-refraction example.
+  - The ±45° energy angles from the Berreman modes match FDTDX's (+23.1°,
+    +53.3°).
+  - A symmetric calcite grating is optimised to send 3.2× more light into
+    its negatively refracted −1 order than into the +1.
+  - The design is exported to GDS and re-simulated from a `LayerStack`.
 - **PDK layer stacks, gplugins-style** (`integrations.gdsfactory`, now a
   subpackage with the same import path):
   - `simulate_stack` reads the PDK `LayerStack` at a point of a layout
