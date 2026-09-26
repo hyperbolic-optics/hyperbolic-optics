@@ -438,17 +438,13 @@ def stack_smatrix(
     )  # rows: out at top, out at bottom; columns: in at top, in at bottom
     kz_top = _kz(jnp.asarray(eps_top), kx) + 0j
     kz_bottom = _kz(jnp.asarray(eps_bottom), kx) + 0j
-    root = jnp.stack(
-        jnp.broadcast_arrays(*(jnp.sqrt(k) for k in (kz_top,) * 2 + (kz_bottom,) * 2)), -1
-    )
-    s = raw * root[..., :, None] / root[..., None, :]
+    kz = jnp.stack(jnp.broadcast_arrays(kz_top, kz_top, kz_bottom, kz_bottom), -1)
     tolerance = 1e-12
-    propagating = jnp.stack(
-        jnp.broadcast_arrays(
-            *(jnp.abs(jnp.imag(k)) < tolerance for k in (kz_top,) * 2 + (kz_bottom,) * 2)
-        ),
-        -1,
-    )
+    # at exact cutoff (grazing, kz = 0) a port carries no power: leave it unscaled
+    cutoff = jnp.abs(kz) < tolerance
+    root = jnp.where(cutoff, 1.0, jnp.sqrt(jnp.where(cutoff, 1.0, kz)))
+    s = raw * root[..., :, None] / root[..., None, :]
+    propagating = (jnp.abs(jnp.imag(kz)) < tolerance) & ~cutoff
     propagating = jnp.broadcast_to(propagating, s.shape[:-1])
     return PlanarSMatrix(s=s, propagating=propagating)
 

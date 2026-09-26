@@ -51,6 +51,95 @@ class TestModels:
         assert float(hsax.kx_from_angle(np.pi / 6, 2.25)) == pytest.approx(0.75)
 
 
+class TestFromPayloads:
+    """``structure_smatrix``: the engine's own r and t, completed with light from below."""
+
+    LAYERS = [
+        {"type": "Ambient Incident Layer", "permittivity": 5.5},
+        {"type": "Isotropic Middle-Stack Layer", "thickness": 1.5, "permittivity": 1.0},
+        {
+            "type": "Crystal Layer",
+            "material": "Calcite",
+            "thickness": 0.6,
+            "rotationY": 70,
+            "rotationZ": 40,
+        },  # fmt: skip
+        {"type": "Semi Infinite Isotropic Layer", "permittivity": 2.0},
+    ]
+
+    SIMPLE = {"type": "Simple", "incidentAngle": 30.0, "azimuthal_angle": 0.0, "frequency": 1470.0}
+
+    @staticmethod
+    def _executed(scenario, layers):
+        from hyperbolic_optics.structure import Structure
+
+        structure = Structure()
+        structure.execute({"ScenarioData": scenario, "Layers": layers}, backend="scattering")
+        return structure
+
+    @pytest.mark.parametrize(
+        "scenario",
+        [
+            {"type": "Incident", "incidentAngle": [5.0, 25.0, 45.0, 65.0]},
+            {
+                "type": "Azimuthal",
+                "incidentAngle": 40.0,
+                "frequency": 1470.0,
+                "azimuthal_angle": [0.0, 30.0, 60.0],
+            },  # fmt: skip
+            {"type": "Dispersion", "frequency": 1470.0},
+        ],
+        ids=["angle", "azimuth", "angle-and-azimuth"],
+    )
+    def test_incident_side_is_the_engines_r_and_t(self, scenario):
+        from hyperbolic_optics.scattering import scattering_coefficients
+
+        structure = self._executed(scenario, self.LAYERS)
+        s = np.asarray(hsax.structure_smatrix(structure).s)
+        engine = scattering_coefficients(structure.layers, structure.k_0)
+        kz_in = np.sqrt(5.5 - np.real(np.asarray(structure.k_x)) ** 2 + 0j)
+        kz_out = np.sqrt(2.0 - np.real(np.asarray(structure.k_x)) ** 2 + 0j)
+        names = {"pp": (0, 0), "ps": (1, 0), "sp": (0, 1), "ss": (1, 1)}  # (out, in)
+        for pair, (out, inc) in names.items():
+            r = np.broadcast_to(np.asarray(engine[f"r_{pair}"]), s.shape[:-2])
+            t = np.broadcast_to(np.asarray(engine[f"t_{pair}"]), s.shape[:-2])
+            np.testing.assert_allclose(s[..., out, inc], r, atol=1e-11, err_msg=f"r_{pair}")
+            lit = np.broadcast_to(np.abs(kz_in) > 1e-9, s.shape[:-2])  # not at grazing cutoff
+            scale = np.broadcast_to(np.sqrt(kz_out / np.where(lit, kz_in, 1.0)), s.shape[:-2])
+            np.testing.assert_allclose(
+                s[..., 2 + out, inc][lit], (t * scale)[lit], atol=1e-11, err_msg=f"t_{pair}"
+            )
+        # and the rest of the matrix is physical: passive between the ports that
+        # propagate (|s|² is not a power for an evanescent one)
+        propagating = np.asarray(hsax.structure_smatrix(structure).propagating)
+        flat_s, flat_p = s.reshape(-1, 4, 4), propagating.reshape(-1, 4)
+        for matrix, open_ports in zip(flat_s, flat_p, strict=True):
+            if not open_ports.any():
+                continue
+            block = matrix[np.ix_(open_ports, open_ports)]
+            gain = np.linalg.eigvalsh(np.eye(len(block)) - block.conj().T @ block)
+            assert gain.min() > -1e-10
+
+    def test_thickness_sweep_and_zero_layers(self):
+        swept = [dict(self.LAYERS[0]), {**self.LAYERS[2], "thickness": [0.2, 0.4, 0.8]},
+                 self.LAYERS[3]]  # fmt: skip
+        structure = self._executed(self.SIMPLE, swept)
+        s = hsax.structure_smatrix(structure).s
+        assert s.shape[-3] == 3 and s.shape[-2:] == (4, 4)
+        bare = self._executed(self.SIMPLE, [self.LAYERS[0], self.LAYERS[3]])
+        sd = hsax.structure_sdict(bare)
+        kx = np.sqrt(5.5) * np.sin(np.radians(30.0))
+        c1, c2 = np.sqrt(5.5 - kx**2), np.sqrt(2.0 - kx**2)
+        assert complex(np.squeeze(sd["top@s", "top@s"])) == pytest.approx((c1 - c2) / (c1 + c2))
+
+    def test_anisotropic_exit_is_refused(self):
+        layers = [self.LAYERS[0], {"type": "Semi Infinite Anisotropic Layer", "material": "Calcite",
+                                   "rotationY": 70}]  # fmt: skip
+        structure = self._executed(self.SIMPLE, layers)
+        with pytest.raises(NotImplementedError, match="exit"):
+            hsax.structure_smatrix(structure)
+
+
 try:
     import sax
 except ImportError:  # pragma: no cover - SAX is optional

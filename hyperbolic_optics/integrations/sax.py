@@ -27,6 +27,12 @@ For gradients through a circuit use ``sax.circuit(..., backend="filipsson_gunnar
 (pure JAX, exact); SAX's default sparse (KLU) backend evaluates these models
 but fails in the backward pass.
 
+Payload users: :func:`structure_smatrix` / :func:`structure_sdict` take an
+executed :class:`~hyperbolic_optics.structure.Structure` and give the same
+four-port matrix on its scenario grid ``[angle, azimuth, frequency, thickness]``
+-- every payload feature included (named materials and their rotations, custom
+tensors, magnetic layers, thickness sweeps).
+
 This module does not import SAX (it pins an older JAX than this package's);
 the models are plain functions returning dictionaries, which SAX accepts.
 """
@@ -40,7 +46,14 @@ import jax.numpy as jnp
 
 from hyperbolic_optics import bcm
 
-__all__ = ["PORTS", "kx_from_angle", "planar_model", "sdict"]
+__all__ = [
+    "PORTS",
+    "kx_from_angle",
+    "planar_model",
+    "sdict",
+    "structure_sdict",
+    "structure_smatrix",
+]
 
 PORTS = bcm.PORTS
 
@@ -121,3 +134,74 @@ def planar_model(
         return sdict(smatrix)
 
     return model
+
+
+def structure_smatrix(structure) -> bcm.PlanarSMatrix:
+    """The four-port S-matrix of an executed payload, on its scenario grid.
+
+    ``Structure.execute`` computes the response to light from the incident side
+    only: 8 of the 16 entries. A SAX circuit also needs light arriving from
+    below, so the whole matrix is built here from the executed structure's own
+    layer tensors and thicknesses, with the JAX solver (which matches the NumPy
+    engine to ~1e-14). Its incident-side entries are the engine's r and t,
+    scaled by √(kz_out / kz_in).
+
+    Args:
+        structure: A :class:`~hyperbolic_optics.structure.Structure` after
+            ``execute``, ending in a ``Semi Infinite Isotropic Layer``.
+
+    Returns:
+        :class:`~hyperbolic_optics.bcm.PlanarSMatrix` with ``s`` shaped
+        ``[A, B, F, T, 4, 4]``: the canonical axes (incident angle, azimuth,
+        frequency, swept thickness), each of size 1 where the scenario does not
+        sweep it. The azimuth is already in the tensors, and ``kx`` comes from
+        the incident angle in the prism.
+    """
+    from hyperbolic_optics.layers import IsotropicSemiInfiniteLayer
+
+    if structure.k_0 is None:
+        raise ValueError("execute the structure first")
+    exit_layer = structure.layers[-1]
+    if not isinstance(exit_layer, IsotropicSemiInfiniteLayer):
+        raise NotImplementedError(
+            f"the exit is a {type(exit_layer).__name__}; the S-matrix needs an isotropic, "
+            "lossless exit half-space (a Semi Infinite Isotropic Layer)"
+        )
+    layers = structure.layers[1:-1]
+    thickness_um = [jnp.asarray(layer.thickness) * 1e4 for layer in layers]  # cm -> µm
+    grid = jnp.broadcast_shapes(
+        jnp.shape(structure.k_x),
+        jnp.shape(structure.k_0),
+        *(jnp.shape(layer.eps_tensor)[:-2] for layer in layers),
+        *(jnp.shape(layer.mu_tensor)[:-2] for layer in layers),
+        *(jnp.shape(d) for d in thickness_um),
+    )
+
+    def stacked(tensors):
+        if not tensors:
+            return jnp.zeros(grid + (0, 3, 3), dtype=complex)
+        return jnp.stack([jnp.broadcast_to(jnp.asarray(t), grid + (3, 3)) for t in tensors], -3)
+
+    eps = stacked([layer.eps_tensor for layer in layers])
+    mu = stacked([layer.mu_tensor for layer in layers])
+    thickness = (
+        jnp.stack([jnp.broadcast_to(d, grid) for d in thickness_um], -1)
+        if layers
+        else jnp.zeros(grid + (0,))
+    )
+    wavelength_um = jnp.broadcast_to(2 * jnp.pi / jnp.asarray(structure.k_0) * 1e4, grid)
+    kx = jnp.broadcast_to(jnp.real(jnp.asarray(structure.k_x)), grid)
+    return bcm.stack_smatrix(
+        eps, thickness, wavelength_um, kx, float(structure.eps_prism),
+        float(exit_layer.eps_exit), mu=mu,
+    )  # fmt: skip
+
+
+def structure_sdict(structure) -> dict[tuple[str, str], jnp.ndarray]:
+    """SAX's ``SDict`` for an executed payload, values on its grid ``[A, B, F, T]``.
+
+    SAX combines S-matrices elementwise, so these arrays compose with any other
+    model evaluated on the same grid (same wavelengths, same ``kx``). Wrap it
+    as a SAX model with ``lambda: structure_sdict(structure)``.
+    """
+    return sdict(structure_smatrix(structure))

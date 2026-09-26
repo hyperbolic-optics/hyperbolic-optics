@@ -77,6 +77,12 @@ class TestContract:
         top = np.asarray(smatrix.s)[:2, :2]
         np.testing.assert_allclose(top.conj().T @ top, np.eye(2), atol=1e-13)
 
+    def test_grazing_cutoff_is_finite(self):
+        """kx exactly at the top medium's index: that port carries no power, and no NaN."""
+        smatrix = _s(kx=1.5, top=2.25, bottom=1.0)
+        assert np.all(np.isfinite(np.asarray(smatrix.s)))
+        np.testing.assert_array_equal(smatrix.propagating, [False, False, False, False])
+
     def test_batches(self):
         wavelengths = jnp.array([0.7, 0.8, 0.9])
         batched = bcm.stack_smatrix(EPS, THICKNESS, wavelengths, 0.3, 1.0, 2.25)

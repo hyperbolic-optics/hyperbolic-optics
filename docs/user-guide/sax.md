@@ -82,6 +82,63 @@ film(wl=6.7, kx=0.3, azimuth=0.2)    # SDict: {("top@p", "bottom@s"): ..., ...}
   a guided-mode model needs an overlap or mode-matching step that is not
   provided.
 
+## From payloads: `Structure.execute` → SAX
+
+```python
+from hyperbolic_optics.structure import Structure
+
+structure = Structure()
+structure.execute({
+    "ScenarioData": {"type": "Azimuthal", "incidentAngle": 40.0, "frequency": 1470.0,
+                     "azimuthal_angle": [0.0, 30.0, 60.0]},
+    "Layers": [
+        {"type": "Ambient Incident Layer", "permittivity": 5.5},
+        {"type": "Isotropic Middle-Stack Layer", "thickness": 1.5, "permittivity": 1.0},
+        {"type": "Crystal Layer", "material": "Calcite", "thickness": 0.6, "rotationY": 70},
+        {"type": "Semi Infinite Isotropic Layer", "permittivity": 2.0},
+    ],
+})
+sd = hsax.structure_sdict(structure)     # values [A, B, F, T] = [1, 3, 1, 1]
+sd["top@p", "top@s"]                     # r_ps (p in, s out) at each azimuth
+```
+
+`Structure.execute` computes the response to light from the incident side
+only. That gives the Jones matrices r and t, which are 8 of the 16 entries. A
+circuit also needs the light that arrives from below. A dictionary holding
+only those 8 would silently drop it, since SAX treats missing entries as zero.
+
+`structure_smatrix` / `structure_sdict` therefore build the whole matrix:
+- **From the payload's own tensors.** They use the executed structure's layer
+  tensors and thicknesses, so named materials and their rotations, custom
+  tensors, magnetic layers and thickness sweeps all carry over. The matrix is
+  solved with the JAX solver.
+- **Consistent with the engine.** The incident-side entries are the engine's
+  r, and its t scaled by √(kz_out / kz_in); `tests/test_sax.py` checks both to
+  1e-11 over angle, azimuth and k-space sweeps.
+- **Isotropic exit only.** A `Semi Infinite Anisotropic Layer` exit is refused.
+
+## Polarization conversion and sweep axes in SAX
+
+- **Polarization is a mode.** SAX's multimode ports are `port@mode`. Each
+  side of a stack is one port with two modes, p and s, and conversion is an
+  off-diagonal entry such as `("top@p", "top@s")`. Connecting `a,bottom` to
+  `b,top` connects both modes, and SAX composes the full 4 × 4 matrices, so
+  conversion propagates through a circuit. The circuit tests compare all 16
+  entries, cross-polarized ones included.
+- **Every other variable is an array axis.** SAX combines S-matrices
+  elementwise, so the values of an `SDict` can have any shape:
+  - wavelength, angle (as kx), azimuth or thickness become axes;
+  - arrays of the same or broadcastable shape compose;
+  - a 2D map is a pair of meshgrid arrays passed as `wl` and `kx`, as in the
+    Otto example.
+
+  All instances in a circuit must see the same grid, so pass `wl` and `kx` as
+  global settings. For a payload's sampled `SDict`, keep every element on the
+  same scenario grid.
+- **One plane of incidence.** The p/s basis is defined in the x-z plane. An
+  azimuth rotates the sample, not the plane, so every element of a circuit
+  shares its p and s.
+
 ## Example: Otto coupling to calcite's surface polaritons
 
 `examples/sax_otto_calcite.py` builds `KRS-5 prism | air gap | x-cut calcite`
