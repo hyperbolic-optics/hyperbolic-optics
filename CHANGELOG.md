@@ -71,6 +71,12 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   all-NaN. The exit layer recovered the prism permittivity as `(kx / sin θ)²`
   from the first angle only, which is 0/0 at θ = 0; it now uses the angle
   furthest from normal.
+- `FieldProfile` under `backend="scattering"` **raised on any frequency sweep**
+  whose first layer is non-dispersive (an isotropic gap, or an arbitrary
+  tensor) — the Otto configuration that backend exists for. Those modes carry no
+  frequency axis while the cascade below them does, and the prism's forward and
+  backward amplitudes were joined without broadcasting. Every existing test used
+  a single frequency.
 - A plain `uv sync` removed pytest and ruff, which were declared only as the
   `dev` extra; they are now also a `dev` dependency group, which uv installs by
   default.
