@@ -95,6 +95,11 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   1e-3 in accuracy on high-order hyperbolic gratings. Matches the NumPy engine's
   complex coefficients to ~1e-14; `examples/optimize_polarization_converter.py`
   optimises a LiNbO₃ film into a half-wave plate with it.
+- **Independent cross-check against DiffTMM** (`benchmarks/difftmm/`): all eight
+  polarization-resolved R/T channels on five planar stacks, including the
+  anisotropic multilayer of arXiv:2608.06185 Fig. 3, a full-tensor tilted axis
+  and a lossy hyperbolic film. Agreement is at DiffTMM's complex64 floor; the
+  package matches the closed-form Airy result to 1e-15.
 - **Fully general ε/μ tensors**: `ArbitraryMaterial` accepts all nine components
   of each tensor (`eps_yx`, `eps_zx`, `eps_zy` and the `mu_` counterparts), so
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —
