@@ -95,6 +95,12 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Birefringent crystals at chip wavelengths**: LiNbO₃, rutile TiO₂, and
+  quartz, calcite and sapphire in their transparency windows, with the PIC
+  materials SiO₂, Si₃N₄ and Si. They are lossless Sellmeier fits from the
+  primary literature, registered alongside the phonon models, usable in payloads
+  and (through `dispersion`) the JAX solvers, and checked against published
+  indices to 1e-3.
 - **gdsfactory integration** (`hyperbolic_optics.integrations.gdsfactory`,
   optional `gdsfactory` extra):
   - a line-grating PCell whose period and width snap to the layout grid;

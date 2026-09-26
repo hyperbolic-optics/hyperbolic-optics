@@ -19,7 +19,7 @@ from hyperbolic_optics.materials import create_material  # noqa: E402
 
 @pytest.mark.parametrize("name", dispersion.materials())
 def test_matches_numpy_material(name):
-    low, high = dispersion.reststrahlen_range(name)
+    low, high = dispersion.frequency_range(name)
     frequencies = np.linspace(low, high, 23)
     material = create_material(name)
     expected = np.stack(
@@ -34,7 +34,7 @@ def test_matches_numpy_material(name):
 
 @pytest.mark.parametrize("name", ["hBN", "MoO3", "GalliumOxide", "Calcite"])
 def test_frequency_derivative(name):
-    low, high = dispersion.reststrahlen_range(name)
+    low, high = dispersion.frequency_range(name)
     w0 = 0.37 * low + 0.63 * high
     for i, j in ((0, 0), (0, 1), (2, 2)):
 

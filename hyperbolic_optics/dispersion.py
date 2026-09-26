@@ -15,6 +15,8 @@ test suite checks they agree to rounding.
 
 Models:
 
+- transparency-window crystals (LiNbO₃, TiO₂, quartz, calcite, sapphire) and
+  PIC materials (SiO₂, Si₃N₄, Si): lossless Sellmeier fits per principal axis;
 - uniaxial and biaxial: the factorised TO–LO form
   ``ε(ω) = ε∞ ∏ᵢ (ω_LO,i² − ω² − iωγ_LO,i) / (ω_TO,i² − ω² − iωγ_TO,i)`` per
   principal axis, with a uniaxial tensor ``diag(ε_o, ε_o, ε_e)`` (optic axis
@@ -37,10 +39,11 @@ from hyperbolic_optics.materials import (
     _MATERIAL_REGISTRY,
     BiaxialMaterial,
     MonoclinicMaterial,
+    SellmeierMaterial,
     UniaxialMaterial,
 )
 
-__all__ = ["at_wavelength", "materials", "permittivity", "reststrahlen_range"]
+__all__ = ["at_wavelength", "frequency_range", "materials", "permittivity"]
 
 
 def materials() -> list[str]:
@@ -54,6 +57,8 @@ def _model(name: str):
         raise ValueError(f"Unknown material {name!r}; choose from {materials()}")
     material = _MATERIAL_REGISTRY[name]()
     params = material.permittivity_parameters()
+    if isinstance(material, SellmeierMaterial):  # before UniaxialMaterial: a subclass
+        return "sellmeier", params
     if isinstance(material, BiaxialMaterial):
         return "biaxial", {axis: _oscillators(params[axis]) for axis in ("x", "y", "z")}
     if isinstance(material, UniaxialMaterial):
@@ -106,6 +111,19 @@ def permittivity(material: str, wavenumber_cm: jax.Array) -> jax.Array:
     kind, model = _model(material)
     w = jnp.asarray(wavenumber_cm, dtype=float)
     zero = jnp.zeros(w.shape, dtype=complex)
+    if kind == "sellmeier":
+        lam_sq = (1e4 / w) ** 2
+
+        def sellmeier(axis):
+            eps = axis["constant"] + zero
+            for a, b in axis["resonances"]:
+                eps = eps + a * lam_sq / (lam_sq - b)
+            for d, e in axis["poles"]:
+                eps = eps + d / (lam_sq - e)
+            return eps
+
+        ordinary = sellmeier(model["ordinary"])
+        return _diagonal(ordinary, ordinary, sellmeier(model["extraordinary"]))
     if kind == "uniaxial":
         ordinary = _factorised(model["ordinary"], w)
         diagonal = (ordinary, ordinary, _factorised(model["extraordinary"], w))
@@ -131,7 +149,8 @@ def at_wavelength(material: str, wavelength_um: jax.Array) -> jax.Array:
     return permittivity(material, 1e4 / jnp.asarray(wavelength_um, dtype=float))
 
 
-def reststrahlen_range(material: str) -> tuple[float, float]:
-    """The material's default frequency window in cm⁻¹, as used by the payload API."""
+def frequency_range(material: str) -> tuple[float, float]:
+    """The material's frequency window in cm⁻¹ -- its Reststrahlen fit window for the
+    phonon models, its published validity for the Sellmeier ones."""
     material_obj = _MATERIAL_REGISTRY[material]()
     return float(material_obj.frequency[0]), float(material_obj.frequency[-1])
