@@ -35,7 +35,10 @@ from scipy.special import erf
 from hyperbolic_optics import resonances
 
 __all__ = [
+    "ApodizedCoupler",
     "GratingCoupler",
+    "apodized_grating_coupler",
+    "coupling_from_profile",
     "exponential_gaussian_overlap",
     "grating_coupler",
     "grating_coupler_model",
@@ -229,3 +232,199 @@ def grating_coupler_model(
         }
 
     return model
+
+
+# ---------------------------------------------------------------------------
+# Apodized, chirped and focusing gratings: the local leaky-mode model
+# ---------------------------------------------------------------------------
+
+
+def _fiber_mode(x, waist_um, angle_rad, n_top, k0, offset):
+    """A tilted Gaussian fibre mode on the surface, normalised: ``∫|G|² dx = 1``."""
+    footprint = waist_um / np.cos(angle_rad)
+    envelope = np.exp(-(((x - offset) / footprint) ** 2))
+    phase = np.exp(1j * k0 * n_top * np.sin(angle_rad) * (x - offset))
+    return envelope * phase / np.sqrt(footprint * np.sqrt(np.pi / 2))
+
+
+def coupling_from_profile(
+    x_um,
+    alpha_per_um,
+    directionality,
+    emission_index,
+    jones,
+    wavelength_um,
+    waist_um: float = 5.2,
+    fiber_angle_deg: float | None = None,
+    n_top: float = 1.0,
+):
+    """Waveguide-to-fibre coupling from a grating's local leaky-mode parameters along x.
+
+    The guided power decays as ``P(x) = exp(−2∫α dx)``; the field emitted
+    upward is ``√(2αD·P) · exp(i k₀ ∫ q dx)`` in each polarization of ``jones``,
+    with ``q = Re kx/k₀`` of the radiating order. Its overlap with a Gaussian
+    fibre mode tilted to ``fiber_angle_deg`` is maximised over the fibre's
+    position (and its angle, if not given).
+
+    Args:
+        x_um: Sample positions along the grating ``[X]``, increasing.
+        alpha_per_um, directionality, emission_index: ``α``, ``D`` and ``q`` there ``[X]``.
+        jones: The emission's unit Jones vector ``(p, s)`` there ``[X, 2]``.
+        wavelength_um, waist_um, n_top: As in :func:`grating_coupler`.
+        fiber_angle_deg: The fibre's angle in the top medium; by default the
+            best one.
+
+    Returns:
+        ``(efficiency_te, efficiency_tm, offset_um, angle_deg)``: power into
+        the fibre's s (TE) and p (TM) polarizations.
+    """
+    x = np.asarray(x_um, dtype=float)
+    k0 = 2 * np.pi / float(wavelength_um)
+    alpha = np.asarray(alpha_per_um, dtype=float)
+    dx = np.gradient(x)
+    decayed = np.cumsum(alpha * dx) - 0.5 * alpha * dx  # ∫α to each sample's centre
+    phase = np.cumsum(np.asarray(emission_index) * dx) - 0.5 * np.asarray(emission_index) * dx
+    amplitude = np.sqrt(np.clip(2 * alpha * np.asarray(directionality), 0, None)) * np.exp(-decayed)
+    field = (amplitude * np.exp(1j * k0 * phase))[:, None] * np.asarray(jones)  # [X, (p, s)]
+
+    def efficiencies(offset, angle_rad):
+        mode = np.conj(_fiber_mode(x, waist_um, angle_rad, n_top, k0, offset))
+        coupled = np.sum(field * (mode * dx)[:, None], axis=0)
+        return np.abs(coupled[1]) ** 2, np.abs(coupled[0]) ** 2  # TE = s, TM = p
+
+    from scipy.optimize import minimize
+
+    q_mean = float(np.average(np.asarray(emission_index), weights=amplitude**2 + 1e-300))
+    angle0 = np.arcsin(np.clip(q_mean / n_top, -0.99, 0.99))
+    start = [float(x[np.argmax(amplitude)] + 0.5 * waist_um)]
+    options = {"xatol": 1e-7, "fatol": 1e-12}
+    if fiber_angle_deg is None:
+        result = minimize(lambda v: -sum(efficiencies(v[0], v[1])), start + [angle0],
+                          method="Nelder-Mead", options=options)  # fmt: skip
+        offset, angle = result.x
+    else:
+        angle = np.radians(fiber_angle_deg)
+        result = minimize(lambda v: -sum(efficiencies(v[0], angle)), start,
+                          method="Nelder-Mead", options=options)  # fmt: skip
+        offset = result.x[0]
+    te, tm = efficiencies(offset, angle)
+    return float(te), float(tm), float(offset), float(np.degrees(angle))
+
+
+def _follow(layers, period, wavelength_um, eps_top, eps_bottom, previous, max_order):
+    """The leaky mode continuing ``previous`` into a neighbouring grating.
+
+    The secant method from the neighbour's root first; if the step was too
+    big for it, a small contour search about that root, keeping the nearest.
+    """
+    guess = previous.bloch_index
+    try:
+        return resonances.refine_leaky_mode(
+            layers, period, wavelength_um, eps_top, eps_bottom, guess, max_order
+        )
+    except ValueError:
+        window = (guess.real - 0.05, guess.real + 0.05)
+        found = resonances.grating_leaky_modes(
+            layers, period, wavelength_um, eps_top, eps_bottom, window, max_order,
+            max_loss=max(4 * guess.imag, 0.01),
+        )  # fmt: skip
+        if not found:
+            raise
+        return min(found, key=lambda mode: abs(mode.bloch_index - guess))
+
+
+class ApodizedCoupler(NamedTuple):
+    """A grating coupler's performance from its teeth, one by one.
+
+    Attributes:
+        efficiency, efficiency_te, efficiency_tm: As in :class:`GratingCoupler`.
+        fiber_offset_um: The fibre's best position along x.
+        fiber_angle_deg: Its angle (given, or the best one).
+        modes: The local leaky mode of every tooth.
+    """
+
+    efficiency: float
+    efficiency_te: float
+    efficiency_tm: float
+    fiber_offset_um: float
+    fiber_angle_deg: float
+    modes: tuple
+
+
+def apodized_grating_coupler(
+    layers_for,
+    starts_um,
+    periods_um,
+    wavelength_um,
+    eps_top,
+    eps_bottom,
+    index_range,
+    waist_um: float = 5.2,
+    fiber_angle_deg: float | None = None,
+    max_order: int = 10,
+    samples_per_tooth: int = 12,
+    expected_index: float | None = None,
+    **kwargs,
+) -> ApodizedCoupler:
+    """Coupling efficiency of an apodized, chirped or focusing grating coupler.
+
+    Each tooth is treated as a period of a uniform grating of its own pitch and
+    fill (the local leaky-mode model): the first tooth's leaky mode is found
+    by the contour search, each next one by refining its neighbour's
+    (:func:`hyperbolic_optics.resonances.refine_leaky_mode`), and the emission
+    of the whole grating is overlapped with the fibre mode
+    (:func:`coupling_from_profile`). For identical teeth this is
+    :func:`grating_coupler`.
+
+    Args:
+        layers_for: ``i → layers`` of tooth ``i``'s uniform grating (e.g. from
+            :func:`hyperbolic_optics.integrations.gdsfactory.grating_layers`).
+        starts_um, periods_um: Each tooth's start and pitch ``[N]``.
+        wavelength_um, eps_top, eps_bottom, index_range, waist_um, max_order,
+        **kwargs: As in :func:`grating_coupler`.
+        fiber_angle_deg: The fibre's angle in the top medium; by default the best.
+        samples_per_tooth: Integration samples per tooth.
+        expected_index: If several leaky modes lie in ``index_range``, the one
+            with ``Re kx₀/k₀`` nearest this (e.g. the average of the waveguide's
+            index under the teeth and under the gaps); by default the highest.
+    """
+    starts = np.asarray(starts_um, dtype=float)
+    periods = np.asarray(periods_um, dtype=float)
+    first = resonances.grating_leaky_modes(
+        layers_for(0), periods[0], wavelength_um, eps_top, eps_bottom, index_range, max_order,
+        **kwargs,
+    )  # fmt: skip
+    if not first:
+        raise ValueError(f"no leaky mode with Re kx₀/k₀ in {index_range} for the first tooth")
+    if expected_index is not None:
+        first = sorted(first, key=lambda mode: abs(mode.bloch_index.real - expected_index))
+    modes = [first[0]]
+    for i in range(1, len(starts)):
+        same = np.isclose(periods[i], periods[i - 1]) and layers_for(i) is layers_for(i - 1)
+        modes.append(
+            modes[-1] if same else _follow(
+                layers_for(i), periods[i], wavelength_um, eps_top, eps_bottom, modes[-1],
+                max_order,
+            )
+        )  # fmt: skip
+
+    order = -1
+    xs, alpha, directionality, q, jones = [], [], [], [], []
+    for start, period, mode in zip(starts, periods, modes, strict=True):
+        if order not in mode.emission_deg:
+            raise ValueError("a tooth's leaky mode does not radiate its −1st order upward")
+        local = (np.arange(samples_per_tooth) + 0.5) / samples_per_tooth * period + start
+        xs.append(local)
+        alpha.append(np.full(samples_per_tooth, mode.alpha_per_um))
+        directionality.append(np.full(samples_per_tooth, mode.directionality))
+        q.append(np.full(samples_per_tooth, mode.bloch_index.real - wavelength_um / period))
+        jones.append(np.tile(np.asarray(mode.top_polarization[order]), (samples_per_tooth, 1)))
+    n_top = float(np.sqrt(np.real(eps_top)))
+    te, tm, offset, angle = coupling_from_profile(
+        np.concatenate(xs), np.concatenate(alpha), np.concatenate(directionality),
+        np.concatenate(q), np.concatenate(jones), wavelength_um, waist_um, fiber_angle_deg, n_top,
+    )  # fmt: skip
+    return ApodizedCoupler(
+        efficiency=te + tm, efficiency_te=te, efficiency_tm=tm, fiber_offset_um=offset,
+        fiber_angle_deg=angle, modes=tuple(modes),
+    )  # fmt: skip

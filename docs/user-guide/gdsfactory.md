@@ -335,17 +335,29 @@ These follow gdsfactory's simulation plugins:
 The writers:
 
 - **`write_sparameters_grating_coupler`** handles a grating-coupler cell from
-  the PDK, such as `gf.components.grating_coupler_rectangular`.
-  - It reads the teeth from the grating layer (`teeth_only`: the taper, and
-    the first tooth merged into it, are ignored), and the etched stack under
-    them from the `LayerStack`.
-  - The coupling comes from the grating's leaky mode (see
+  the PDK.
+  - It reads the teeth tooth by tooth along the coupler's axis
+    (`hog.extract_grating_teeth`), so uniform, apodized, chirped and focusing
+    (elliptical) couplers are all read. The taper on the same layer is
+    dropped.
+  - The etched stack under the teeth comes from the `LayerStack`
+    (`hog.teeth_stack`).
+  - The coupling is the local leaky-mode model, with the fibre at its best
+    position and angle, or at `fiber_angle_deg` (see
     [Resonances, Modes, Beams and Couplers](modes.md)).
-  - For the generic PDK's cell (0.75 µm period, 70 nm etch in 220 nm Si,
-    3 µm oxide above and below, Si substrate) it gives 33% at 1550 nm. The
-    emission is at 43° into air, the directionality 0.59, and the overlap with
-    the fibre mode 0.57, because the grating radiates faster than a 5.2 µm
-    waist needs.
+  - Results at 1550 nm, for the generic PDK's stack (70 nm etch in 220 nm Si,
+    3 µm oxide above and below, Si substrate):
+
+    | cell | efficiency | best fibre angle | α | directionality |
+    |---|---|---|---|---|
+    | `grating_coupler_rectangular` (0.75 µm) | 33.5% | 42.9° | 0.30/µm | 0.59 |
+    | `grating_coupler_elliptical` (0.686 µm) | 31.2% | 26.1° | 0.057/µm | 0.44 |
+
+    At the rectangular cell's period the −2nd order also propagates in the
+    oxide and radiates strongly downward. At the elliptical cell's it is
+    evanescent there, hence the 5× difference in α.
+  - A focusing coupler's curvature is not modelled: the fibre mode is taken
+    to match it across the grating.
   - Anisotropic cuts, e.g. `materials={"ln": hog.Oriented("LiNbO3",
     hog.x_cut(90))}`, are solved in full, and their TE→TM conversion appears
     in the `fiber@TM` entries.
