@@ -82,6 +82,10 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     vertical_profile,
     vertical_stack,
 )
+from hyperbolic_optics.integrations.gdsfactory.waveguides import (
+    waveguide_cross_section,
+    waveguide_modes,
+)
 
 __all__ = [
     "CrossedGratingResponse",
@@ -119,6 +123,8 @@ __all__ = [
     "teeth_stack",
     "vertical_profile",
     "vertical_stack",
+    "waveguide_cross_section",
+    "waveguide_modes",
     "write_sparameters_grating_coupler",
     "write_sparameters_stack",
     "x_cut",

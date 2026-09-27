@@ -123,6 +123,47 @@ Validation (`tests/test_resonances.py`):
   payload engine. Prism-coupled through a 1.4 µm air gap, p→s conversion
   peaks at the mode's effective index, to 5e-9.
 
+## Waveguide cross-sections (2D)
+
+```python
+from hyperbolic_optics import modes2d
+
+x = np.arange(-1.5, 1.5 + 0.01, 0.02)
+y = np.arange(-1.0, 1.4 + 0.01, 0.02)
+ln = (4.57, 4.89, 4.89)           # x-cut LiNbO3, axis across the guide: (εxx, εyy, εzz)
+section = modes2d.rectangles(x, y, 1.444**2, [((-1.5, 1.5, 0.0, 0.3), ln),     # slab
+                                               ((-0.6, 0.6, 0.3, 0.6), ln)])   # rib
+te, tm = modes2d.solve_modes(section, wavelength_um=1.55, n_modes=2)
+te.effective_index, te.te_fraction, te.fields   # (Ex, Ey, Ez, Hx, Hy, Hz), unit power
+```
+
+- **The solver.** It is a full-vector finite-difference mode solver on a Yee
+  grid, for a cross-section `ε(x, y)` of a waveguide along z. The transverse
+  fields satisfy `β²·E_t = M₁·M₂·E_t`, solved sparse with shift-invert about
+  a target index.
+- **Tensors.** Each component of a diagonal tensor (principal axes along x, y
+  and z) is sampled at its own field's position and averaged over the cell.
+  This covers x-cut and z-cut LiNbO₃ ribs along a crystal axis, and biaxial
+  films. Off-diagonal tensors are refused rather than approximated.
+- **Boundaries.** The domain's low edges behave as magnetic walls and its
+  high edges as electric walls, so leave the fields room to decay.
+- **Not covered.** There are no absorbing boundaries, so leaky modes aren't
+  found. The solver is SciPy, not JAX, so it isn't differentiable.
+
+Validation (`tests/test_modes2d.py`):
+
+- **Film limit.** A film filling the domain gives the 1D slab mode, with the
+  quarter-wave lateral profile the walls impose, converging at second order.
+  This is checked for an isotropic film, and for a uniaxial one against the
+  1D solver's direction-dependent index.
+- **Square core, isotropic.** TE and TM are exactly degenerate.
+- **Square core, uniaxial.** Turning the axis from x to y swaps TE and TM, to
+  1e-9.
+
+From a layout, `hog.waveguide_modes(component, layer_stack, point_um, …)`
+reads the cross-section from the PDK (see the
+[gdsfactory guide](gdsfactory.md)).
+
 ## Gaussian beams
 
 ```python

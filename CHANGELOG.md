@@ -95,6 +95,15 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **2D waveguide modes** (`hyperbolic_optics.modes2d`, and
+  `hog.waveguide_cross_section` / `hog.waveguide_modes` from a layout and
+  its `LayerStack`): a full-vector finite-difference mode solver on a Yee
+  grid, for cross-sections with diagonal anisotropic tensors (x- or z-cut
+  LiNbO₃ ribs along a crystal axis).
+
+  Checked: the film limit against the 1D solver (isotropic and uniaxial,
+  second-order convergence) and the square core's exact TE/TM symmetries.
+  Reading from a layout matches the hand-drawn cross-section exactly.
 - **Apodized, chirped and focusing grating couplers**
   (`couplers.apodized_grating_coupler`, `couplers.coupling_from_profile`,
   `resonances.refine_leaky_mode`, `hog.extract_grating_teeth`,

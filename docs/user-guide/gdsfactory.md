@@ -364,6 +364,26 @@ The writers:
 - **`write_sparameters_stack`** gives the four-port plane-wave S-matrix of the
   stack at a point of a layout.
 
+## Waveguide modes from a layout
+
+```python
+strip = gf.components.straight(length=10, width=0.5)
+section, modes = hog.waveguide_modes(strip, gf.get_active_pdk().layer_stack, (5.0, 0.0),
+                                     wavelength_um=1.55, n_modes=2, lateral_um=(-1.5, 1.5),
+                                     vertical_um=(-1.5, 1.7), step_um=0.02)
+[m.effective_index for m in modes]          # TE0 2.448, TM0 1.779 (500 × 220 nm Si in oxide)
+```
+
+- **Cross-section.** `hog.waveguide_cross_section` reads the PDK's material
+  column at positions across the waveguide, exactly where the solver samples
+  the permittivity. That gives ε(lateral, vertical), with each material's
+  tensor turned into the waveguide's frame.
+- **Modes.** `hog.waveguide_modes` solves it with
+  [`modes2d`](modes.md#waveguide-cross-sections-2d).
+- **Crystal orientation.** Anisotropic cuts go through `materials` as
+  elsewhere. A crystal axis at an angle to the waveguide is refused, because
+  the tensor is then not diagonal in the waveguide's frame.
+
 ## SAX models of PDK stacks
 
 `hog.stack_sax_model(vertical_stack(component, layer_stack, point))` turns the
