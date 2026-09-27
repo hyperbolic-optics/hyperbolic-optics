@@ -203,3 +203,43 @@ For the SiN grating above:
   uniform grating's 80.1%, at 2αw₀ = 1.37.
 - An x-cut LiNbO₃ grating emits pure TE with its axis along the grating
   lines, and both polarizations with the axis at 45°.
+
+## Electro-optic phase shifters
+
+```python
+from hyperbolic_optics import electro_optics as eo
+
+ln = dispersion.at_wavelength("LiNbO3", 1.55)                 # crystal frame
+rotation = bcm.rotation_matrix(0.0, np.radians(90.0), np.radians(90.0))  # x-cut, axis along y
+film = bcm.rotate_tensor(ln, rotation)[None]
+mode = resonances.slab_modes(film, jnp.array([0.6]), 1.55, 1.0, 1.444**2)[0]
+z, fields = resonances.slab_mode_fields(film, jnp.array([0.6]), 1.55, 1.0, 1.444**2,
+                                        mode.effective_index)
+field = jnp.array([0.0, 1.0, 0.0])                            # 1 V/µm along the axis
+delta = eo.pockels_tensor(ln, eo.LITHIUM_NIOBATE, field, rotation) - film[0]
+dn = eo.mode_index_shift(z, fields, jnp.array([0.6]), delta[None])   # per V/µm
+eo.vpi_length(float(dn.real) / 5.0, 1.55)                     # V·cm, 5 µm gap, Γ = 1
+```
+
+- **`pockels_tensor`** gives ε under an applied field, for a crystal in any
+  orientation and a field in any direction. It is differentiable in the
+  field, so a voltage is an ordinary design parameter for every solver here.
+- **Coefficients.** `LITHIUM_NIOBATE` is point group 3m, congruent,
+  unclamped at 633 nm (Weis & Gaylord 1985). `trigonal_3m(r13, r22, r33, r51)`
+  builds a 3m tensor from other data, and any 3 × 3 × 3 tensor is accepted.
+  LiTaO₃ and other crystals need their own coefficients (and dispersion)
+  supplied.
+- **`mode_index_shift`** is first-order perturbation theory on a mode
+  profile, integrated layer by layer so the step in Δε at a film's edge
+  costs no accuracy. `vpi_length` turns it into Vπ·L.
+
+Validation (`tests/test_electro_optics.py`):
+
+- **Bulk.** The bulk index changes match `−½n³rE` for both the ordinary and
+  extraordinary waves.
+- **Guided mode.** An x-cut film's TE shift matches the finite difference of
+  exact mode roots to 5e-4 relative.
+- **Symmetry and gradients.** Rotating the crystal and the field together
+  changes nothing, and the field derivative is analytic.
+- **Example value.** For the 0.6 µm film above, Vπ·L = 2.6 V·cm at a 5 µm gap
+  with full RF overlap.

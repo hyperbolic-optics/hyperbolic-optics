@@ -153,6 +153,7 @@ nav:
     - api/resonances.md
     - api/beams.md
     - api/couplers.md
+    - api/electro_optics.md
     - api/sweep.md
     - api/mueller.md
     - api/jones.md
