@@ -21,8 +21,14 @@ Everything is importable from here::
   :class:`CrossedGratingResponse`, with Jones, Mueller and ellipsometric
   analysis.
 
+- **S-parameters** (:mod:`.sparameters`), gplugins-style:
+  :func:`write_sparameters_grating_coupler` for a PDK grating-coupler cell and
+  :func:`write_sparameters_stack`, cached as ``.npz`` by a hash of the geometry
+  and settings; :func:`model_from_npz` reads them into SAX, modes kept.
+
 Results describe an infinitely extended stack or grating under plane-wave
-illumination. Requires the ``gdsfactory`` extra and an active PDK.
+illumination (couplers: the leaky-mode model of a finite grating). Requires the
+``gdsfactory`` extra and an active PDK.
 """
 
 from hyperbolic_optics.integrations.gdsfactory.geometry import (
@@ -59,6 +65,11 @@ from hyperbolic_optics.integrations.gdsfactory.simulate import (
     solve_stack,
     stack_sax_model,
 )
+from hyperbolic_optics.integrations.gdsfactory.sparameters import (
+    model_from_npz,
+    write_sparameters_grating_coupler,
+    write_sparameters_stack,
+)
 from hyperbolic_optics.integrations.gdsfactory.stack import (
     StackLayer,
     VerticalStack,
@@ -88,6 +99,7 @@ __all__ = [
     "grating_stack",
     "line_grating",
     "material_tensor",
+    "model_from_npz",
     "patterned_stack",
     "periodic_array",
     "resolve_material",
@@ -101,6 +113,8 @@ __all__ = [
     "stack_sax_model",
     "vertical_profile",
     "vertical_stack",
+    "write_sparameters_grating_coupler",
+    "write_sparameters_stack",
     "x_cut",
     "z_cut",
 ]

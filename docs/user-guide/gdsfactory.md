@@ -304,6 +304,54 @@ to `examples/output/`. The grating is infinitely periodic and plane-wave
 illuminated; FDTDX's finite beams and slab are the check on what a finite
 device does.
 
+## S-parameters for circuits (gplugins-style)
+
+```python
+import numpy as np
+
+gc = gf.components.grating_coupler_rectangular()
+layer_stack = gf.get_active_pdk().layer_stack
+sp = hog.write_sparameters_grating_coupler(gc, layer_stack, np.linspace(1.5, 1.6, 3))
+sp["o1@TE,o2@TE"]                     # waveguide TE -> fibre TE (s), per wavelength
+model = hog.model_from_npz(sp)        # or the saved .npz file's path
+model(wl=1.55)[("o1@TE", "o2@TE")]
+```
+
+These follow gdsfactory's simulation plugins:
+
+- **Signature.** A component and the PDK's `LayerStack` in; a dictionary of
+  S-parameters out.
+- **Keys.** They are `"port@mode,port@mode"` (input first, as in SAX), using
+  the component's own port names, plus `"wavelengths"`.
+- **Caching.** Results are saved as `.npz` under `gf.config.PATH.sparameters`,
+  keyed by a hash of the geometry and the settings. A second call loads the
+  file; `overwrite=True` recomputes.
+- **Metadata.** A JSON file beside each `.npz` records the physics: emission
+  angle, directionality, radiated fraction, fibre overlap and the leaky mode.
+- **Reading with gplugins.** `gplugins.sax.read.model_from_npz` reads the
+  files, but drops the mode label, so it only suits single-mode results.
+  `hog.model_from_npz` keeps the modes.
+
+The writers:
+
+- **`write_sparameters_grating_coupler`** handles a grating-coupler cell from
+  the PDK, such as `gf.components.grating_coupler_rectangular`.
+  - It reads the teeth from the grating layer (`teeth_only`: the taper, and
+    the first tooth merged into it, are ignored), and the etched stack under
+    them from the `LayerStack`.
+  - The coupling comes from the grating's leaky mode (see
+    [Resonances, Modes, Beams and Couplers](modes.md)).
+  - For the generic PDK's cell (0.75 µm period, 70 nm etch in 220 nm Si,
+    3 µm oxide above and below, Si substrate) it gives 33% at 1550 nm. The
+    emission is at 43° into air, the directionality 0.59, and the overlap with
+    the fibre mode 0.57, because the grating radiates faster than a 5.2 µm
+    waist needs.
+  - Anisotropic cuts, e.g. `materials={"ln": hog.Oriented("LiNbO3",
+    hog.x_cut(90))}`, are solved in full, and their TE→TM conversion appears
+    in the `fiber@TM` entries.
+- **`write_sparameters_stack`** gives the four-port plane-wave S-matrix of the
+  stack at a point of a layout.
+
 ## SAX models of PDK stacks
 
 `hog.stack_sax_model(vertical_stack(component, layer_stack, point))` turns the
