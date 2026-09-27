@@ -218,15 +218,32 @@ def _kz(eps: jax.Array, kx: jax.Array) -> jax.Array:
     return jnp.where(jnp.imag(kz) < 0, -kz, kz)
 
 
-def _isotropic_modes(eps: jax.Array, kx: jax.Array) -> jax.Array:
+def _kz_outgoing(eps: jax.Array, kx: jax.Array, k0: jax.Array) -> jax.Array:
+    """Normal wavevector (over k₀) continued analytically off the real axis.
+
+    For a complex frequency or a complex in-plane wavevector -- a resonance or a
+    leaky mode -- the physical ``k₀·kz`` is taken on the branch continuous with
+    the real-axis one: ``√(k₀²(ε − kx²))`` where that is mostly propagating
+    (``Re > 0``: the outgoing, possibly growing, wave of a leaky resonance) and
+    ``i·√(−k₀²(ε − kx²))`` where it is mostly evanescent (the decaying one). At
+    real ``k₀`` and real arguments it is :func:`_kz`.
+    """
+    k0 = jnp.asarray(k0) + 0j
+    z = k0**2 * (eps - kx**2 + 0j)
+    physical = jnp.where(jnp.real(z) > 0, jnp.sqrt(z), 1j * jnp.sqrt(-z))
+    return physical / k0
+
+
+def _isotropic_modes(eps: jax.Array, kx: jax.Array, kz: jax.Array | None = None) -> jax.Array:
     """Mode columns ``[p→, s→, p←, s←]`` of an isotropic medium, ``[..., 4, 4]``.
 
     Unit total-field amplitudes on the NumPy engine's sign convention: the p
     waves share the sign of Hy, which gives ``r_p = (n₂c₁ − n₁c₂)/(n₂c₁ + n₁c₂)``.
-    For real ε every mode carries normal flux ``±½ Re(kz)``.
+    For real ε every mode carries normal flux ``±½ Re(kz)``. ``kz`` overrides
+    the decaying branch (e.g. with :func:`_kz_outgoing`).
     """
     n = jnp.sqrt(eps + 0j)
-    kz = _kz(eps, kx)
+    kz = _kz(eps, kx) if kz is None else kz
     n = jnp.broadcast_to(n, kz.shape)
     zero, one = jnp.zeros_like(kz), jnp.ones_like(kz)
     columns = [

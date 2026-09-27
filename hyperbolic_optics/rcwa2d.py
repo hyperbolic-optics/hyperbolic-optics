@@ -571,6 +571,39 @@ def _orders(mx: int, my: int, lattice=None, truncation: str = "parallelogram") -
     return orders[np.linalg.norm(g, axis=1) <= radius]
 
 
+def _operators(
+    layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
+    eps_incident, eps_exit, k0=None,
+):  # fmt: skip
+    """Mode bases and each layer's operator in the reference basis.
+
+    Returns ``(w_ref, w_in, flux_in, w_out, flux_out, deltas)``. With ``k0``
+    (complex frequency or wavevector), the half-spaces' waves are continued to
+    their outgoing branch, for resonances.
+    """
+    k_par_sq = kx**2 + ky**2
+    eps_ref = 2.0 * k_par_sq + 1.0
+    if k0 is None:
+        w_ref, flux_ref = _harmonic_modes(eps_ref, kx, ky, direction)
+        w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
+    else:
+        # complex frequency: an analytic basis (continued branch, √kz scaling, which is
+        # the power normalisation on the real axis), so T(f) is analytic in f
+        w_ref, _ = _harmonic_modes(eps_ref, kx, ky, direction, k0)
+        kz_ref = jnp.sqrt(eps_ref - k_par_sq + 0j)  # = √(1 + q²), near the positive axis
+        scale = jnp.concatenate([jnp.sqrt(kz_ref)] * 4, axis=-1)  # columns: 4 groups of N
+        w_ref = w_ref / scale[..., None, :]
+    w_in, flux_in = _harmonic_modes(jnp.asarray(eps_incident)[..., None], kx, ky, direction, k0)
+    w_out, flux_out = _harmonic_modes(jnp.asarray(eps_exit)[..., None], kx, ky, direction, k0)
+    deltas = []
+    for layer in layers:
+        eps = _factorize(layer, "eps", max_order, lattice, orders, factorization, grid)
+        mu = _factorize(layer, "mu", max_order, lattice, orders, factorization, grid)
+        delta = _fourier_system_matrix(eps, mu, kx, ky)
+        deltas.append(_solve(w_ref, delta @ w_ref))
+    return w_ref, w_in, flux_in, w_out, flux_out, deltas
+
+
 def solve_crossed_grating(
     layers: list[PatternedLayer],
     period_um: tuple[float, float],
@@ -641,18 +674,12 @@ def solve_crossed_grating(
     direction = (jnp.cos(azimuth_rad)[..., None], jnp.sin(azimuth_rad)[..., None])
     k0 = 2 * jnp.pi / wavelength_um
 
-    k_par_sq = kx**2 + ky**2
-    w_ref, flux_ref = _harmonic_modes(2.0 * k_par_sq + 1.0, kx, ky, direction)
-    w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
-    w_in, flux_in = _harmonic_modes(eps_incident[..., None], kx, ky, direction)
-    w_out, flux_out = _harmonic_modes(eps_exit[..., None], kx, ky, direction)
-
+    w_ref, w_in, flux_in, w_out, flux_out, deltas = _operators(
+        layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
+        eps_incident, eps_exit,
+    )  # fmt: skip
     scattering = _interface(w_in, w_ref)
-    for layer in layers:
-        eps = _factorize(layer, "eps", max_order, lattice, orders, factorization, grid)
-        mu = _factorize(layer, "mu", max_order, lattice, orders, factorization, grid)
-        delta = _fourier_system_matrix(eps, mu, kx, ky)
-        delta_ref = _solve(w_ref, delta @ w_ref)
+    for layer, delta_ref in zip(layers, deltas, strict=True):
         k0d = k0 * jnp.asarray(layer.thickness_um)
         scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
     scattering = _star(scattering, _interface(w_ref, w_out))

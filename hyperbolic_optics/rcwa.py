@@ -52,6 +52,7 @@ from hyperbolic_optics.bcm import (
     DEFAULT_DOUBLINGS,
     _interface,
     _kz,
+    _kz_outgoing,
     _layer,
     _solve,
     _star,
@@ -270,7 +271,7 @@ def _fourier_system_matrix(eps: jax.Array, mu: jax.Array, kx: jax.Array, ky: jax
     return jnp.concatenate([row_ex, row_ey, row_hx, row_hy], axis=-2)
 
 
-def _harmonic_modes(eps, qx, qy, direction):
+def _harmonic_modes(eps, qx, qy, direction, k0=None):
     """Isotropic-medium modes for every harmonic: ``W`` ``[..., 4N, 4N]`` and flux ``[..., 4N]``.
 
     Rows are ``[Ex, Ey, Hx, Hy]`` × harmonics; columns ``[p→, s→, p←, s←]`` ×
@@ -282,18 +283,21 @@ def _harmonic_modes(eps, qx, qy, direction):
         qx: In-plane x wavevector per harmonic ``[..., N]``.
         qy: In-plane y wavevector per harmonic ``[..., N]``; a scalar broadcasts.
         direction: ``(ux, uy)`` used where the in-plane wavevector vanishes.
+        k0: Vacuum wavenumber, only for complex frequencies or wavevectors: the
+            waves are then continued to their outgoing branch
+            (:func:`hyperbolic_optics.bcm._kz_outgoing`), as a resonance needs.
     """
     shape = jnp.broadcast_shapes(jnp.shape(qx), jnp.shape(qy))
     qx, qy = jnp.broadcast_to(qx, shape), jnp.broadcast_to(qy, shape)
     k_par_sq = qx**2 + qy**2
-    moving = k_par_sq > 1e-24
+    moving = jnp.abs(k_par_sq) > 1e-24
     k_par = jnp.where(moving, jnp.sqrt(jnp.where(moving, k_par_sq, 1.0)), 0.0)
     ux = jnp.where(moving, qx / jnp.where(moving, k_par, 1.0), direction[0])
     uy = jnp.where(moving, qy / jnp.where(moving, k_par, 1.0), direction[1])
 
     eps = jnp.broadcast_to(eps, qx.shape) + 0j
     n = jnp.sqrt(eps)
-    kz = _kz(eps, k_par)
+    kz = _kz(eps, k_par) if k0 is None else _kz_outgoing(eps, k_par, k0)
     zero = jnp.zeros_like(kz)
 
     def cross(a, b):
