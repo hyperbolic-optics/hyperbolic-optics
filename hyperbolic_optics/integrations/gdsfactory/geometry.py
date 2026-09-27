@@ -22,7 +22,13 @@ except ImportError as error:  # pragma: no cover - exercised only without the ex
         'pip install "hyperbolic-optics[gdsfactory]"'
     ) from error
 
-__all__ = ["LineGrating", "extract_line_grating", "line_grating"]
+__all__ = [
+    "GratingTeeth",
+    "LineGrating",
+    "extract_grating_teeth",
+    "extract_line_grating",
+    "line_grating",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -164,3 +170,72 @@ def extract_line_grating(
         length_um=float(np.mean(y1 - y0)),
         origin_um=(float(x0[0]), float(np.mean(y0))),
     )
+
+
+@dataclass(frozen=True)
+class GratingTeeth:
+    """The teeth of a grating along its axis: apodized, chirped or focusing alike.
+
+    Attributes:
+        starts_um, ends_um: Each tooth's edges along x, in order ``[N]``.
+        axis_y_um: The line along which they were read.
+    """
+
+    starts_um: np.ndarray
+    ends_um: np.ndarray
+    axis_y_um: float
+
+    @property
+    def periods_um(self) -> np.ndarray:
+        """Tooth to tooth; the last repeats the one before."""
+        steps = np.diff(self.starts_um)
+        return np.append(steps, steps[-1])
+
+    @property
+    def fills(self) -> np.ndarray:
+        return (self.ends_um - self.starts_um) / self.periods_um
+
+
+def extract_grating_teeth(
+    component: gf.Component,
+    layer: gf.typings.LayerSpec,
+    axis_y_um: float | None = None,
+    min_teeth: int = 3,
+) -> GratingTeeth:
+    """The teeth of any grating on ``layer``, cut along the line ``y = axis_y_um``.
+
+    For a focusing (elliptical) grating coupler the cut along its axis gives the
+    local grating the guided mode meets; for an apodized or chirped one, every
+    tooth's own width and pitch. Intervals much wider than the typical tooth
+    (a taper, a slab drawn on the same layer) are dropped.
+
+    Args:
+        component: The layout.
+        layer: The layer the teeth are drawn on.
+        axis_y_um: The grating's axis; by default the y of the component's
+            first optical port (a grating coupler's waveguide port).
+        min_teeth: Fewer teeth than this raise ``ValueError``.
+    """
+    import kfactory as kf
+
+    if axis_y_um is None:
+        optical = [p for p in component.ports if p.port_type == "optical"]
+        axis_y_um = float(optical[0].center[1]) if optical else float(component.dbbox().center().y)
+    dbu = component.kcl.dbu
+    y = round(axis_y_um / dbu)
+    region = kf.kdb.Region(component.begin_shapes_rec(gf.get_layer(layer)))
+    box = region.bbox()
+    strip = kf.kdb.Region(kf.kdb.Box(box.left - 1, y - 1, box.right + 1, y + 1))
+    intervals = sorted(
+        (polygon.bbox().left * dbu, polygon.bbox().right * dbu)
+        for polygon in (region & strip).merged().each()
+    )
+    widths = np.array([b - a for a, b in intervals])
+    if len(widths) == 0:
+        raise ValueError(f"nothing on layer {layer} along y = {axis_y_um} µm")
+    typical = np.median(widths)
+    teeth = [interval for interval, w in zip(intervals, widths, strict=True) if w < 3 * typical]
+    if len(teeth) < min_teeth:
+        raise ValueError(f"found {len(teeth)} teeth on layer {layer} along y = {axis_y_um} µm")
+    starts, ends = (np.array(column) for column in zip(*teeth, strict=True))
+    return GratingTeeth(starts_um=starts, ends_um=ends, axis_y_um=axis_y_um)

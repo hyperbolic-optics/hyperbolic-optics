@@ -139,3 +139,54 @@ def test_x_cut_lithium_niobate_polarization(azimuth, mixed):
         assert min(abs(p), abs(s)) > 1e-2
     else:
         assert abs(p) < 1e-8
+
+
+class TestLocalModel:
+    def test_uniform_profile_is_the_closed_form(self):
+        x = np.linspace(0, 30, 6001)
+        alpha, directionality, angle = 0.12, 0.7, 10.0
+        te, tm, offset, _ = couplers.coupling_from_profile(
+            x, np.full_like(x, alpha), np.full_like(x, directionality),
+            np.full_like(x, np.sin(np.radians(angle))), np.tile([0.0, 1.0], (x.size, 1)),
+            WAVELENGTH, 5.2, angle,
+        )  # fmt: skip
+        overlap, best = couplers.optimal_overlap(alpha, 5.2, 30.0, angle)
+        radiated = 1 - np.exp(-2 * alpha * 30)
+        assert te == pytest.approx(directionality * radiated * overlap, rel=1e-6)
+        assert tm == pytest.approx(0.0, abs=1e-15) and offset == pytest.approx(best, abs=0.01)
+
+    def test_the_ideal_apodization_couples_everything(self):
+        """α(x) = G²/(2(1 − ∫G²)) turns the emission into the fibre's own Gaussian."""
+        angle = np.radians(10.0)
+        footprint = 5.2 / np.cos(angle)
+        x = np.linspace(-3 * footprint, 3 * footprint, 20001)
+        target = np.exp(-2 * (x / footprint) ** 2)
+        target /= np.trapezoid(target, x)
+        alpha = target / (2 * np.clip(1 - np.cumsum(target) * (x[1] - x[0]), 1e-12, None))
+        te, _, offset, fitted = couplers.coupling_from_profile(
+            x, alpha, np.ones_like(x), np.full_like(x, np.sin(angle)),
+            np.tile([0.0, 1.0], (x.size, 1)), WAVELENGTH, 5.2,
+        )  # fmt: skip
+        assert te > 0.9999 and fitted == pytest.approx(10.0, abs=1e-3) and abs(offset) < 0.01
+
+    def test_an_apodized_grating_follows_its_mode_tooth_by_tooth(self):
+        fills = np.linspace(0.35, 0.65, 6)
+        layers = [
+            [
+                rcwa.lamellar_layer(N_SIN**2 * EYE, EYE, float(f), 0.2),
+                rcwa.uniform_layer(N_SIN**2 * EYE, 0.2),
+            ]
+            for f in fills
+        ]
+        result = couplers.apodized_grating_coupler(
+            lambda i: layers[i], np.arange(6) * PERIOD, np.full(6, PERIOD), WAVELENGTH, 1.0,
+            N_OX**2, (1.52, 1.72), max_loss=0.03,
+        )  # fmt: skip
+        alphas = [m.alpha_per_um for m in result.modes]
+        assert len(set(np.round(alphas, 8))) == 6  # every tooth its own leaky mode
+        assert 0 < result.efficiency < 1
+        # a refined root is the one a fresh search finds
+        fresh = resonances.grating_leaky_modes(
+            layers[3], PERIOD, WAVELENGTH, 1.0, N_OX**2, (1.52, 1.72), max_loss=0.03
+        )[0]
+        assert abs(fresh.bloch_index - result.modes[3].bloch_index) < 1e-9

@@ -204,6 +204,24 @@ For the SiN grating above:
 - An x-cut LiNbO₃ grating emits pure TE with its axis along the grating
   lines, and both polarizations with the axis at 45°.
 
+### Apodized, chirped and focusing couplers
+
+`couplers.apodized_grating_coupler(layers_for, starts_um, periods_um, …)`
+treats each tooth as a period of a uniform grating of its own pitch and fill.
+This is the local leaky-mode model.
+
+- **Per tooth.** The first tooth's leaky mode comes from the contour search.
+  Each next one follows its neighbour's root: first by the secant method, and
+  by a small contour search if the step was too big.
+- **The emission.** The guided power decays as `exp(−2∫α dx)`. The emitted
+  field, `√(2αD·P)·exp(ik₀∫q dx)`, carries the local polarization, and is
+  overlapped with the fibre mode at its best position and angle.
+- **Any profile.** `couplers.coupling_from_profile` runs the same integral for
+  any prescribed α(x), D(x) and q(x).
+- **Checks.** Uniform teeth give the closed-form uniform model (1e-6). The
+  ideal apodisation for a Gaussian, `α = G²/(2(1 − ∫G²))`, couples 99.99%,
+  at the right angle and position.
+
 ## Electro-optic phase shifters
 
 ```python

@@ -95,6 +95,17 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Apodized, chirped and focusing grating couplers**
+  (`couplers.apodized_grating_coupler`, `couplers.coupling_from_profile`,
+  `resonances.refine_leaky_mode`, `hog.extract_grating_teeth`,
+  `hog.teeth_stack`):
+  - the local leaky-mode model, tooth by tooth, following the mode from each
+    tooth to the next;
+  - `write_sparameters_grating_coupler` now reads any coupler cell along its
+    axis, and optimises the fibre's angle.
+
+  Checked: the uniform limit (1e-6), the ideal Gaussian apodisation (99.99%),
+  and continuation against fresh searches.
 - **Electro-optics** (`hyperbolic_optics.electro_optics`):
   - the Pockels effect for any crystal orientation and field direction,
     differentiable in the field, with LiNbO₃'s 3m coefficients;

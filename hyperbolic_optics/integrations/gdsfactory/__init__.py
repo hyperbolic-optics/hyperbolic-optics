@@ -32,7 +32,9 @@ illumination (couplers: the leaky-mode model of a finite grating). Requires the
 """
 
 from hyperbolic_optics.integrations.gdsfactory.geometry import (
+    GratingTeeth,
     LineGrating,
+    extract_grating_teeth,
     extract_line_grating,
     line_grating,
 )
@@ -76,6 +78,7 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     grating_layers,
     grating_stack,
     patterned_stack,
+    teeth_stack,
     vertical_profile,
     vertical_stack,
 )
@@ -84,6 +87,7 @@ __all__ = [
     "CrossedGratingResponse",
     "DEFAULT_MATERIALS",
     "GratingResponse",
+    "GratingTeeth",
     "LineGrating",
     "MaterialSpec",
     "Oriented",
@@ -93,6 +97,7 @@ __all__ = [
     "VerticalStack",
     "crossed_grating_layers",
     "crossed_grating_stack",
+    "extract_grating_teeth",
     "extract_line_grating",
     "extract_unit_cell",
     "grating_layers",
@@ -111,6 +116,7 @@ __all__ = [
     "solve_grating",
     "solve_stack",
     "stack_sax_model",
+    "teeth_stack",
     "vertical_profile",
     "vertical_stack",
     "write_sparameters_grating_coupler",

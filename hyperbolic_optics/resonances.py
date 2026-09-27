@@ -43,9 +43,12 @@ from hyperbolic_optics.rcwa import default_doublings
 
 __all__ = [
     "GuidedMode",
+    "LeakyMode",
     "Resonance",
     "band_edge_modes",
     "crystal_eigenvalues",
+    "grating_leaky_modes",
+    "refine_leaky_mode",
     "slab_mode_fields",
     "slab_modes",
     "spectrum_poles",
@@ -817,9 +820,7 @@ def grating_leaky_modes(
 
     layers = list(layers)
     doublings = default_doublings(max_order) if doublings is None else doublings
-    if split is None:
-        peak = [float(np.max(np.real(np.asarray(layer.eps)))) for layer in layers]
-        split = (int(np.argmax(peak)), 0.5)
+    split = _leaky_split(layers, split)
     low, high = (float(v) for v in index_range)
     depth = 0.25 * (high - low) if max_loss is None else float(max_loss)
 
@@ -831,52 +832,123 @@ def grating_leaky_modes(
 
     round_trip = jax.jit(matrix)
     roots = _contour_roots(round_trip, (low, high), depth, quadrature, probes, tolerance, seed)
-
-    size = 2 * max_order + 1
-    k0 = 2 * np.pi / float(wavelength_um)
     modes = []
     for kx0, residual, multiplicity in sorted(roots, key=lambda r: -r[0].real):
         if kx0.imag < -1e-9 * abs(kx0):
             continue  # grows as it propagates: not a mode of a passive grating
+        modes.append(
+            _analyse_leaky(
+                layers,
+                period_um,
+                wavelength_um,
+                eps_top,
+                eps_bottom,
+                max_order,
+                factorization,
+                split,
+                doublings,
+                kx0,
+                residual,
+                multiplicity,
+            )  # fmt: skip
+        )
+    return modes
+
+
+def _leaky_split(layers, split):
+    if split is not None:
+        return split
+    peak = [float(np.max(np.real(np.asarray(layer.eps)))) for layer in layers]
+    return (int(np.argmax(peak)), 0.5)
+
+
+def _analyse_leaky(layers, period_um, wavelength_um, eps_top, eps_bottom, max_order,
+                   factorization, split, doublings, kx0, residual, multiplicity):  # fmt: skip
+    """Radiation of a leaky mode at its root: orders, angles, directionality, polarization."""
+    size = 2 * max_order + 1
+    k0 = 2 * np.pi / float(wavelength_um)
+    parts = _grating_parts(layers, period_um, wavelength_um, eps_top, eps_bottom,
+                           max_order, factorization, kx0)  # fmt: skip
+    above, below = _grating_cascades(layers, parts, split, doublings)
+    values, vectors = np.linalg.eig(np.asarray(above[1] @ below[2]))
+    down = vectors[:, np.argmin(np.abs(1 - values))]
+    up = np.asarray(below[2]) @ down
+    top = np.asarray(above[3]) @ up  # outgoing into the top half-space: [p·N, s·N]
+    bottom = np.asarray(below[0]) @ down  # outgoing into the bottom half-space
+    kx = np.asarray(parts[5])
+    kz_top, kz_bottom = (np.asarray(parts[6][side]) for side in ("top", "bottom"))
+
+    def radiated(amplitudes, kz):
+        # a unit-field mode's normal flux is ½ Re(kz) for p and s alike
+        return 0.5 * np.real(kz) * (np.abs(amplitudes[:size]) ** 2 + np.abs(amplitudes[size:]) ** 2)
+
+    up_power, down_power = radiated(top, kz_top), radiated(bottom, kz_bottom)
+    # an order radiates where it propagates on the real axis: |Re kx_m| < n
+    open_top = np.abs(kx.real) < np.sqrt(float(np.real(eps_top)))
+    open_bottom = np.abs(kx.real) < np.sqrt(float(np.real(eps_bottom)))
+    total = up_power[open_top].sum() + down_power[open_bottom].sum()
+    orders = tuple(int(m) for m in np.arange(-max_order, max_order + 1)[open_top | open_bottom])
+    emission, polarization = {}, {}
+    n_top = np.sqrt(float(np.real(eps_top)))
+    for i in np.flatnonzero(open_top):
+        m = int(i - max_order)
+        emission[m] = float(np.degrees(np.arcsin(np.clip(kx[i].real / n_top, -1, 1))))
+        jones = np.array([top[i], top[size + i]])
+        polarization[m] = tuple(jones / np.linalg.norm(jones))
+    return LeakyMode(
+        bloch_index=complex(kx0),
+        alpha_per_um=float(k0 * kx0.imag),
+        orders=orders,
+        emission_deg=emission,
+        directionality=float(up_power[open_top].sum() / total) if total > 0 else 0.0,
+        top_polarization=polarization,
+        multiplicity=multiplicity,
+        residual=residual,
+    )
+
+
+def refine_leaky_mode(
+    layers,
+    period_um,
+    wavelength_um,
+    eps_top,
+    eps_bottom,
+    guess: complex,
+    max_order: int = 10,
+    split: tuple[int, float] | None = None,
+    factorization: str = "li",
+    doublings: int | None = None,
+    tolerance: float = 1e-11,
+    max_iterations: int = 40,
+) -> LeakyMode:
+    """The leaky mode nearest ``guess`` (a neighbouring grating's root), by the secant method.
+
+    For following a mode through a family of gratings -- the teeth of an
+    apodized coupler, a sweep of wavelength or etch -- far faster than a
+    contour search each time. Raises ``ValueError`` if it does not converge.
+    """
+    from hyperbolic_optics.rcwa import default_doublings
+
+    layers = list(layers)
+    doublings = default_doublings(max_order) if doublings is None else doublings
+    split = _leaky_split(layers, split)
+
+    def mismatch(kx0):
         parts = _grating_parts(layers, period_um, wavelength_um, eps_top, eps_bottom,
                                max_order, factorization, kx0)  # fmt: skip
         above, below = _grating_cascades(layers, parts, split, doublings)
-        values, vectors = np.linalg.eig(np.asarray(above[1] @ below[2]))
-        down = vectors[:, np.argmin(np.abs(1 - values))]
-        up = np.asarray(below[2]) @ down
-        top = np.asarray(above[3]) @ up  # outgoing into the top half-space: [p·N, s·N]
-        bottom = np.asarray(below[0]) @ down  # outgoing into the bottom half-space
-        kx = np.asarray(parts[5])
-        kz_top, kz_bottom = (np.asarray(parts[6][side]) for side in ("top", "bottom"))
+        mu = np.linalg.eigvals(np.asarray(above[1] @ below[2]))
+        return 1 - mu[np.argmin(np.abs(1 - mu))]
 
-        def radiated(amplitudes, kz):
-            # a unit-field mode's normal flux is ½ Re(kz) for p and s alike
-            return 0.5 * np.real(kz) * (np.abs(amplitudes[:size]) ** 2
-                                        + np.abs(amplitudes[size:]) ** 2)  # fmt: skip
-
-        up_power, down_power = radiated(top, kz_top), radiated(bottom, kz_bottom)
-        # an order radiates where it propagates on the real axis: |Re kx_m| < n
-        open_top = np.abs(kx.real) < np.sqrt(float(np.real(eps_top)))
-        open_bottom = np.abs(kx.real) < np.sqrt(float(np.real(eps_bottom)))
-        total = up_power[open_top].sum() + down_power[open_bottom].sum()
-        orders = tuple(int(m) for m in np.arange(-max_order, max_order + 1)[open_top | open_bottom])
-        emission, polarization = {}, {}
-        n_top = np.sqrt(float(np.real(eps_top)))
-        for i in np.flatnonzero(open_top):
-            m = int(i - max_order)
-            emission[m] = float(np.degrees(np.arcsin(np.clip(kx[i].real / n_top, -1, 1))))
-            jones = np.array([top[i], top[size + i]])
-            polarization[m] = tuple(jones / np.linalg.norm(jones))
-        modes.append(
-            LeakyMode(
-                bloch_index=complex(kx0),
-                alpha_per_um=float(k0 * kx0.imag),
-                orders=orders,
-                emission_deg=emission,
-                directionality=float(up_power[open_top].sum() / total) if total > 0 else 0.0,
-                top_polarization=polarization,
-                multiplicity=multiplicity,
-                residual=residual,
-            )
-        )
-    return modes
+    z_prev, z = complex(guess), complex(guess) * (1 + 1e-6)
+    g_prev = mismatch(z_prev)
+    for _ in range(max_iterations):
+        g = mismatch(z)
+        if abs(g) < tolerance or g == g_prev:
+            break
+        z, z_prev, g_prev = z - g * (z - z_prev) / (g - g_prev), z, g
+    residual = abs(mismatch(z))
+    if residual > 1e3 * tolerance or z.imag < -1e-9 * abs(z):
+        raise ValueError(f"no leaky mode near {guess} (residual {residual:.1e})")
+    return _analyse_leaky(layers, period_um, wavelength_um, eps_top, eps_bottom, max_order,
+                          factorization, split, doublings, z, residual, 1)  # fmt: skip
