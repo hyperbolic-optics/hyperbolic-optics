@@ -95,6 +95,25 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Resonances** (`hyperbolic_optics.resonances`): poles of the S-matrix in the
+  complex plane by Beyn's contour method.
+  - `band_edge_modes`: band-edge modes of photonic-crystal slabs (PCSELs) on
+    any lattice, with Q and degeneracy.
+  - `slab_modes` / `slab_mode_fields`: full-vector guided modes of
+    anisotropic waveguides, and their profiles.
+  - `grating_leaky_modes`: leaky Bloch modes of grating couplers.
+  - `spectrum_poles`: AAA poles of any sampled spectrum.
+
+  Checked against closed forms (Fabry–Pérot poles, folded guided modes, slab
+  dispersion), the poles of their own reflection spectra, lattice symmetry,
+  absorbed power, and prism coupling in the NumPy engine.
+- **Gaussian beams** (`hyperbolic_optics.beams`): beam-mode S-matrices and
+  beam shifts, checked against Artmann's Goos–Hänchen shift and the
+  helicity-odd Imbert–Fedorov shift.
+- **Grating couplers** (`hyperbolic_optics.couplers`): waveguide-to-fibre
+  efficiency from the leaky mode's decay, emission angle, directionality and
+  its overlap with the fibre mode, plus a SAX model. The directionality agrees
+  with the one read from the grating's own spectrum to 3e-5.
 - **Any lattice for 2D RCWA** (`rcwa2d.Lattice`): hexagonal (triangular),
   oblique and rectangular lattices.
   - A circular truncation respects the lattice's symmetry and does not depend
