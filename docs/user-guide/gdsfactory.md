@@ -189,24 +189,6 @@ values throughout, so an objective written with it can be differentiated with
 respect to period, fill, thicknesses and wavelength. Wavelength derivatives
 include the material dispersion.
 
-`examples/hbn_absorber_gdsfactory.py` does the whole loop:
-
-1. It optimises a hyperbolic hBN ribbon absorber on a gold mirror at 1500 cm⁻¹,
-   varying period, fill, hBN thickness and spacer thickness, at 41 orders.
-2. It draws the result as this PCell and writes the GDS.
-3. It reads the GDS back and re-simulates at 81 and 161 orders.
-
-| | absorption at 1500 cm⁻¹ |
-|---|---|
-| initial design | 0.065 |
-| optimised (41 orders) | 0.939 |
-| from the GDS, 81 orders | 0.938 |
-| from the GDS, 161 orders | 0.938 |
-| mirror and spacer only (gold's share) | 0.010 |
-
-It takes about 25 s on a laptop CPU and writes the GDS and a four-panel
-figure to `examples/output/`.
-
 ## 2D-periodic patterns: pillars, holes, any polygons
 
 The same pattern of functions covers patterns that repeat in x and y:
@@ -274,115 +256,32 @@ figure to `examples/output/`.
 
 ## Negative refraction in tilted calcite
 
-`examples/calcite_negative_refraction_gdsfactory.py` is the grating counterpart
-of FDTDX's
-[`hyperbolic_asymmetric_refraction.py`](https://github.com/ymahlau/fdtdx/blob/main/examples/hyperbolic_asymmetric_refraction.py).
-The setting is calcite at 1470.17 cm⁻¹, inside its ordinary Reststrahlen band,
-with the optic axis 25° above the surface. It is stated as
-`Oriented("Calcite", (0, -65, 0))`, because this package's z points into the
-stack and FDTDX's out of it.
-
-1. **Refraction.** From the 4×4 Berreman eigenmodes, TM beams at +45° and
-   −45° carry energy at +23.1° and +53.3°: one positive, one negative
-   refraction. FDTDX's closed form gives the same values. The package's calcite
-   model is the one FDTDX's two-pole fit was matched to (ε agrees to 1e-3).
-2. **A grating that uses it.** With the period λ / sin 45° = 9.62 µm, a
-   symmetric rectangular calcite grating at normal incidence sends its ±1
-   orders into the crystal with the wavevectors of those two beams. Both then
-   carry energy towards +x, and they leave the slab unequally.
-3. **Design and verification.** Gradient ascent on fill, etch depth and slab
-   thickness, through calcite's dispersion, gives T₋₁ = 0.214 and
-   T₊₁ = 0.067. Written to GDS, read back through a `LayerStack` (calcite
-   slab on `WAFER`, ridges on layer (1, 0), air below) and re-simulated at 81
-   orders, it gives T₋₁ = 0.214 and T₊₁ = 0.068.
-4. **Both effects need the tilt.** With the axis along the normal the same
-   grating transmits 7e-4 in each order, because the TM wave is evanescent
-   (ε_xx < 0 < ε_zz).
-
-It takes about 30 s and writes `calcite_grating.gds` and a four-panel figure
-to `examples/output/`. The grating is infinitely periodic and plane-wave
-illuminated; FDTDX's finite beams and slab are the check on what a finite
-device does.
+`benchmarks/calcite_negative_refraction_gdsfactory.py` is the grating
+counterpart of FDTDX's
+[`hyperbolic_asymmetric_refraction.py`](https://github.com/ymahlau/fdtdx/blob/main/examples/hyperbolic_asymmetric_refraction.py),
+kept as a cross-check against a full-wave code.
 
 ## S-parameters for circuits (gplugins-style)
 
 ```python
 import numpy as np
 
-gc = gf.components.grating_coupler_rectangular()
-layer_stack = gf.get_active_pdk().layer_stack
-sp = hog.write_sparameters_grating_coupler(gc, layer_stack, np.linspace(1.5, 1.6, 3))
-sp["o1@TE,o2@TE"]                     # waveguide TE -> fibre TE (s), per wavelength
-model = hog.model_from_npz(sp)        # or the saved .npz file's path
-model(wl=1.55)[("o1@TE", "o2@TE")]
-```
-
-These follow gdsfactory's simulation plugins:
-
-- **Signature.** A component and the PDK's `LayerStack` in; a dictionary of
-  S-parameters out.
-- **Keys.** They are `"port@mode,port@mode"` (input first, as in SAX), using
-  the component's own port names, plus `"wavelengths"`.
-- **Caching.** Results are saved as `.npz` under `gf.config.PATH.sparameters`,
-  keyed by a hash of the geometry and the settings. A second call loads the
-  file; `overwrite=True` recomputes.
-- **Metadata.** A JSON file beside each `.npz` records the physics: emission
-  angle, directionality, radiated fraction, fibre overlap and the leaky mode.
-- **Reading with gplugins.** `gplugins.sax.read.model_from_npz` reads the
-  files, but drops the mode label, so it only suits single-mode results.
-  `hog.model_from_npz` keeps the modes.
-
-The writers:
-
-- **`write_sparameters_grating_coupler`** handles a grating-coupler cell from
-  the PDK.
-  - It reads the teeth tooth by tooth along the coupler's axis
-    (`hog.extract_grating_teeth`), so uniform, apodized, chirped and focusing
-    (elliptical) couplers are all read. The taper on the same layer is
-    dropped.
-  - The etched stack under the teeth comes from the `LayerStack`
-    (`hog.teeth_stack`).
-  - The coupling is the local leaky-mode model, with the fibre at its best
-    position and angle, or at `fiber_angle_deg` (see
-    [Resonances, Modes, Beams and Couplers](modes.md)).
-  - Results at 1550 nm, for the generic PDK's stack (70 nm etch in 220 nm Si,
-    3 µm oxide above and below, Si substrate):
-
-    | cell | efficiency | best fibre angle | α | directionality |
-    |---|---|---|---|---|
-    | `grating_coupler_rectangular` (0.75 µm) | 33.5% | 42.9° | 0.30/µm | 0.59 |
-    | `grating_coupler_elliptical` (0.686 µm) | 31.2% | 26.1° | 0.057/µm | 0.44 |
-
-    At the rectangular cell's period the −2nd order also propagates in the
-    oxide and radiates strongly downward. At the elliptical cell's it is
-    evanescent there, hence the 5× difference in α.
-  - A focusing coupler's curvature is not modelled: the fibre mode is taken
-    to match it across the grating.
-  - Anisotropic cuts, e.g. `materials={"ln": hog.Oriented("LiNbO3",
-    hog.x_cut(90))}`, are solved in full, and their TE→TM conversion appears
-    in the `fiber@TM` entries.
-- **`write_sparameters_stack`** gives the four-port plane-wave S-matrix of the
-  stack at a point of a layout.
-
-## Waveguide modes from a layout
-
-```python
 strip = gf.components.straight(length=10, width=0.5)
-section, modes = hog.waveguide_modes(strip, gf.get_active_pdk().layer_stack, (5.0, 0.0),
-                                     wavelength_um=1.55, n_modes=2, lateral_um=(-1.5, 1.5),
-                                     vertical_um=(-1.5, 1.7), step_um=0.02)
-[m.effective_index for m in modes]          # TE0 2.448, TM0 1.779 (500 × 220 nm Si in oxide)
+sp = hog.write_sparameters_stack(strip, gf.get_active_pdk().layer_stack, (5.0, 0.0),
+                                 np.linspace(1.5, 1.6, 3), angle_deg=20.0)
+sp["top@p,bottom@s"]                  # p in from the top -> s out of the bottom
+model = hog.model_from_npz(sp)        # or the saved .npz file's path
+model(wl=1.55)[("top@p", "bottom@s")]
 ```
 
-- **Cross-section.** `hog.waveguide_cross_section` reads the PDK's material
-  column at positions across the waveguide, exactly where the solver samples
-  the permittivity. That gives ε(lateral, vertical), with each material's
-  tensor turned into the waveguide's frame.
-- **Modes.** `hog.waveguide_modes` solves it with
-  [`modes2d`](modes.md#waveguide-cross-sections-2d).
-- **Crystal orientation.** Anisotropic cuts go through `materials` as
-  elsewhere. A crystal axis at an angle to the waveguide is refused, because
-  the tensor is then not diagonal in the waveguide's frame.
+- **Signature.** A component, the PDK's `LayerStack` and a point in; the
+  four-port plane-wave S-matrix of the stack there out, over wavelength.
+- **Keys.** `"port@mode,port@mode"` (input first, as in SAX), plus
+  `"wavelengths"`.
+- **Caching.** Saved as `.npz` under `gf.config.PATH.sparameters`, keyed by a
+  hash of the geometry and the settings; `overwrite=True` recomputes.
+- **Reading.** `hog.model_from_npz` keeps the polarization modes apart;
+  gplugins' reader drops the mode label.
 
 ## Metasurfaces and metalenses
 
@@ -485,5 +384,4 @@ can make the truncated model's dependence on edge position ripple. See
 - **2D-periodic layouts** use the [crossed-grating solver](crossed-gratings.md)
   on any lattice (see above).
 - **Infinitely periodic, plane-wave results.** The number of periods drawn does
-  not enter, so this describes the interior of a large array, not a finite
-  device such as a grating coupler.
+  not enter, so this describes the interior of a large array.

@@ -117,7 +117,7 @@ coefficients are always exact: a closed-form sum over each polygon's edges.
 
 ## Convergence
 
-Zeroth-order reflectance, from `benchmarks/fmmax/compare_2d.py` (Λ = 0.6 µm,
+Zeroth-order reflectance against FMMAX (Λ = 0.6 µm,
 h = 0.25 µm, λ = 1 µm). The reference is FMMAX's normal-vector formulation
 (`JONES_DIRECT`) at 1605 terms.
 
@@ -130,8 +130,7 @@ h = 0.25 µm, λ = 1 µm). The reference is FMMAX's normal-vector formulation
 | hyperbolic disc (ε = 4 / −3 + 0.3i) | R_ps | 0.050 (0.049–0.055 from 193 terms) | 0.057 / 0.054 | 0.062 / 0.050 |
 
 The tilted-axis LiNbO₃ nanofins of arXiv:2608.06185 (Sec. 3A), which FMMAX
-cannot represent (ε_xz ≠ 0), from `benchmarks/crossed_grating/lnbo3_nanofin.py`:
-T_xx at 550 nm is 0.9501 / 0.9520 (normal, 121 / 289 harmonics) and
+cannot represent (ε_xz ≠ 0): T_xx at 550 nm is 0.9501 / 0.9520 (normal, 121 / 289 harmonics) and
 0.9450 / 0.9464 (Laurent), against the paper's 0.9496 (its BCM) and 0.9483
 (FEM). The two rules bracket the paper's values, within 0.4%.
 
@@ -181,14 +180,6 @@ In `tests/test_rcwa2d.py`:
 - **Gradients** with respect to a polygon vertex, a width, a disc radius,
   thickness and wavelength match finite differences to 1e-5, under both
   factorisations.
-
-Benchmarks, which write PNG figures to their own `output/` folders:
-
-- **`benchmarks/fmmax/compare_2d.py`**: the four FMMAX cases above, with
-  convergence plots (`convergence_2d.png`).
-- **`benchmarks/crossed_grating/lnbo3_nanofin.py`**: the nanofins above, their
-  convergence under both rules, and the transmittance against the axis tilt
-  (`lnbo3_nanofin.png`).
 
 ## Limitations
 

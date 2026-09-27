@@ -122,8 +122,9 @@ def material_tensor(
     """Lab-frame permittivity tensor ``[..., 3, 3]`` for a material specification.
 
     Args:
-        spec: A material specification or :class:`Oriented` (whose rotation is
-            applied after ``rotation_deg``'s).
+        spec: A material specification or :class:`Oriented`. An oriented
+            crystal is cut first, then turned by ``rotation_deg``: a layer's
+            twist turns the crystal as cut.
         wavelength_um: Vacuum wavelength in µm; differentiable.
         rotation_deg: Payload-style ``(rotationX, rotationY, rotationZ)``, degrees.
     """

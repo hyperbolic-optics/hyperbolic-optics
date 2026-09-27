@@ -30,7 +30,7 @@ The script:
        the crystal cut stated as ``Oriented("Calcite", AXIS)``.
 
 Needs the gdsfactory extra:  uv sync --extra gdsfactory
-Run:  python examples/calcite_negative_refraction_gdsfactory.py   (writes to examples/output/)
+Run:  python benchmarks/calcite_negative_refraction_gdsfactory.py   (writes to benchmarks/output/)
 """
 
 import time
