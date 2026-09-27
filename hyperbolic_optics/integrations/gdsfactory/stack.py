@@ -39,7 +39,6 @@ __all__ = [
     "grating_layers",
     "grating_stack",
     "patterned_stack",
-    "teeth_stack",
     "vertical_profile",
     "vertical_stack",
 ]
@@ -237,7 +236,6 @@ def grating_stack(
     materials: Mapping[str, MaterialSpec] | None = None,
     ambient: MaterialSpec = 1.0,
     samples: int = 3,
-    teeth_only: bool = False,
 ) -> tuple[LineGrating, VerticalStack]:
     """A line grating and the patterned stack its etch makes in the PDK's LayerStack.
 
@@ -246,7 +244,7 @@ def grating_stack(
     layout is not a single line grating in this stack and a ``ValueError`` says
     so. Where the ridge and gap columns differ, the layer is patterned.
     """
-    grating = extract_line_grating(component, grating_layer, teeth_only=teeth_only)
+    grating = extract_line_grating(component, grating_layer)
     period, width = grating.period_um, grating.fill * grating.period_um
     x0, y0 = grating.origin_um
     y = y0 + grating.length_um / 2
@@ -324,28 +322,3 @@ def patterned_stack(
         )
     exit_spec = spec(exit_ridge)
     return VerticalStack(layers=tuple(layers), incident=ambient, exit=exit_spec)
-
-
-def teeth_stack(
-    component: gf.Component,
-    teeth,
-    layer_stack: LayerStack,
-    materials: Mapping[str, MaterialSpec] | None = None,
-    ambient: MaterialSpec = 1.0,
-) -> VerticalStack:
-    """The patterned stack under a grating's teeth (:class:`GratingTeeth`), apodized or not.
-
-    Sampled at the centre of every tooth and of every gap along the axis;
-    every tooth must see the same column, and every gap, or ``ValueError``.
-    """
-    y = teeth.axis_y_um
-    ridges = 0.5 * (teeth.starts_um + teeth.ends_um)
-    gaps = 0.5 * (teeth.ends_um[:-1] + teeth.starts_um[1:])
-
-    def column(xs, where):
-        profiles = {tuple(vertical_profile(component, layer_stack, (float(x), y))) for x in xs}
-        if len(profiles) != 1:
-            raise ValueError(f"the stack varies between the grating's {where}")
-        return list(profiles.pop())
-
-    return patterned_stack(column(ridges, "teeth"), column(gaps, "gaps"), materials, ambient)

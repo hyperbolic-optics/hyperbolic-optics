@@ -513,3 +513,28 @@ def test_gradient_against_finite_differences(name):
     ]
     assert abs(grad) > 1e-3, "pick a point where the derivative is appreciably nonzero"
     assert min(errors) < 1e-6, f"d/d{name}: relative errors {errors}"
+
+
+def test_twisted_liquid_crystal_polarization_grating():
+    """A tilted, twisted LC grating (full tensor, xz and yz terms): lossless, and its −1
+    transmitted order switches off at λ = n_sub·Λ, where it turns evanescent."""
+    n_o, n_e, n_sub, period, thickness, slices = 1.525, 1.775, 1.7, 0.4, 1.0, 8
+    x = (jnp.arange(32) + 0.5) / 32
+    tilt, twist = jnp.radians(25.0), jnp.radians(217.0)
+    layers = []
+    for k in range(slices):
+        phi = jnp.pi * x + twist * (k + 0.5) * thickness / slices
+        u = jnp.stack([jnp.cos(tilt) * jnp.cos(phi), jnp.cos(tilt) * jnp.sin(phi),
+                       jnp.sin(tilt) * jnp.ones_like(phi)], axis=-1)  # fmt: skip
+        eps = n_o**2 * jnp.eye(3) + (n_e**2 - n_o**2) * u[:, :, None] * u[:, None, :]
+        layers.append(rcwa.sampled_layer(eps.astype(complex), thickness / slices))
+    circular = jnp.array([1, 1j]) / np.sqrt(2)
+    minus_one = []
+    for wavelength in (0.66, 0.70):
+        res = rcwa.solve_grating(layers, period, wavelength, 0.0, 1.0, n_sub**2, 6)
+        orders = np.asarray(res.orders)
+        total = np.sum(np.asarray(res.R) + np.asarray(res.T), axis=(0, 1))
+        np.testing.assert_allclose(total, 1.0, atol=1e-9)
+        power = np.asarray(res.T)[orders == -1][0] @ np.abs(circular) ** 2
+        minus_one.append(float(power.sum()))
+    assert minus_one[0] > 1e-3 and minus_one[1] < 1e-12

@@ -1,304 +1,71 @@
-# Resonances, Modes, Beams and Couplers
+# Guided Modes, Pockels Effect and Beam Shifts
 
-These tools go beyond plane-wave reflection and transmission to the objects
-devices are built from:
-
-- **band-edge modes** of photonic-crystal slabs (PCSELs);
-- **guided modes** of anisotropic waveguides;
-- **finite Gaussian beams**;
-- **grating couplers** from a waveguide to a fibre.
-
-All of them work with full 3×3 tensors in any layer.
-
-## How resonances are found
-
-A resonance is a field that exists with nothing incident: a pole of the
-scattering matrix. Pick a plane inside the structure, and let `A` be the
-scattering matrix of everything above it and `B` of everything below. The
-downward and upward amplitudes there satisfy `f = A₀₁·b` and `b = B₁₀·f`, so
-at a resonance an eigenvalue of `A₀₁·B₁₀` equals 1.
-
-- **Outgoing branch.** The half-spaces' waves are continued analytically to
-  their outgoing branch. That way, leaky resonances are found as well as
-  bound ones: those at complex frequency, radiating into the open
-  diffraction channels, and those at complex propagation constant, radiating
-  as they go.
-- **Contour search.** Roots are found in the complex plane by Beyn's
-  contour-integral method (W.-J. Beyn, Linear Algebra Appl. 436, 3839
-  (2012)). It finds every root inside a contour at once, and degenerate pairs
-  appear as two roots. Each root is then refined by the secant method.
-- **Tiling.** The contour is a chain of ellipses along the real range. None
-  reaches past the range's ends, because an end may be a branch point (a
-  cladding's index, for a guided mode).
-
-## Band-edge modes of photonic-crystal slabs
+## Guided modes of anisotropic stacks
 
 ```python
 import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import numpy as np
-from hyperbolic_optics import rcwa2d, resonances
 
-eye = jnp.eye(3, dtype=complex)
-holes = rcwa2d.PatternedLayer(
-    0.5, 3.5**2 * eye, (rcwa2d.Shape(rcwa2d.ellipse((0.5, 0.5), (0.15, 0.15), 64), eye),)
-)  # a membrane with air holes, lengths in units of the lattice constant
-modes = resonances.band_edge_modes(
-    [holes], rcwa2d.Lattice.square(1.0), frequency_range=(0.33, 0.37),
-    eps_top=1.0, eps_bottom=1.0, max_order=(4, 4), truncation="circular",
-    max_loss=0.01, probes=24,
-)
-for m in modes:
-    print(m.frequency, m.q_factor, m.multiplicity)   # a/λ (complex), Q, degeneracy
-```
-
-These are the modes a PCSEL lases on. M. N. Robinson's thesis computes them
-with 3D coupled-wave theory for square and triangular lattices (*Developing
-coupled wave theory for photonic crystal surface emitting lasers*, Queen's
-University Belfast, 2026). Here they come from the full-vector RCWA:
-
-- on any lattice;
-- with any stack above and below;
-- with any tensor in any layer;
-- at any Bloch wavevector (`bloch`, in units of 2π/a; Γ by default).
-
-For the square-lattice membrane above (r = 0.15a, t = 0.5a, n = 3.5), the
-TE-like band edge at Γ is:
-
-| a/λ | Q | multiplicity | |
-|---|---|---|---|
-| 0.3405112 | > 10¹⁵ | 1 | dark |
-| 0.3445895 | > 10¹⁵ | 1 | dark |
-| 0.363832 − 0.000394i | 462 | 2 | bright |
-
-Two checks on this result:
-
-- **The spectrum sees only the bright pair.** The AAA rational fit
-  (`resonances.spectrum_poles`) of the real-frequency normal-incidence
-  reflection has a pole at the bright pair's frequency, to all seven digits,
-  and none at the dark modes. Symmetry forbids the dark modes from coupling
-  to a normally incident wave.
-- **The triangular lattice has the C6v pattern at Γ.** With Laurent's rule
-  (whose symmetry is exact) it gives a dark singlet, a dark pair and a
-  bright pair. The normal-vector rule splits the pairs by up to 2e-4 in a/λ,
-  its sampling error on a hexagonal lattice.
-- **Off Γ** (`bloch=(0.02, 0)`) the pairs split and the dark modes leak, with
-  Q between 10⁴ and 10⁵.
-
-## Guided modes of anisotropic waveguides
-
-```python
-from hyperbolic_optics import bcm, dispersion
+from hyperbolic_optics import bcm, dispersion, modes
 
 # x-cut LiNbO3, 0.6 µm, optic axis in the plane at 45° to the propagation direction
 rotation = bcm.rotation_matrix(0.0, np.radians(90.0), np.radians(45.0))
 eps = bcm.rotate_tensor(dispersion.at_wavelength("LiNbO3", 1.55), rotation)[None]
 thickness_um = jnp.array([0.6])
-modes = resonances.slab_modes(eps, thickness_um, wavelength_um=1.55,
-                              eps_top=1.0, eps_bottom=1.444**2)
-modes[0].effective_index, modes[0].loss_db_per_cm
-z_um, fields = resonances.slab_mode_fields(eps, thickness_um, 1.55, 1.0, 1.444**2,
-                                           modes[0].effective_index)
+found = modes.slab_modes(eps, thickness_um, wavelength_um=1.55, eps_top=1.0,
+                         eps_bottom=1.444**2)
+z_um, fields = modes.slab_mode_fields(eps, thickness_um, 1.55, 1.0, 1.444**2,
+                                      found[0].effective_index)
 ```
 
-- **Full-vector.** In a rotated crystal (an x-cut LiNbO₃ film with its axis
-  at 45°, say) the modes are hybrid, neither TE nor TM.
-- **Lossy layers.** These give a complex `n_eff`.
-- **Propagation direction.** Modes propagate along x; rotate the tensors to
-  change direction.
-- **Profiles.** `slab_mode_fields` returns E and H through the stack and
-  into the claddings, normalised to unit power along x. It marches from an
-  inner plane with bounded scattering matrices, so thick or strongly
-  evanescent claddings stay stable.
+- Any 3 × 3 ε and μ in any layer. In a rotated crystal the modes are hybrid,
+  neither TE nor TM. Lossy layers give a complex `n_eff`.
+- Modes propagate along x; rotate the tensors to change direction.
+- `slab_mode_fields` returns E and H through the stack and into the
+  claddings, normalised to unit power along x.
 
-Validation (`tests/test_resonances.py`):
+`tests/test_modes.py` checks the slab dispersion relations (isotropic and
+uniaxial) and a lossy mode's loss against its absorbed power. It also checks
+a hybrid LiNbO₃ mode against prism coupling in the NumPy payload engine.
 
-- **Closed forms.** Even and odd TE and TM modes of an isotropic film, and
-  the uniaxial TM case (ε_x ≠ ε_z), agree with the slab dispersion relations
-  to 1e-9.
-- **Loss.** A lossy mode's Im n_eff equals the absorbed power integrated
-  over its profile, `¼∫E†ε_aE dz / ∫S_x dz`, to 1e-6.
-- **Hybrid modes.** A hybrid x-cut LiNbO₃ mode is confirmed by the NumPy
-  payload engine. Prism-coupled through a 1.4 µm air gap, p→s conversion
-  peaks at the mode's effective index, to 5e-9.
+## The Pockels effect
 
-## Waveguide cross-sections (2D)
+`dispersion.pockels_tensor` gives ε under an applied field, for a crystal in
+any orientation and a field in any direction. It is differentiable, so a
+voltage is a design parameter for every solver here. A mode's index shift is
+the change in its root:
 
 ```python
-from hyperbolic_optics import modes2d
+ln = dispersion.at_wavelength("LiNbO3", 1.55)
+x_cut = bcm.rotation_matrix(0.0, np.radians(90.0), np.radians(90.0))   # axis along y
 
-x = np.arange(-1.5, 1.5 + 0.01, 0.02)
-y = np.arange(-1.0, 1.4 + 0.01, 0.02)
-ln = (4.57, 4.89, 4.89)           # x-cut LiNbO3, axis across the guide: (εxx, εyy, εzz)
-section = modes2d.rectangles(x, y, 1.444**2, [((-1.5, 1.5, 0.0, 0.3), ln),     # slab
-                                               ((-0.6, 0.6, 0.3, 0.6), ln)])   # rib
-te, tm = modes2d.solve_modes(section, wavelength_um=1.55, n_modes=2)
-te.effective_index, te.te_fraction, te.fields   # (Ex, Ey, Ez, Hx, Hy, Hz), unit power
+
+def index(volts_per_um):
+    field = jnp.array([0.0, volts_per_um, 0.0])
+    film = dispersion.pockels_tensor(ln, dispersion.LITHIUM_NIOBATE, field, x_cut)[None]
+    return modes.slab_modes(film, thickness_um, 1.55, 1.0, 1.444**2)[0].effective_index
+
+
+dn_per_v_per_um = (index(0.5) - index(-0.5)).real
 ```
 
-- **The solver.** It is a full-vector finite-difference mode solver on a Yee
-  grid, for a cross-section `ε(x, y)` of a waveguide along z. The transverse
-  fields satisfy `β²·E_t = M₁·M₂·E_t`, solved sparse with shift-invert about
-  a target index.
-- **Tensors.** Each component of a diagonal tensor (principal axes along x, y
-  and z) is sampled at its own field's position and averaged over the cell.
-  This covers x-cut and z-cut LiNbO₃ ribs along a crystal axis, and biaxial
-  films. Off-diagonal tensors are refused rather than approximated.
-- **Boundaries.** The domain's low edges behave as magnetic walls and its
-  high edges as electric walls, so leave the fields room to decay.
-- **Not covered.** There are no absorbing boundaries, so leaky modes aren't
-  found. The solver is SciPy, not JAX, so it isn't differentiable.
+`LITHIUM_NIOBATE` holds the unclamped coefficients measured at 633 nm (Weis &
+Gaylord 1985). `trigonal_3m(r13, r22, r33, r51)` builds a tensor from other
+data, and any 3 × 3 × 3 tensor is accepted.
 
-Validation (`tests/test_modes2d.py`):
-
-- **Film limit.** A film filling the domain gives the 1D slab mode, with the
-  quarter-wave lateral profile the walls impose, converging at second order.
-  This is checked for an isotropic film, and for a uniaxial one against the
-  1D solver's direction-dependent index.
-- **Square core, isotropic.** TE and TM are exactly degenerate.
-- **Square core, uniaxial.** Turning the axis from x to y swaps TE and TM, to
-  1e-9.
-
-From a layout, `hog.waveguide_modes(component, layer_stack, point_um, …)`
-reads the cross-section from the PDK (see the
-[gdsfactory guide](gdsfactory.md)).
-
-## Gaussian beams
+## Beam shifts
 
 ```python
 from hyperbolic_optics import beams
 
-# a 10 µm beam at 40° from glass onto that LiNbO3 film, air below
-s_beam = beams.beam_smatrix(eps, thickness_um, 1.55, np.radians(40.0), 1.5**2, 1.0,
-                            waist_um=10.0)                        # [4, 4] over beam modes
 x, y, field = beams.reflected_beam(eps, thickness_um, 1.55, np.radians(40.0), 1.5**2, 1.0,
-                                   10.0, polarization=np.array([1, 1j]) / np.sqrt(2))
+                                   waist_um=10.0, polarization=np.array([1, 1j]) / np.sqrt(2))
 dx, dy = beams.beam_shift(x, y, field)      # Goos–Hänchen and Imbert–Fedorov shifts, µm
 ```
 
-- **Construction.** A beam is a superposition of plane waves. Each passes
-  through the stack with its own S-matrix, at its own in-plane wavevector,
-  in its own p and s.
-- **The beam S-matrix.** `beam_smatrix` couples Gaussian beam modes (waist
-  w₀) at the four ports, so |S|² is the power carried from one beam mode
-  into another. It tends to the plane-wave S-matrix as 1/w₀².
-- **Beam effects.** Its departures from the plane-wave result are the beam
-  effects: shifts, the angular spread of polarization conversion, and a
-  resonance's finite angular width. Anisotropic media make them large and
-  asymmetric.
-
-Validation (`tests/test_beams.py`):
-
-- **Goos–Hänchen.** At total internal reflection, the reflected centroid
-  moves by Artmann's shift `−dφ/dq_x`, to within the finite-beam correction
-  (0.06% at w₀ = 20λ).
-- **Coupling loss.** The specular beam mode is reached with the overlap of a
-  Gaussian shifted by that amount.
-- **Imbert–Fedorov.** The transverse shift vanishes for linear polarization
-  and flips sign with the helicity of circular polarization.
-
-## Grating couplers
-
-```python
-from hyperbolic_optics import couplers, rcwa
-
-layers = [rcwa.lamellar_layer(2.0**2 * eye, eye, 0.5, 0.2),   # half-etched SiN, in air
-          rcwa.uniform_layer(2.0**2 * eye, 0.2)]
-coupler = couplers.grating_coupler(layers, period_um=1.0, wavelength_um=1.55,
-                                   eps_top=1.0, eps_bottom=1.45**2,
-                                   index_range=(1.52, 1.72), length_um=15.0)
-coupler.efficiency, coupler.directionality, coupler.emission_deg
-model = couplers.grating_coupler_model(layers, 1.0, 1.0, 1.45**2, (1.52, 1.72))
-model(wl=np.array([1.55, 1.56]))     # SDict: waveguide@TE ↔ fiber@TE / fiber@TM
-```
-
-- **The leaky mode.** A uniform grating makes the waveguide's guided mode
-  leaky. `resonances.grating_leaky_modes` finds its complex Bloch wavevector
-  from the full-vector RCWA, anisotropic layers included. It gives:
-  - the decay rate α;
-  - the emission angle of each radiating order;
-  - the directionality D (the share of the radiated power going up);
-  - the polarization of the emission.
-- **Efficiency.** The coupling efficiency is
-  `D · (1 − e^{−2αL}) · η`, where η is the overlap of the emitted
-  `exp(−αx)` with a fibre mode tilted to the emission angle, at its best
-  position. This is the standard leaky-mode model of a uniform grating
-  coupler.
-- **SAX model.** `grating_coupler_model` is a lumped, magnitude-accurate SAX
-  model over wavelength, following the leaky mode from one wavelength to the
-  next.
-- **Neglected.** The back-reflection at the grating's start and finite-length
-  effects are neglected; an FDTD simulation of the finite device is the check
-  on those.
-
-For the SiN grating above:
-
-- α = 0.059/µm, emission at 2.5°, and D = 0.455.
-- The same leaky mode is a pole of the infinite grating's own reflection and
-  transmission spectra at real incidence angles, at the −1st order's complex
-  kx, to 2e-6.
-- The ratio of the spectrum's transmission and reflection residues there
-  gives the same directionality, to 3e-5.
-- The overlap's closed form matches quadrature, and its maximum is the
-  uniform grating's 80.1%, at 2αw₀ = 1.37.
-- An x-cut LiNbO₃ grating emits pure TE with its axis along the grating
-  lines, and both polarizations with the axis at 45°.
-
-### Apodized, chirped and focusing couplers
-
-`couplers.apodized_grating_coupler(layers_for, starts_um, periods_um, …)`
-treats each tooth as a period of a uniform grating of its own pitch and fill.
-This is the local leaky-mode model.
-
-- **Per tooth.** The first tooth's leaky mode comes from the contour search.
-  Each next one follows its neighbour's root: first by the secant method, and
-  by a small contour search if the step was too big.
-- **The emission.** The guided power decays as `exp(−2∫α dx)`. The emitted
-  field, `√(2αD·P)·exp(ik₀∫q dx)`, carries the local polarization, and is
-  overlapped with the fibre mode at its best position and angle.
-- **Any profile.** `couplers.coupling_from_profile` runs the same integral for
-  any prescribed α(x), D(x) and q(x).
-- **Checks.** Uniform teeth give the closed-form uniform model (1e-6). The
-  ideal apodisation for a Gaussian, `α = G²/(2(1 − ∫G²))`, couples 99.99%,
-  at the right angle and position.
-
-## Electro-optic phase shifters
-
-```python
-from hyperbolic_optics import electro_optics as eo
-
-ln = dispersion.at_wavelength("LiNbO3", 1.55)                 # crystal frame
-rotation = bcm.rotation_matrix(0.0, np.radians(90.0), np.radians(90.0))  # x-cut, axis along y
-film = bcm.rotate_tensor(ln, rotation)[None]
-mode = resonances.slab_modes(film, jnp.array([0.6]), 1.55, 1.0, 1.444**2)[0]
-z, fields = resonances.slab_mode_fields(film, jnp.array([0.6]), 1.55, 1.0, 1.444**2,
-                                        mode.effective_index)
-field = jnp.array([0.0, 1.0, 0.0])                            # 1 V/µm along the axis
-delta = eo.pockels_tensor(ln, eo.LITHIUM_NIOBATE, field, rotation) - film[0]
-dn = eo.mode_index_shift(z, fields, jnp.array([0.6]), delta[None])   # per V/µm
-eo.vpi_length(float(dn.real) / 5.0, 1.55)                     # V·cm, 5 µm gap, Γ = 1
-```
-
-- **`pockels_tensor`** gives ε under an applied field, for a crystal in any
-  orientation and a field in any direction. It is differentiable in the
-  field, so a voltage is an ordinary design parameter for every solver here.
-- **Coefficients.** `LITHIUM_NIOBATE` is point group 3m, congruent,
-  unclamped at 633 nm (Weis & Gaylord 1985). `trigonal_3m(r13, r22, r33, r51)`
-  builds a 3m tensor from other data, and any 3 × 3 × 3 tensor is accepted.
-  LiTaO₃ and other crystals need their own coefficients (and dispersion)
-  supplied.
-- **`mode_index_shift`** is first-order perturbation theory on a mode
-  profile, integrated layer by layer so the step in Δε at a film's edge
-  costs no accuracy. `vpi_length` turns it into Vπ·L.
-
-Validation (`tests/test_electro_optics.py`):
-
-- **Bulk.** The bulk index changes match `−½n³rE` for both the ordinary and
-  extraordinary waves.
-- **Guided mode.** An x-cut film's TE shift matches the finite difference of
-  exact mode roots to 5e-4 relative.
-- **Symmetry and gradients.** Rotating the crystal and the field together
-  changes nothing, and the field derivative is analytic.
-- **Example value.** For the 0.6 µm film above, Vπ·L = 2.6 V·cm at a 5 µm gap
-  with full RF overlap.
+A Gaussian beam is a superposition of plane waves, each passing through the
+stack with its own S-matrix. At total internal reflection the Goos–Hänchen
+shift matches Artmann's `−dφ/dq_x`. The Imbert–Fedorov shift flips sign with
+the helicity (`tests/test_beams.py`).

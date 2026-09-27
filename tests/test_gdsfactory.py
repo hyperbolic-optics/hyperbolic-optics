@@ -613,70 +613,11 @@ class TestOtherLattices:
 # gplugins-style S-parameters
 # ---------------------------------------------------------------------------
 
-from hyperbolic_optics import bcm, couplers  # noqa: E402
+from hyperbolic_optics import bcm  # noqa: E402
 from hyperbolic_optics.integrations.gdsfactory import sparameters as hsp  # noqa: E402
 
 
 class TestSparameters:
-    @pytest.fixture(scope="class")
-    def coupler(self):
-        return gf.components.grating_coupler_rectangular()
-
-    def test_teeth_are_read_from_a_pdk_grating_coupler(self, coupler):
-        grating = hog.extract_line_grating(coupler, "WG", teeth_only=True)
-        assert grating.period_um == pytest.approx(0.75, abs=1e-9)
-        assert grating.n_periods == 19  # the 20th is merged into the taper
-        assert grating.fill == pytest.approx(0.5, abs=2e-3)
-        with pytest.raises(ValueError, match="rectangle"):
-            hog.extract_line_grating(coupler, "WG")
-        _, stack = hog.grating_stack(
-            coupler, "WG", gf.get_active_pdk().layer_stack, teeth_only=True
-        )
-        names = [(layer.name, round(layer.thickness_um, 4)) for layer in stack.layers]
-        assert names == [("clad", 2.78), ("core / clad", 0.07), ("core", 0.15), ("box", 3.0)]
-        assert stack.layers[1].background == "SiO2" and stack.exit == "Si"
-
-    def test_grating_coupler_sparameters_are_cached_and_consistent(self, coupler, tmp_path):
-        layer_stack = gf.get_active_pdk().layer_stack
-        sp = hsp.write_sparameters_grating_coupler(coupler, layer_stack, [1.55], dirpath=tmp_path)
-        assert set(sp) == {
-            "o1@TE,o2@TE",
-            "o2@TE,o1@TE",
-            "o1@TE,o2@TM",
-            "o2@TM,o1@TE",
-            "wavelengths",
-        }
-        np.testing.assert_array_equal(sp["o1@TE,o2@TE"], sp["o2@TE,o1@TE"])
-        assert abs(sp["o1@TE,o2@TM"][0]) < 1e-6  # an isotropic stack keeps TE
-        efficiency = abs(sp["o1@TE,o2@TE"][0]) ** 2
-        assert 0.05 < efficiency < 0.8
-
-        files = list((tmp_path / "hyperbolic_optics").glob("*.npz"))
-        assert len(files) == 1
-        metadata = __import__("json").loads(files[0].with_suffix(".json").read_text())
-        record = metadata["results"][0]
-        assert record["efficiency"] == pytest.approx(efficiency)
-        assert len(metadata["teeth"]["starts_um"]) == 19
-        # identical teeth: the uniform model, with the fibre at the same angle
-        grating, stack = hog.grating_stack(coupler, "WG", layer_stack, teeth_only=True)
-        index = record["first_tooth"]["bloch_index"][0]
-        direct = couplers.grating_coupler(
-            hog.grating_layers(grating, stack, 1.55), grating.period_um, 1.55, 1.0,
-            float(stack.half_space_permittivity("exit", 1.55)), (index - 0.03, index + 0.03),
-            length_um=grating.n_periods * grating.period_um, max_loss=0.2,
-        )  # fmt: skip
-        at_emission = hsp.write_sparameters_grating_coupler(
-            coupler, layer_stack, [1.55], dirpath=tmp_path, fiber_angle_deg=direct.emission_deg
-        )
-        assert abs(at_emission["o1@TE,o2@TE"][0]) ** 2 == pytest.approx(direct.efficiency, rel=1e-4)
-        assert efficiency >= direct.efficiency - 1e-9  # the best angle is at least as good
-
-        again = hsp.write_sparameters_grating_coupler(
-            coupler, layer_stack, [1.55], dirpath=tmp_path
-        )
-        np.testing.assert_array_equal(again["o1@TE,o2@TE"], sp["o1@TE,o2@TE"])
-        assert len(list((tmp_path / "hyperbolic_optics").glob("*.npz"))) == 2  # two angles
-
     def test_stack_sparameters(self, tmp_path):
         component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
         sp = hsp.write_sparameters_stack(
@@ -717,26 +658,3 @@ class TestSparameters:
         same = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
         other = hog.line_grating(period_um=0.9, fill=0.4, n_periods=10, layer=RIB)
         assert hsp.component_hash(one) == hsp.component_hash(same) != hsp.component_hash(other)
-
-
-class TestTeeth:
-    def test_focusing_and_straight_couplers_along_their_axis(self):
-        elliptical = hog.extract_grating_teeth(gf.components.grating_coupler_elliptical(), "WG")
-        assert len(elliptical.starts_um) == 30
-        np.testing.assert_allclose(elliptical.periods_um, 0.686, atol=2e-3)
-        np.testing.assert_allclose(elliptical.fills, 0.5, atol=5e-3)
-        straight = hog.extract_grating_teeth(gf.components.grating_coupler_rectangular(), "WG")
-        assert len(straight.starts_um) == 19 and straight.periods_um[0] == pytest.approx(0.75)
-
-    def test_an_apodized_layout(self):
-        """Teeth drawn by hand with a linearly growing fill."""
-        component = gf.Component()
-        x = 0.0
-        for fill in np.linspace(0.3, 0.7, 8):
-            component.add_polygon(
-                [(x, -5), (x + fill * 0.7, -5), (x + fill * 0.7, 5), (x, 5)], layer=LAYER
-            )
-            x += 0.7
-        teeth = hog.extract_grating_teeth(component, LAYER, axis_y_um=0.0)
-        np.testing.assert_allclose(teeth.fills[:-1], np.linspace(0.3, 0.7, 8)[:-1], atol=2e-3)
-        np.testing.assert_allclose(teeth.periods_um, 0.7, atol=2e-3)

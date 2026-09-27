@@ -27,6 +27,9 @@ Models:
 Frequencies are in cm⁻¹, as elsewhere in the package; :func:`at_wavelength`
 takes µm. The tensors are in the crystal frame; rotate them with
 :func:`hyperbolic_optics.bcm.rotate_tensor`.
+
+:func:`pockels_tensor` gives the permittivity under an applied field (the
+Pockels effect), so a voltage is a design parameter like any other.
 """
 
 from functools import lru_cache
@@ -35,6 +38,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from hyperbolic_optics import bcm
 from hyperbolic_optics.materials import (
     _MATERIAL_REGISTRY,
     BiaxialMaterial,
@@ -43,7 +47,15 @@ from hyperbolic_optics.materials import (
     UniaxialMaterial,
 )
 
-__all__ = ["at_wavelength", "frequency_range", "materials", "permittivity"]
+__all__ = [
+    "LITHIUM_NIOBATE",
+    "at_wavelength",
+    "frequency_range",
+    "materials",
+    "permittivity",
+    "pockels_tensor",
+    "trigonal_3m",
+]
 
 
 def materials() -> list[str]:
@@ -154,3 +166,62 @@ def frequency_range(material: str) -> tuple[float, float]:
     phonon models, its published validity for the Sellmeier ones."""
     material_obj = _MATERIAL_REGISTRY[material]()
     return float(material_obj.frequency[0]), float(material_obj.frequency[-1])
+
+
+# contracted (Voigt) index I → (i, j): 1 xx, 2 yy, 3 zz, 4 yz, 5 xz, 6 xy
+_VOIGT = ((0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1))
+
+
+def trigonal_3m(r13: float, r22: float, r33: float, r51: float) -> jax.Array:
+    """The electro-optic tensor ``rᵢⱼₖ`` ``[3, 3, 3]`` (pm/V) of a point-group-3m crystal.
+
+    In the crystal frame: z the optic (c) axis, x perpendicular to a mirror
+    plane. In contracted notation ``r = [[0, −r22, r13], [0, r22, r13],
+    [0, 0, r33], [0, r51, 0], [r51, 0, 0], [−r22, 0, 0]]``.
+    """
+    contracted = jnp.array(
+        [[0.0, -r22, r13], [0.0, r22, r13], [0.0, 0.0, r33],
+         [0.0, r51, 0.0], [r51, 0.0, 0.0], [-r22, 0.0, 0.0]]
+    )  # fmt: skip
+    r = jnp.zeros((3, 3, 3))
+    for index, (i, j) in enumerate(_VOIGT):
+        r = r.at[i, j, :].set(contracted[index])
+        r = r.at[j, i, :].set(contracted[index])
+    return r
+
+
+#: Congruent LiNbO₃, unclamped, measured at 633 nm (R. S. Weis and T. K. Gaylord,
+#: Appl. Phys. A 37, 191 (1985)), pm/V. Pass your own tensor for other wavelengths
+#: or for clamped (high-frequency) values.
+LITHIUM_NIOBATE = trigonal_3m(r13=8.6, r22=3.4, r33=30.8, r51=28.0)
+
+
+def pockels_tensor(
+    eps_crystal: jax.Array,
+    r_pm_per_v: jax.Array,
+    field_v_per_um: jax.Array,
+    rotation: jax.Array | None = None,
+) -> jax.Array:
+    """The permittivity under an applied field, in the lab frame.
+
+    Args:
+        eps_crystal: The unperturbed tensor in the crystal frame ``[..., 3, 3]``
+            (e.g. ``dispersion.at_wavelength("LiNbO3", 1.55)``).
+        r_pm_per_v: The electro-optic tensor ``[3, 3, 3]`` in the crystal
+            frame (e.g. :data:`LITHIUM_NIOBATE`).
+        field_v_per_um: The applied field in the lab frame ``[..., 3]``, V/µm.
+        rotation: The crystal's orientation, ``R`` with ``ε_lab = R·ε_crystal·Rᵀ``
+            (:func:`hyperbolic_optics.bcm.rotation_matrix`); identity if omitted.
+
+    The Pockels effect: the impermeability ``η = ε⁻¹`` changes by
+    ``Δηᵢⱼ = Σₖ rᵢⱼₖ Eₖ`` (``1e-6`` per pm/V · V/µm).
+
+    Returns:
+        ``ε(E)`` in the lab frame ``[..., 3, 3]``; differentiable in every argument.
+    """
+    eps_crystal = jnp.asarray(eps_crystal, dtype=complex)
+    rotation = jnp.eye(3) if rotation is None else jnp.asarray(rotation)
+    field_crystal = jnp.einsum("...ji,...j->...i", rotation, jnp.asarray(field_v_per_um))
+    delta_eta = 1e-6 * jnp.einsum("ijk,...k->...ij", jnp.asarray(r_pm_per_v), field_crystal)
+    eta = jnp.linalg.inv(eps_crystal) + delta_eta
+    return bcm.rotate_tensor(jnp.linalg.inv(eta), rotation)

@@ -192,5 +192,3 @@ reproduction of that method.
   from the NumPy material classes, which carry no gradient.
 - Exact grazing cutoff in the exit medium (`kx` equal to its index) is singular,
   as in any plane-wave basis.
-- Field profiles and layer-resolved absorption are available from
-  `FieldProfile` only, not yet here.

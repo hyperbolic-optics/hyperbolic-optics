@@ -133,7 +133,7 @@ nav:
     - Crossed Gratings (2D RCWA): user-guide/crossed-gratings.md
     - gdsfactory Integration: user-guide/gdsfactory.md
     - Scattering Matrices and SAX: user-guide/sax.md
-    - Resonances, Modes, Beams and Couplers: user-guide/modes.md
+    - Guided Modes and Beam Shifts: user-guide/modes.md
     - Mueller Matrices: user-guide/mueller.md
     - Jones Calculus: user-guide/jones.md
   - Examples:
@@ -150,11 +150,8 @@ nav:
     - api/dispersion.md
     - api/gdsfactory.md
     - api/sax.md
-    - api/resonances.md
+    - api/modes.md
     - api/beams.md
-    - api/couplers.md
-    - api/electro_optics.md
-    - api/modes2d.md
     - api/metasurfaces.md
     - api/sweep.md
     - api/mueller.md

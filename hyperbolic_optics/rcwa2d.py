@@ -442,6 +442,8 @@ def _factorize(layer: PatternedLayer, which: str, max_order, lattice, orders, ru
         eye = jnp.eye(3, dtype=complex)
         background = eye if layer.background_mu is None else jnp.asarray(layer.background_mu) + 0j
         values = [eye if s.mu is None else jnp.asarray(s.mu) + 0j for s in layer.shapes]
+        if layer.background_mu is None and all(s.mu is None for s in layer.shapes):
+            return jnp.einsum("ij,mn->ijmn", eye, jnp.eye(size, dtype=complex))  # μ = 1
 
     if not layer.shapes:  # uniform: every rule is the tensor itself
         ident = jnp.eye(size, dtype=complex)
@@ -573,28 +575,17 @@ def _orders(mx: int, my: int, lattice=None, truncation: str = "parallelogram") -
 
 def _operators(
     layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
-    eps_incident, eps_exit, k0=None,
+    eps_incident, eps_exit,
 ):  # fmt: skip
     """Mode bases and each layer's operator in the reference basis.
 
-    Returns ``(w_ref, w_in, flux_in, w_out, flux_out, deltas)``. With ``k0``
-    (complex frequency or wavevector), the half-spaces' waves are continued to
-    their outgoing branch, for resonances.
+    Returns ``(w_ref, w_in, flux_in, w_out, flux_out, deltas)``.
     """
-    k_par_sq = kx**2 + ky**2
-    eps_ref = 2.0 * k_par_sq + 1.0
-    if k0 is None:
-        w_ref, flux_ref = _harmonic_modes(eps_ref, kx, ky, direction)
-        w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
-    else:
-        # complex frequency: an analytic basis (continued branch, √kz scaling, which is
-        # the power normalisation on the real axis), so T(f) is analytic in f
-        w_ref, _ = _harmonic_modes(eps_ref, kx, ky, direction, k0)
-        kz_ref = jnp.sqrt(eps_ref - k_par_sq + 0j)  # = √(1 + q²), near the positive axis
-        scale = jnp.concatenate([jnp.sqrt(kz_ref)] * 4, axis=-1)  # columns: 4 groups of N
-        w_ref = w_ref / scale[..., None, :]
-    w_in, flux_in = _harmonic_modes(jnp.asarray(eps_incident)[..., None], kx, ky, direction, k0)
-    w_out, flux_out = _harmonic_modes(jnp.asarray(eps_exit)[..., None], kx, ky, direction, k0)
+    eps_ref = 2.0 * (kx**2 + ky**2) + 1.0
+    w_ref, flux_ref = _harmonic_modes(eps_ref, kx, ky, direction)
+    w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
+    w_in, flux_in = _harmonic_modes(jnp.asarray(eps_incident)[..., None], kx, ky, direction)
+    w_out, flux_out = _harmonic_modes(jnp.asarray(eps_exit)[..., None], kx, ky, direction)
     deltas = []
     for layer in layers:
         eps = _factorize(layer, "eps", max_order, lattice, orders, factorization, grid)

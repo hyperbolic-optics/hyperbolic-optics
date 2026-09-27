@@ -3,6 +3,7 @@
 Every built-in material must reproduce its NumPy class to rounding across its
 default frequency window, and its frequency derivative must match finite
 differences -- that derivative is what the NumPy classes cannot provide.
+The Pockels tensor gives the textbook bulk index changes of LiNbO₃.
 """
 
 import numpy as np
@@ -13,7 +14,7 @@ jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp  # noqa: E402
 
-from hyperbolic_optics import dispersion  # noqa: E402
+from hyperbolic_optics import bcm, dispersion  # noqa: E402
 from hyperbolic_optics.materials import create_material  # noqa: E402
 
 
@@ -66,3 +67,44 @@ def test_wavelength_form_and_shapes():
 def test_unknown_material():
     with pytest.raises(ValueError, match="Unknown material"):
         dispersion.permittivity("unobtainium", 1000.0)
+
+
+_LN = dispersion.at_wavelength("LiNbO3", 1.55)
+
+
+def test_pockels_bulk_index_changes_are_the_textbook_ones():
+    field = 1.0  # V/µm
+    perturbed = dispersion.pockels_tensor(
+        _LN, dispersion.LITHIUM_NIOBATE, jnp.array([0.0, 0.0, field])
+    )
+    ne, no = np.sqrt(np.real(_LN[2, 2])), np.sqrt(np.real(_LN[0, 0]))
+    dne = np.sqrt(np.real(perturbed[2, 2])) - ne
+    dno = np.sqrt(np.real(perturbed[0, 0])) - no
+    assert dne == pytest.approx(-0.5 * ne**3 * 30.8e-6 * field, rel=2e-4)
+    assert dno == pytest.approx(-0.5 * no**3 * 8.6e-6 * field, rel=2e-4)
+    assert abs(perturbed[0, 1]) < 1e-15  # no off-diagonal term for a field along z
+
+
+def test_pockels_the_3m_tensor_and_rotations():
+    r = np.asarray(dispersion.LITHIUM_NIOBATE)
+    np.testing.assert_array_equal(r, np.swapaxes(r, 0, 1))  # symmetric in (i, j)
+    assert r[0, 0, 1] == -3.4 and r[1, 1, 1] == 3.4 and r[0, 2, 0] == 28.0
+    rotation = bcm.rotation_matrix(0.3, 0.9, -0.4)
+    field = jnp.array([0.4, -0.7, 1.1])
+    lab = dispersion.pockels_tensor(_LN, dispersion.LITHIUM_NIOBATE, rotation @ field, rotation)
+    crystal = dispersion.pockels_tensor(_LN, dispersion.LITHIUM_NIOBATE, field)
+    np.testing.assert_allclose(lab, bcm.rotate_tensor(crystal, rotation), atol=1e-14)
+
+
+def test_pockels_differentiable_in_the_field():
+    def eps_zz(field_z):
+        return jnp.real(
+            dispersion.pockels_tensor(
+                _LN, dispersion.LITHIUM_NIOBATE, jnp.array([0.0, 0.0, field_z])
+            )[2, 2]
+        )
+
+    # dε/dE = −ε·(dη/dE)·ε = −ε_zz²·r₃₃ at zero field
+    assert float(jax.grad(eps_zz)(0.0)) == pytest.approx(
+        -(float(np.real(_LN[2, 2])) ** 2) * 30.8e-6, rel=1e-10
+    )

@@ -25,20 +25,15 @@ Everything is importable from here::
   places a unit-cell library (:mod:`hyperbolic_optics.metasurfaces`) site by
   site, as references.
 
-- **S-parameters** (:mod:`.sparameters`), gplugins-style:
-  :func:`write_sparameters_grating_coupler` for a PDK grating-coupler cell and
-  :func:`write_sparameters_stack`, cached as ``.npz`` by a hash of the geometry
-  and settings; :func:`model_from_npz` reads them into SAX, modes kept.
+- **S-parameters** (:mod:`.sparameters`): :func:`write_sparameters_stack`,
+  cached as ``.npz``, gplugins-style; :func:`model_from_npz` reads them into SAX.
 
 Results describe an infinitely extended stack or grating under plane-wave
-illumination (couplers: the leaky-mode model of a finite grating). Requires the
-``gdsfactory`` extra and an active PDK.
+illumination. Requires the ``gdsfactory`` extra and an active PDK.
 """
 
 from hyperbolic_optics.integrations.gdsfactory.geometry import (
-    GratingTeeth,
     LineGrating,
-    extract_grating_teeth,
     extract_line_grating,
     line_grating,
 )
@@ -77,7 +72,6 @@ from hyperbolic_optics.integrations.gdsfactory.simulate import (
 )
 from hyperbolic_optics.integrations.gdsfactory.sparameters import (
     model_from_npz,
-    write_sparameters_grating_coupler,
     write_sparameters_stack,
 )
 from hyperbolic_optics.integrations.gdsfactory.stack import (
@@ -86,20 +80,14 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     grating_layers,
     grating_stack,
     patterned_stack,
-    teeth_stack,
     vertical_profile,
     vertical_stack,
-)
-from hyperbolic_optics.integrations.gdsfactory.waveguides import (
-    waveguide_cross_section,
-    waveguide_modes,
 )
 
 __all__ = [
     "CrossedGratingResponse",
     "DEFAULT_MATERIALS",
     "GratingResponse",
-    "GratingTeeth",
     "LineGrating",
     "MaterialSpec",
     "Oriented",
@@ -110,7 +98,6 @@ __all__ = [
     "crossed_grating_layers",
     "crossed_grating_stack",
     "disc_polygons",
-    "extract_grating_teeth",
     "extract_line_grating",
     "extract_unit_cell",
     "grating_layers",
@@ -130,12 +117,8 @@ __all__ = [
     "solve_grating",
     "solve_stack",
     "stack_sax_model",
-    "teeth_stack",
     "vertical_profile",
     "vertical_stack",
-    "waveguide_cross_section",
-    "waveguide_modes",
-    "write_sparameters_grating_coupler",
     "write_sparameters_stack",
     "x_cut",
     "z_cut",

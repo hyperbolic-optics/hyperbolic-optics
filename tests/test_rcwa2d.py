@@ -473,3 +473,18 @@ class TestLattices:
 
         with pytest.raises(ValueError, match="concrete lattice"):
             jax.grad(traced)(0.6)
+
+
+def test_tilted_axis_nanofin_against_the_paper():
+    """LiNbO₃ fins with the optic axis 45° out of plane (ε has an xz term), arXiv:2608.06185
+    Sec. 3A: T_xx = 0.9496 (BCM) and 0.9483 (FEM). The mirror y → −y maps the fin and the
+    axis to themselves, so x → y conversion vanishes."""
+    axis = jnp.array([np.sin(np.pi / 4), 0.0, np.cos(np.pi / 4)])
+    ln = (5.46 * jnp.eye(3) + (5.06 - 5.46) * jnp.outer(axis, axis)).astype(complex)
+    fin = rcwa2d.Shape(rcwa2d.rectangle((0.17, 0.17), (0.2, 0.1)), ln)
+    layer = rcwa2d.PatternedLayer(0.3, jnp.eye(3, dtype=complex), (fin,))
+    result = rcwa2d.solve_crossed_grating([layer], (0.34, 0.34), 0.55, 0.0, 1.0, 1.46**2, (5, 5))
+    zeroth = int(np.flatnonzero((result.orders == 0).all(axis=1))[0])
+    transmitted = np.asarray(result.T[zeroth])
+    assert transmitted[0, 0] == pytest.approx(0.9496, abs=3e-3)
+    assert transmitted[1, 0] < 1e-20

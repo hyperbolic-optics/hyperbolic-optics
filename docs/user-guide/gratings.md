@@ -122,10 +122,9 @@ positions with a ripple, whose amplitude falls as orders are added while its
 frequency rises. The ripple in the *slope* therefore does not fade.
 
 - **Tilted-axis hBN ridges** (period 8 µm, first diffracted order): the ripple
-  in d/d(fill) is comparable to the true slope even at 161 orders. See panel (e)
-  of `benchmarks/hyperbolic_grating/`.
+  in d/d(fill) is comparable to the true slope even at 161 orders.
 - **A subwavelength hBN ribbon absorber** with the flakes' natural orientation
-  (`examples/hbn_absorber_gdsfactory.py`) shows no ripple, even with hard edges.
+  shows no ripple, even with hard edges.
 - **Dielectric ridges** show none either: silicon's d/d(fill) is identical at
   41, 81 and 161 orders.
 
@@ -167,22 +166,12 @@ In `tests/test_rcwa.py`:
 - **Gradients** match finite differences for fill factor, offset, thickness,
   period, wavelength, incidence, azimuth and crystal tilt.
 
-Benchmarks, each of which writes PNG figures to its own `output/` folder:
-
-- **`benchmarks/fmmax/`** compares against
-  [FMMAX](https://github.com/mfschubert/fmmax) for six gratings, including
-  in-plane hyperbolic MoO₃ and a gyrotropic ridge, with convergence plots and
-  efficiency spectra. Isotropic gratings agree to 4e-7–2e-5 at every
-  truncation. The anisotropic ones converge to FMMAX's answer extrapolated to
-  infinitely many orders (1e-5–1e-4). FMMAX cannot represent xz / yz
-  components.
-- **`benchmarks/hyperbolic_grating/`** runs a tilted-axis hBN grating across its
-  Reststrahlen band, using hBN's real dispersion. It shows the unpatterned-film
-  limit against the NumPy engine (1e-14), convergence, geometry gradients
-  against finite differences, and energy conservation of the lossless variant.
-- **`benchmarks/paper_fig4/`** runs the liquid-crystal polarization grating of
-  arXiv:2608.06185 and records where it does and does not match the paper's FEM
-  curves.
+Against [FMMAX](https://github.com/mfschubert/fmmax) (six gratings, including
+in-plane hyperbolic MoO₃ and a gyrotropic ridge): isotropic gratings agree to
+4e-7–2e-5 at every truncation, and the anisotropic ones converge to FMMAX's
+answer extrapolated to infinitely many orders (1e-5–1e-4). FMMAX cannot
+represent xz / yz components; a tilted, twisted liquid-crystal polarization
+grating (arXiv:2608.06185, Fig. 4) is in the tests instead.
 
 ## Limitations
 
@@ -191,8 +180,7 @@ Benchmarks, each of which writes PNG figures to its own `output/` folder:
 - Incident and exit half-spaces must be isotropic and lossless.
 - ε_xx, ε_zz, μ_xx and μ_zz must not be exactly zero (see above).
 - Results are for an infinitely periodic structure under plane-wave
-  illumination. They do not give the efficiency of a finite device such as a
-  grating coupler.
+  illumination.
 - Speed: one 41-order grating layer takes about 85 ms per wavelength on a CPU,
   against about 250 ms for FMMAX on the same case (both run without `jax.jit`).
   Neither has been tuned, so this is not a performance comparison.
