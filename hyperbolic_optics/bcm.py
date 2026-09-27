@@ -1,62 +1,24 @@
 """Differentiable planar solver: an eigendecomposition-free cascade in JAX.
 
 The NumPy engine (:mod:`hyperbolic_optics.structure`) diagonalises each layer's
-4×4 Berreman matrix. Eigenvectors are awkward to differentiate -- their phase is
-arbitrary and their derivative diverges where two modes are degenerate, as they
-are in every isotropic layer -- so this module builds each layer's scattering
-matrix without them, from matrix products and linear solves only. Every step is
-then an ordinary JAX operation, and ``jax.grad`` gives exact derivatives with
-respect to thicknesses, tensor components, orientations, incidence angle and
-wavelength.
+4×4 Berreman matrix, whose eigenvectors are awkward to differentiate (arbitrary
+phase, divergent derivative at degeneracies, which every isotropic layer has).
+Here each layer's scattering matrix is built from matrix products and linear
+solves only, so ``jax.grad`` gives exact derivatives with respect to
+thicknesses, tensors, orientations, angle and wavelength.
 
-Method
-------
-The tangential field ``F = [Ex, Ey, Hx, Hy]`` (H scaled by the free-space
-impedance, time dependence ``exp(-iωt)``) obeys ``dF/dz̃ = iΔF`` with ``z̃ = k₀z``
-and ``Δ`` the Berreman matrix -- the same matrix, component for component, as
-:meth:`hyperbolic_optics.waves.Wave.delta_matrix_calc`. For a slice thin enough,
-``exp(iΔτ) − I`` is a short Taylor series. The slice is converted to a
-scattering matrix, and ``2ᴺ`` slices are assembled by ``N`` doublings, each the
-Redheffer star product of the current interval with itself, carrying the
-transmission blocks as increments from the identity so the small early updates
-are not lost to rounding. This is the bisection-doubling scheme of the precise
-integration method (Zhong & Williams 1994) used by the boundary-value cascade of
-Yang, Song & Cai, arXiv:2608.06185.
+For a thin slice, ``exp(iΔτ) − I`` is a short Taylor series; ``2ᴺ`` slices are
+assembled by ``N`` doublings, each a Redheffer star product of the interval
+with itself (the precise integration method of Zhong & Williams 1994, as in
+Yang, Song & Cai, arXiv:2608.06185). Intervals are carried as wave amplitudes
+in a reference medium of permittivity ``2kx² + 1``, whose waves always
+propagate and are scaled to unit power, so no doubling meets a singular inverse.
 
-One choice here differs from that paper. It represents an interval by E at one
-end and H at the other; that relation is singular whenever a lossless layer is
-an odd number of quarter-waves thick (E at one face then fixes H at the other).
-Here intervals are represented instead by wave amplitudes in a reference medium
-of permittivity ``2kx² + 1``, whose waves always propagate, with
-``kz = √(1 + kx²)``, and are scaled to unit power. In that basis the scattering
-matrix of any passive interval is power-normalised (norm at most 1), so no
-doubling step can meet a singular inverse. Letting ``kz`` grow with ``kx`` keeps
-the reference impedance close to that of the waves it represents: evanescent
-waves at large ``kx`` have ``|kz| ≈ kx``, and a fixed ``kz = 1`` reference
-reflects them almost totally, which amplifies rounding (by ~1e3 for the
-high-order harmonics of :mod:`hyperbolic_optics.rcwa`). The initialisation is
-also derived independently rather than taken from the paper's supplement; this
-is a related implementation, not a reproduction.
-
-Scope
------
-- Any number of layers, each with full 3×3 permittivity and permeability.
-- Isotropic, lossless incident and exit half-spaces (real positive ε).
-- The plane of incidence is x-z. Rotate tensors (:func:`rotation_matrix`) to
-  change the in-plane orientation, as the payload API does.
-- All inputs broadcast over any leading batch dimensions.
-- Grazing cutoff in the exit medium (``kx`` exactly equal to its index) is
-  singular, as in any plane-wave basis.
-
-Coefficients are the 2×2 Jones matrices ``r[..., out, in]`` and
-``t[..., out, in]`` with index 0 = p and 1 = s, in total-field amplitudes on the
-same sign convention as the NumPy engine: ``r[..., 0, 0]`` is ``r_pp`` and
-``r[..., 1, 0]`` is its ``r_ps`` (p in, s out). ``R`` and ``T`` are the
-corresponding powers; an evanescent exit gives ``T = 0``.
-
-Precision: reference accuracy needs 64-bit JAX, which this module does not
-switch on for you -- call ``jax.config.update("jax_enable_x64", True)`` first.
-Without it everything runs in complex64 and a warning says so.
+Coefficients are Jones matrices ``[..., out, in]`` with 0 = p and 1 = s, on the
+NumPy engine's sign convention. The half-spaces are isotropic and lossless,
+except in :func:`solve_stack_on_crystal`. Inputs broadcast over leading batch
+dimensions. Reference accuracy needs ``jax.config.update("jax_enable_x64", True)``;
+without it a warning says so.
 """
 
 import warnings
@@ -131,6 +93,25 @@ class PlanarSMatrix(NamedTuple):
 # ---------------------------------------------------------------------------
 
 
+def _check_x64() -> None:
+    if not jax.config.jax_enable_x64:
+        warnings.warn(
+            "hyperbolic_optics is running in complex64 because 64-bit JAX is off; "
+            'call jax.config.update("jax_enable_x64", True) for reference accuracy.',
+            UserWarning,
+            stacklevel=3,
+        )
+
+
+def _materials(eps, mu):
+    """``eps`` and ``mu`` as complex arrays, ``mu`` the identity if omitted."""
+    dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
+    eps = jnp.asarray(eps, dtype=dtype)
+    if mu is None:
+        return eps, jnp.broadcast_to(jnp.eye(3, dtype=dtype), eps.shape)
+    return eps, jnp.asarray(mu, dtype=dtype)
+
+
 def rotation_matrix(x: jax.Array, y: jax.Array, z: jax.Array) -> jax.Array:
     """Euler rotation ``Rz(z) · Ry(y) · Rx(x)`` in radians, ``[..., 3, 3]``.
 
@@ -156,6 +137,18 @@ def rotate_tensor(tensor: jax.Array, rotation: jax.Array) -> jax.Array:
     return rotation @ tensor @ jnp.swapaxes(rotation, -1, -2)
 
 
+def _longitudinal(eps, mu, kx):
+    """Rows ``a``, ``b`` with ``Ez = a·F`` and ``Hz = b·F``, the longitudinal fields."""
+    batch = jnp.broadcast_shapes(eps.shape[:-2], mu.shape[:-2], jnp.shape(kx))
+    eps = jnp.broadcast_to(eps, batch + (3, 3))
+    mu = jnp.broadcast_to(mu, batch + (3, 3))
+    kx = jnp.broadcast_to(kx, batch)[..., None].astype(eps.dtype)
+    zero = jnp.zeros_like(kx)
+    a = jnp.concatenate([-eps[..., 2, 0:1], -eps[..., 2, 1:2], zero, -kx], -1) / eps[..., 2, 2:3]
+    b = jnp.concatenate([zero, kx, -mu[..., 2, 0:1], -mu[..., 2, 1:2]], -1) / mu[..., 2, 2:3]
+    return a, b
+
+
 def system_matrix(eps: jax.Array, mu: jax.Array, kx: jax.Array) -> jax.Array:
     """Berreman matrix ``Δ`` with ``dF/dz̃ = iΔF``, ``F = [Ex, Ey, Hx, Hy]``.
 
@@ -174,8 +167,8 @@ def system_matrix(eps: jax.Array, mu: jax.Array, kx: jax.Array) -> jax.Array:
     batch = jnp.broadcast_shapes(eps.shape[:-2], mu.shape[:-2], jnp.shape(kx))
     eps = jnp.broadcast_to(eps, batch + (3, 3))
     mu = jnp.broadcast_to(mu, batch + (3, 3))
+    a, b = _longitudinal(eps, mu, kx)
     kx = jnp.broadcast_to(kx, batch).astype(eps.dtype)[..., None]
-    zero = jnp.zeros_like(kx)
 
     def e(i, j):
         return eps[..., i, j][..., None]
@@ -185,8 +178,6 @@ def system_matrix(eps: jax.Array, mu: jax.Array, kx: jax.Array) -> jax.Array:
 
     unit = jnp.eye(4, dtype=eps.dtype)
     ex, ey, hx, hy = unit[0], unit[1], unit[2], unit[3]
-    a = jnp.concatenate([-e(2, 0), -e(2, 1), zero, -kx], axis=-1) / e(2, 2)
-    b = jnp.concatenate([zero, kx, -m(2, 0), -m(2, 1)], axis=-1) / m(2, 2)
 
     row_ex = kx * a + m(1, 0) * hx + m(1, 1) * hy + m(1, 2) * b
     row_ey = -(m(0, 0) * hx + m(0, 1) * hy + m(0, 2) * b)
@@ -373,13 +364,7 @@ def solve_stack(
         ``[..., 2, 2]`` indexed ``[out, in]``, 0 = p and 1 = s. Wrap in
         ``jax.jit(..., static_argnames="doublings")`` for repeated calls.
     """
-    if not jax.config.jax_enable_x64:
-        warnings.warn(
-            "hyperbolic_optics.bcm is running in complex64 because 64-bit JAX is off; "
-            'call jax.config.update("jax_enable_x64", True) for reference accuracy.',
-            UserWarning,
-            stacklevel=2,
-        )
+    _check_x64()
     kx = jnp.sqrt(jnp.asarray(eps_incident)) * jnp.sin(jnp.asarray(incidence_rad))
     t, _, r, _ = _scattering(
         eps, thickness_um, wavelength_um, kx, eps_incident, eps_exit, mu, doublings
@@ -390,31 +375,24 @@ def solve_stack(
 
 def _scattering(eps, thickness_um, wavelength_um, kx, eps_incident, eps_exit, mu, doublings):
     """Scattering blocks between the half-spaces' mode amplitudes, at in-plane ``kx``."""
-    complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
-    eps = jnp.asarray(eps, dtype=complex_dtype)
-    mu = (
-        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps.shape)
-        if mu is None
-        else jnp.asarray(mu, dtype=complex_dtype)
-    )
-    thickness_um = jnp.asarray(thickness_um)
-    eps_incident = jnp.asarray(eps_incident)
-    eps_exit = jnp.asarray(eps_exit)
-    n_layers = eps.shape[-3]
-
     kx = jnp.asarray(kx)
+    w_top = _isotropic_modes(jnp.asarray(eps_incident), kx)
+    w_bottom = _isotropic_modes(jnp.asarray(eps_exit), kx)
+    return _cascade(eps, mu, thickness_um, wavelength_um, kx, w_top, w_bottom, doublings)
+
+
+def _cascade(eps, mu, thickness_um, wavelength_um, kx, w_top, w_bottom, doublings):
+    """The layers between two half-spaces' mode bases, as scattering blocks."""
+    eps, mu = _materials(eps, mu)
+    thickness_um = jnp.asarray(thickness_um)
     k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
     w_ref = _reference_modes(kx)
-
-    scattering = _interface(_isotropic_modes(eps_incident, kx), w_ref)
-    for index in range(n_layers):
+    scattering = _interface(w_top, w_ref)
+    for index in range(eps.shape[-3]):
         delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
-        delta_ref = _solve(w_ref, delta @ w_ref)
         k0d = k0 * thickness_um[..., index]
-        scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
-    scattering = _star(scattering, _interface(w_ref, _isotropic_modes(eps_exit, kx)))
-
-    return scattering
+        scattering = _star(scattering, _layer(_solve(w_ref, delta @ w_ref), k0d, doublings))
+    return _star(scattering, _interface(w_ref, w_bottom))
 
 
 def stack_smatrix(
@@ -534,18 +512,6 @@ class StackFields(NamedTuple):
     fields: jax.Array
 
 
-def _longitudinal(eps, mu, kx):
-    """Rows ``a``, ``b`` with ``Ez = a·F`` and ``Hz = b·F``, as in :func:`system_matrix`."""
-    batch = jnp.broadcast_shapes(eps.shape[:-2], mu.shape[:-2], jnp.shape(kx))
-    eps = jnp.broadcast_to(eps, batch + (3, 3))
-    mu = jnp.broadcast_to(mu, batch + (3, 3))
-    kx = jnp.broadcast_to(kx, batch)[..., None].astype(eps.dtype)
-    zero = jnp.zeros_like(kx)
-    a = jnp.concatenate([-eps[..., 2, 0:1], -eps[..., 2, 1:2], zero, -kx], -1) / eps[..., 2, 2:3]
-    b = jnp.concatenate([zero, kx, -mu[..., 2, 0:1], -mu[..., 2, 1:2]], -1) / mu[..., 2, 2:3]
-    return a, b
-
-
 def _poynting_z(field):
     """``S_z = ½ Re(Ex·Hy* − Ey·Hx*)`` of tangential fields ``[..., 4, n]``."""
     ex, ey, hx, hy = (field[..., i, :] for i in range(4))
@@ -595,13 +561,8 @@ def stack_fields(
     Returns:
         :class:`StackFields`.
     """
-    complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
-    eps = jnp.asarray(eps, dtype=complex_dtype)
-    mu = (
-        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps.shape)
-        if mu is None
-        else jnp.asarray(mu, dtype=complex_dtype)
-    )
+    _check_x64()
+    eps, mu = _materials(eps, mu)
     thickness_um = jnp.asarray(thickness_um)
     eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
     n_layers = eps.shape[-3]
@@ -628,7 +589,7 @@ def stack_fields(
 
     batch = flux.shape[:-2]
     z_um = jnp.zeros(batch + (0,))
-    fields = jnp.zeros(batch + (0, 6, 2), dtype=complex_dtype)
+    fields = jnp.zeros(batch + (0, 6, 2), dtype=eps.dtype)
     if samples_per_layer and n_layers:
         fractions = jnp.linspace(0.0, 1.0, samples_per_layer)
         tops = jnp.cumsum(thickness_um, axis=-1) - thickness_um
@@ -779,8 +740,6 @@ def solve_stack_on_crystal(
     mu: jax.Array | None = None,
     mu_substrate: jax.Array | None = None,
     doublings: int = DEFAULT_DOUBLINGS,
-    causal_loss: float = 1e-8,
-    sign_iterations: int = 60,
 ) -> CrystalResult:
     """A planar stack on a semi-infinite anisotropic, lossy or hyperbolic substrate.
 
@@ -797,46 +756,20 @@ def solve_stack_on_crystal(
         eps_substrate: The substrate's tensor ``[..., 3, 3]`` in the lab frame
             (rotate it with :func:`rotate_tensor`); lossy is fine.
         mu_substrate: Its permeability; identity if omitted.
-        causal_loss: For a lossless substrate, the relative loss that decides
-            which propagating waves carry energy in; the subspaces are then
-            refined to the lossless ones, so it does not limit the accuracy.
-        sign_iterations: Newton steps of the sign function (static).
 
     Returns:
         :class:`CrystalResult`: ``r``, ``R`` and the power transmitted into
         the substrate ``T``.
     """
-    complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
-    eps = jnp.asarray(eps, dtype=complex_dtype)
-    mu = (
-        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps.shape)
-        if mu is None
-        else jnp.asarray(mu, dtype=complex_dtype)
-    )
-    eps_substrate = jnp.asarray(eps_substrate, dtype=complex_dtype)
-    mu_substrate = (
-        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps_substrate.shape)
-        if mu_substrate is None
-        else jnp.asarray(mu_substrate, dtype=complex_dtype)
-    )
-    thickness_um = jnp.asarray(thickness_um)
+    _check_x64()
+    eps_substrate, mu_substrate = _materials(eps_substrate, mu_substrate)
     eps_incident = jnp.asarray(eps_incident)
     kx = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
-    k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
-    w_ref = _reference_modes(kx)
+    # a lossless substrate gets a relative loss of 1e-8 to decide which waves carry energy
+    # in; the subspaces are then refined to the lossless ones, so it costs no accuracy
+    w_sub = _substrate_modes(eps_substrate, mu_substrate, kx, 1e-8, 60)
     w_in = _isotropic_modes(eps_incident, kx)
-    w_sub = _substrate_modes(eps_substrate, mu_substrate, kx, causal_loss, sign_iterations)
-
-    scattering = _interface(w_in, w_ref)
-    for index in range(eps.shape[-3]):
-        delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
-        delta_ref = _solve(w_ref, delta @ w_ref)
-        k0d = k0 * thickness_um[..., index]
-        scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
-    scattering = _star(scattering, _interface(w_ref, w_sub))
-    t, _, r, _ = scattering
-    field = w_sub[..., :, :2] @ t  # the transmitted field at the substrate's face, per input
-    ex, ey, hx, hy = (field[..., i, :] for i in range(4))
-    flux = 0.5 * jnp.real(ex * jnp.conj(hy) - ey * jnp.conj(hx))
+    t, _, r, _ = _cascade(eps, mu, thickness_um, wavelength_um, kx, w_in, w_sub, doublings)
+    flux = _poynting_z(w_sub[..., :, :2] @ t)  # into the substrate, per input
     incident = 0.5 * jnp.real(_kz(eps_incident, kx))[..., None]
     return CrystalResult(r=r, R=jnp.abs(r) ** 2, T=flux / incident)

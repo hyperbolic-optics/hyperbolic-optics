@@ -42,7 +42,6 @@ plane of incidence.) Results are indexed ``[..., order, out, in]`` with 0 = p an
 """
 
 import math
-import warnings
 from typing import NamedTuple
 
 import jax
@@ -50,6 +49,7 @@ import jax.numpy as jnp
 
 from hyperbolic_optics.bcm import (
     DEFAULT_DOUBLINGS,
+    _check_x64,
     _interface,
     _kz,
     _layer,
@@ -375,13 +375,7 @@ def solve_grating(
         ``R``, ``T`` are ``[..., order, out, in]`` with 0 = p and 1 = s. Only the
         zeroth order is incident.
     """
-    if not jax.config.jax_enable_x64:
-        warnings.warn(
-            "hyperbolic_optics.rcwa is running in complex64 because 64-bit JAX is off; "
-            'call jax.config.update("jax_enable_x64", True) for reference accuracy.',
-            UserWarning,
-            stacklevel=2,
-        )
+    _check_x64()
     if doublings is None:
         doublings = default_doublings(max_order)
     size = 2 * max_order + 1

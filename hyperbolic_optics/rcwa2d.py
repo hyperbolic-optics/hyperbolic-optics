@@ -40,27 +40,19 @@ in Fourier space. The assembly is averaged with its product-reversed twin,
 which keeps it Hermitian for lossless media: energy is conserved to rounding at
 every truncation.
 
-Convergence, for orientation (the user guide has the comparisons): at 529
-harmonics, silicon pillars are within 3e-3 (square) and 3e-4 (disc) of FMMAX's
-converged reflectance, against 1e-2 and 4e-3 for Laurent's rule, and a
-birefringent disc within 5e-5 in every channel. Metal-like and hyperbolic
-inclusions (Re ε < 0) converge slowly under every Fourier factorisation, this
-one included.
-
 Conventions follow :mod:`hyperbolic_optics.rcwa`: order ``(m, n)`` has in-plane
 wavevector ``k∥₀ + (m·b₁ + n·b₂)/k₀`` (on a rectangular lattice,
 ``(kx₀ + m·λ/Λx, ky₀ + n·λ/Λy)``), resolved into that order's own p and s;
 results are ``[..., order, out, in]`` with 0 = p and 1 = s.
 """
 
-import warnings
 from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-from hyperbolic_optics.bcm import _interface, _layer, _solve, _star
+from hyperbolic_optics.bcm import _check_x64, _interface, _layer, _solve, _star
 from hyperbolic_optics.rcwa import _fourier_system_matrix, _harmonic_modes, default_doublings
 
 __all__ = [
@@ -633,13 +625,7 @@ def solve_crossed_grating(
         :class:`CrossedGratingResult`: ``orders`` ``[N, 2]`` and ``r``, ``t``,
         ``R``, ``T`` ``[..., N, out, in]``. Only order (0, 0) is incident.
     """
-    if not jax.config.jax_enable_x64:
-        warnings.warn(
-            "hyperbolic_optics.rcwa2d is running in complex64 because 64-bit JAX is off; "
-            'call jax.config.update("jax_enable_x64", True) for reference accuracy.',
-            UserWarning,
-            stacklevel=2,
-        )
+    _check_x64()
     mx, my = max_order
     lattice = _as_lattice(period_um)
     _, _, b1, b2, _ = _vectors(lattice)
