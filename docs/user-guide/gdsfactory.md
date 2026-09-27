@@ -384,6 +384,43 @@ section, modes = hog.waveguide_modes(strip, gf.get_active_pdk().layer_stack, (5.
   elsewhere. A crystal axis at an angle to the waveguide is refused, because
   the tensor is then not diagonal in the waveguide's frame.
 
+## Metasurfaces and metalenses
+
+A slowly varying metasurface is designed cell by cell, with local
+periodicity: each cell transmits as it would in an infinite array of itself.
+2D RCWA gives that transmission, and the layout places the cells.
+
+```python
+from hyperbolic_optics import metasurfaces as ms, rcwa2d
+
+radii = np.linspace(0.04, 0.16, 25)
+library = ms.cell_library(ms.disc_cell(2.4**2, 0.6, 0.35), radii,     # [P, 2, 2] Jones
+                          rcwa2d.Lattice.square(0.35), 0.633, 1.45**2, 1.0, (3, 3))
+sites = ms.square_sites(10.0, 0.35)                                   # [K, 2]
+phase = ms.lens_phase(sites[:, 0], sites[:, 1], 20.0, 0.633)
+indices, realised = ms.choose_cells(phase, library)
+lens = hog.metasurface_component(sites, indices, hog.disc_polygons(radii), layer=(1, 0))
+```
+
+- **Libraries.** `ms.cell_library` takes any `parameter → layers`: pillar
+  radius, fin size, or an anisotropic crystal pillar's orientation. It
+  returns the full 2 × 2 Jones matrix, so conversion between polarizations
+  is kept.
+- **Geometric phase.** A form-birefringent or crystalline cell turned by θ,
+  `ms.geometric_phase_jones(jones, θ)`, converts circular polarization with
+  phase 2θ. Pass `rotations_rad` to `hog.metasurface_component` to draw the
+  turned cells.
+- **Layout.** Each library entry is one cell, and each site a reference to it,
+  so a lens of thousands of pillars stays a small GDS.
+- **Checking.** `ms.focus` propagates the designed field by the angular
+  spectrum, a check on the design rather than a full-wave simulation of the
+  finite lens.
+
+`examples/metalens_gdsfactory.py` designs a geometric-phase lens of TiO₂
+nanofins at 660 nm, from the fin scan to the GDS. Each fin converts 0.94 of
+the light. The spot is diffraction-limited, and the on-axis maximum falls
+at the Li–Wolf focal shift for its Fresnel number.
+
 ## SAX models of PDK stacks
 
 `hog.stack_sax_model(vertical_stack(component, layer_stack, point))` turns the
