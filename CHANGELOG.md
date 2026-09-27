@@ -95,6 +95,19 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Metasurfaces and metalenses** (`hyperbolic_optics.metasurfaces`,
+  `hog.metasurface_component`): unit-cell libraries of zeroth-order Jones
+  matrices from 2D RCWA, the hyperbolic lens phase, cell choice per site,
+  geometric-phase (Pancharatnam–Berry) rotation of anisotropic cells, and
+  angular-spectrum propagation to the focus. Layouts are drawn as one
+  reference per site to a cell per library entry, turned as designed.
+
+  Checked: a uniform film's library is its Airy transmission, and a turned
+  half-wave cell gives exactly the 2θ phase. A TiO₂-pillar lens designed
+  from its RCWA library focuses at f, and the GDS reads back fin by fin.
+  `examples/metalens_gdsfactory.py` is a TiO₂-nanofin geometric-phase lens:
+  0.94 conversion per fin, a diffraction-limited spot, and the on-axis
+  maximum at the Li–Wolf focal shift.
 - **2D waveguide modes** (`hyperbolic_optics.modes2d`, and
   `hog.waveguide_cross_section` / `hog.waveguide_modes` from a layout and
   its `LayerStack`): a full-vector finite-difference mode solver on a Yee

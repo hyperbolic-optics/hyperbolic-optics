@@ -21,6 +21,10 @@ Everything is importable from here::
   :class:`CrossedGratingResponse`, with Jones, Mueller and ellipsometric
   analysis.
 
+- **Metasurfaces** (:mod:`.metasurface`): :func:`metasurface_component`
+  places a unit-cell library (:mod:`hyperbolic_optics.metasurfaces`) site by
+  site, as references.
+
 - **S-parameters** (:mod:`.sparameters`), gplugins-style:
   :func:`write_sparameters_grating_coupler` for a PDK grating-coupler cell and
   :func:`write_sparameters_stack`, cached as ``.npz`` by a hash of the geometry
@@ -53,6 +57,10 @@ from hyperbolic_optics.integrations.gdsfactory.materials import (
     resolve_material,
     x_cut,
     z_cut,
+)
+from hyperbolic_optics.integrations.gdsfactory.metasurface import (
+    disc_polygons,
+    metasurface_component,
 )
 from hyperbolic_optics.integrations.gdsfactory.simulate import (
     CrossedGratingResponse,
@@ -101,6 +109,7 @@ __all__ = [
     "VerticalStack",
     "crossed_grating_layers",
     "crossed_grating_stack",
+    "disc_polygons",
     "extract_grating_teeth",
     "extract_line_grating",
     "extract_unit_cell",
@@ -108,6 +117,7 @@ __all__ = [
     "grating_stack",
     "line_grating",
     "material_tensor",
+    "metasurface_component",
     "model_from_npz",
     "patterned_stack",
     "periodic_array",

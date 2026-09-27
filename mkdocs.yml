@@ -155,6 +155,7 @@ nav:
     - api/couplers.md
     - api/electro_optics.md
     - api/modes2d.md
+    - api/metasurfaces.md
     - api/sweep.md
     - api/mueller.md
     - api/jones.md
