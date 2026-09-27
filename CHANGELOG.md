@@ -95,6 +95,12 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Electro-optics** (`hyperbolic_optics.electro_optics`):
+  - the Pockels effect for any crystal orientation and field direction,
+    differentiable in the field, with LiNbO₃'s 3m coefficients;
+  - first-order mode index shifts and Vπ·L for phase shifters.
+
+  Checked against the textbook bulk index changes and exact mode roots.
 - **Stacks on bulk crystals, differentiable** (`bcm.solve_stack_on_crystal`):
   semi-infinite anisotropic, lossy or hyperbolic substrates in any
   orientation, as the NumPy engine's `Semi Infinite Anisotropic Layer`.
