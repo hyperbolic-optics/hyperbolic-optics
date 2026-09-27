@@ -4,6 +4,8 @@
   ``[out, in]`` and all;
 - a turned half-wave cell converts circular polarization with the
   Pancharatnam–Berry phase ``2θ``;
+- a cell of two half-wave layers twisted by α is a rotator by 2α: circular
+  light keeps its handedness and gains the phase −2α;
 - the cell choice realises the target phase from the nearest library entry;
 - the hyperbolic lens phase focuses at ``f``, at the diffraction limit;
 - a TiO₂-pillar metalens designed from its RCWA library focuses at ``f``;
@@ -20,8 +22,8 @@ jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp  # noqa: E402
 
+from hyperbolic_optics import bcm, rcwa2d  # noqa: E402
 from hyperbolic_optics import metasurfaces as ms  # noqa: E402
-from hyperbolic_optics import rcwa2d  # noqa: E402
 
 WAVELENGTH, PITCH, N_GLASS = 0.633, 0.35, 1.45
 
@@ -86,6 +88,28 @@ class TestDesign:
             converted = np.conj(right) @ jones @ left
             np.testing.assert_allclose(converted, np.exp(2j * theta), atol=1e-12)
             assert abs(np.conj(left) @ jones @ left) < 1e-12
+
+    def test_twisted_half_wave_pair_is_a_rotator(self):
+        # each layer a whole number of half-waves for both indices (8 and 7.5
+        # wavelengths): no reflections, so the Jones-calculus result is exact
+        wavelength, n_o, n_e = 1.55, 1.50, 1.60
+        thickness = wavelength / (2 * (n_e - n_o))
+        eps = jnp.diag(jnp.array([n_e**2, n_o**2, n_o**2], dtype=complex))
+
+        def twisted(alpha):
+            turn = [bcm.rotation_matrix(0.0, 0.0, k * alpha) for k in range(2)]
+            return [rcwa2d.uniform(bcm.rotate_tensor(eps, r), thickness) for r in turn]
+
+        alphas = np.linspace(0.1, 1.5, 5)
+        t = ms.cell_library(twisted, alphas, (0.5, 0.5), wavelength, 1.55**2, 1.55**2, (0, 0))
+        left, right = np.array([1, 1j]) / np.sqrt(2), np.array([1, -1j]) / np.sqrt(2)
+        kept = np.einsum("i,kij,j->k", np.conj(left), t, left)
+        converted = np.einsum("i,kij,j->k", np.conj(right), t, left)
+        untwisted = ms.cell_library(twisted, [0.0], (0.5, 0.5), wavelength, 1.55**2,
+                                    1.55**2, (0, 0))[0]  # fmt: skip
+        np.testing.assert_allclose(kept, (np.conj(left) @ untwisted @ left) * np.exp(-2j * alphas),
+                                   atol=1e-9)  # fmt: skip
+        np.testing.assert_allclose(converted, 0, atol=1e-9)
 
     def test_nearest_entry(self):
         library_phases = np.linspace(0, 2 * np.pi, 16, endpoint=False)

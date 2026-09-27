@@ -410,11 +410,39 @@ lens = hog.metasurface_component(sites, indices, hog.disc_polygons(radii), layer
   `ms.geometric_phase_jones(jones, θ)`, converts circular polarization with
   phase 2θ. Pass `rotations_rad` to `hog.metasurface_component` to draw the
   turned cells.
+- **Twisted stacks.** A cell can be several anisotropic layers, each turned
+  about z, patterned or not (see below).
 - **Layout.** Each library entry is one cell, and each site a reference to it,
   so a lens of thousands of pillars stays a small GDS.
 - **Checking.** `ms.focus` propagates the designed field by the angular
   spectrum, a check on the design rather than a full-wave simulation of the
   finite lens.
+
+Two half-wave layers twisted by α rotate polarization by 2α, so circular
+light keeps its handedness and gains a phase of −2α. The twist alone then
+spans 2π:
+
+```python
+import jax.numpy as jnp
+
+from hyperbolic_optics import bcm
+
+n_o, n_e = 1.50, 1.60
+eps = jnp.diag(jnp.array([n_e**2, n_o**2, n_o**2], dtype=complex))
+d = 1.55 / (2 * (n_e - n_o))                                  # half-wave
+
+
+def twisted(alpha):
+    turns = [bcm.rotation_matrix(0.0, 0.0, k * alpha) for k in range(2)]
+    return [rcwa2d.uniform(bcm.rotate_tensor(eps, r), d) for r in turns]
+
+
+alphas = np.linspace(0, np.pi, 13)
+library = ms.cell_library(twisted, alphas, (0.5, 0.5), 1.55, 1.55**2, 1.55**2, (0, 0))
+```
+
+Unpatterned cells need only the zeroth order, `(0, 0)`. For twisted
+pillars, give each layer's `Shape` its own turned tensor.
 
 `examples/metalens_gdsfactory.py` designs a geometric-phase lens of TiO₂
 nanofins at 660 nm, from the fin scan to the GDS. Each fin converts 0.94 of
