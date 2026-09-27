@@ -1,0 +1,338 @@
+"""gplugins-style S-parameters: ``write_sparameters_*(component, …)``, cached.
+
+Like gdsfactory's simulation plugins (``gplugins.tidy3d.write_sparameters``
+and friends), each function takes a component and the PDK's ``LayerStack``,
+computes S-parameters over wavelength, saves them as ``.npz`` in gdsfactory's
+S-parameter directory (``gf.config.PATH.sparameters``), keyed by a hash of the
+geometry and the settings, and returns them. A second call with the same
+component and settings loads the file.
+
+The file's keys are ``"port@mode,port@mode"`` (input first, as in SAX and
+gplugins) and ``"wavelengths"`` (µm), so ``gplugins.sax.read.model_from_npz``
+reads single-mode results as they are. For several modes per port (p and s,
+TE and TM), use :func:`model_from_npz` here, which keeps them apart. A JSON
+file beside the ``.npz`` records the settings and the physics behind the
+numbers (emission angles, directionality, effective indices).
+
+- :func:`write_sparameters_grating_coupler`: a grating-coupler cell from the
+  PDK (e.g. ``gf.components.grating_coupler_rectangular``), waveguide port to
+  fibre port, from its leaky mode (:mod:`hyperbolic_optics.couplers`);
+- :func:`write_sparameters_stack`: the four-port plane-wave S-matrix of the
+  stack at a point of a layout.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import hashlib
+import json
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
+
+import gdsfactory as gf
+import jax.numpy as jnp
+import numpy as np
+from gdsfactory.technology.layer_stack import LayerStack
+
+from hyperbolic_optics import couplers, resonances
+from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec, material_tensor
+from hyperbolic_optics.integrations.gdsfactory.simulate import stack_sax_model
+from hyperbolic_optics.integrations.gdsfactory.stack import (
+    StackLayer,
+    VerticalStack,
+    grating_layers,
+    grating_stack,
+    vertical_stack,
+)
+
+__all__ = [
+    "component_hash",
+    "get_sparameters_path",
+    "model_from_npz",
+    "write_sparameters_grating_coupler",
+    "write_sparameters_stack",
+]
+
+
+def component_hash(component: gf.Component) -> str:
+    """A hash of a component's geometry: every polygon on every layer, in dbu."""
+    digest = hashlib.md5()
+    dbu = component.kcl.dbu
+    for layer, polygons in sorted(
+        component.get_polygons_points().items(), key=lambda kv: str(kv[0])
+    ):
+        digest.update(str(layer).encode())
+        points = sorted(np.round(np.asarray(p) / dbu).astype(np.int64).tobytes() for p in polygons)
+        for item in points:
+            digest.update(item)
+    return digest.hexdigest()
+
+
+def _settings_hash(settings: Mapping[str, Any]) -> str:
+    return hashlib.md5(json.dumps(_jsonable(settings), sort_keys=True).encode()).hexdigest()
+
+
+def _jsonable(value):
+    if isinstance(value, Mapping):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, (np.ndarray, jnp.ndarray)):
+        return _jsonable(np.asarray(value).tolist())
+    if isinstance(value, complex):
+        return [value.real, value.imag]
+    if isinstance(value, (int, float, str, bool)) or value is None:
+        return value
+    return repr(value)
+
+
+def get_sparameters_path(
+    component: gf.Component, dirpath: Path | str | None = None, **settings: Any
+) -> Path:
+    """Where a component's S-parameters for these settings live (gplugins' layout)."""
+    dirpath = Path(dirpath) if dirpath is not None else Path(gf.config.PATH.sparameters)
+    dirpath = dirpath / "hyperbolic_optics"
+    dirpath.mkdir(parents=True, exist_ok=True)
+    key = hashlib.md5((component_hash(component) + _settings_hash(settings)).encode()).hexdigest()
+    return dirpath / f"{component.name}_{key}.npz"
+
+
+def _save(path: Path, sparameters: dict, metadata: dict) -> None:
+    np.savez(path, **sparameters)
+    path.with_suffix(".json").write_text(json.dumps(_jsonable(metadata), indent=2, sort_keys=True))
+
+
+def _load(path: Path) -> dict[str, np.ndarray]:
+    with np.load(path) as data:
+        return {key: data[key] for key in data.files}
+
+
+def model_from_npz(filepath: Path | str | Mapping[str, np.ndarray]):
+    """A SAX model from saved S-parameters, interpolated over wavelength, modes kept.
+
+    Returns ``model(wl) → SDict`` keyed ``("port@mode", "port@mode")``. Real and
+    imaginary parts are interpolated linearly (``jnp.interp``), as
+    ``gplugins.sax.read.model_from_npz`` does, which instead drops the mode.
+    """
+    data = _load(Path(filepath)) if not isinstance(filepath, Mapping) else dict(filepath)
+    x = jnp.asarray(data["wavelengths"])
+    order = jnp.argsort(x)
+    x = x[order]
+    entries = {
+        tuple(key.split(",")): jnp.asarray(value)[order]
+        for key, value in data.items()
+        if key != "wavelengths"
+    }
+
+    def model(wl=1.55):
+        wl = jnp.asarray(wl, dtype=float)
+        return {
+            ports: jnp.interp(wl, x, jnp.real(v)) + 1j * jnp.interp(wl, x, jnp.imag(v))
+            for ports, v in entries.items()
+        }
+
+    return model
+
+
+# ---------------------------------------------------------------------------
+# Grating couplers
+# ---------------------------------------------------------------------------
+
+
+def _uniform(stack: VerticalStack, which: str) -> list[StackLayer]:
+    """The stack with each patterned layer replaced by its ridge or groove material."""
+    out = []
+    for layer in stack.layers:
+        material = (
+            layer.material if which == "ridge" or layer.background is None else layer.background
+        )
+        out.append(StackLayer(layer.thickness_um, material, rotation_deg=layer.rotation_deg,
+                              name=layer.name))  # fmt: skip
+    return out
+
+
+def _guided_indices(stack, wavelength_um) -> list[float]:
+    """Effective indices of the fundamental mode under the ridges and under the grooves.
+
+    Only a starting guess for the leaky-mode search. The outer layers (the
+    cladding above, the box below) stand in for the half-spaces, because a
+    substrate can be of higher index than the mode (silicon under a BOX): the
+    mode is then leaky, and the search with the true half-spaces finds that.
+    """
+
+    def scalar(spec):
+        return float(np.real(np.asarray(material_tensor(spec, wavelength_um))[0, 0]))
+
+    top = min(float(stack.half_space_permittivity("incident", wavelength_um)),
+              scalar(stack.layers[0].material))  # fmt: skip
+    bottom = min(float(stack.half_space_permittivity("exit", wavelength_um)),
+                 scalar(stack.layers[-1].material))  # fmt: skip
+    indices = []
+    for which in ("ridge", "groove"):
+        layers = _uniform(stack, which)
+        eps = jnp.stack([material_tensor(layer.material, wavelength_um, layer.rotation_deg)
+                         for layer in layers])  # fmt: skip
+        thickness = jnp.array([float(layer.thickness_um) for layer in layers])
+        modes = resonances.slab_modes(eps, thickness, wavelength_um, top, bottom)
+        if modes:
+            indices.append(max(m.effective_index.real for m in modes))
+    if not indices:
+        raise ValueError("no guided mode in this stack at this wavelength; pass index_range")
+    return indices
+
+
+def write_sparameters_grating_coupler(
+    component: gf.Component,
+    layer_stack: LayerStack,
+    wavelengths_um,
+    grating_layer: gf.typings.LayerSpec = "WG",
+    materials: Mapping[str, MaterialSpec] | None = None,
+    ambient: MaterialSpec = 1.0,
+    waveguide_port: str = "o1",
+    fiber_port: str = "o2",
+    waist_um: float = 5.2,
+    index_range: tuple[float, float] | None = None,
+    max_order: int = 10,
+    dirpath: Path | str | None = None,
+    overwrite: bool = False,
+) -> dict[str, np.ndarray]:
+    """S-parameters of a grating-coupler cell, waveguide port ↔ fibre port.
+
+    The teeth are read from ``grating_layer`` (the taper and anything else on
+    that layer ignored), the etched stack under them from the PDK's
+    ``LayerStack``, and the coupling from the grating's leaky mode
+    (:func:`hyperbolic_optics.couplers.grating_coupler`): directionality,
+    radiated fraction over the drawn length and overlap with a fibre mode tilted
+    to the emission angle. Anisotropic layers (an x-cut LiNbO₃ film,
+    ``materials={"ln": Oriented("LiNbO3", x_cut(…))}``) are solved in full.
+
+    Args:
+        component: The grating-coupler cell.
+        layer_stack: The PDK's ``LayerStack``.
+        wavelengths_um: Wavelengths to compute.
+        grating_layer: The layer the teeth are drawn on.
+        materials, ambient: As in :func:`.simulate_grating`.
+        waveguide_port, fiber_port: The component's port names for the keys.
+        waist_um: The fibre mode's waist (5.2 µm: SMF-28 at 1550 nm).
+        index_range: Where to look for the leaky mode's ``Re kx₀/k₀`` at the
+            first wavelength; by default around the guided modes under the
+            ridges and grooves.
+        max_order: Harmonics of the grating solve.
+        dirpath: Where to save (``gf.config.PATH.sparameters`` by default).
+        overwrite: Recompute even if saved.
+
+    Returns:
+        ``{"o1@TE,o2@TE": …, "o2@TE,o1@TE": …, "o1@TE,o2@TM": …, "o2@TM,o1@TE": …,
+        "wavelengths": …}`` (with the given port names): amplitude transfer
+        between the waveguide's TE mode and the fibre's TE (s) and TM (p)
+        polarizations, reciprocal, zero phase (a lumped model). The JSON
+        beside the file has the emission angle, directionality, radiated
+        fraction, overlap and leaky mode at each wavelength.
+    """
+    wavelengths = np.atleast_1d(np.asarray(wavelengths_um, dtype=float))
+    settings = dict(
+        tool="hyperbolic_optics.grating_coupler", wavelengths_um=wavelengths,
+        grating_layer=grating_layer, materials=materials, ambient=ambient,
+        waveguide_port=waveguide_port, fiber_port=fiber_port, waist_um=waist_um,
+        index_range=index_range, max_order=max_order,
+    )  # fmt: skip
+    path = get_sparameters_path(component, dirpath, **settings)
+    if path.exists() and not overwrite:
+        return _load(path)
+
+    grating, stack = grating_stack(
+        component, grating_layer, layer_stack, materials, ambient, teeth_only=True
+    )
+    length = grating.n_periods * grating.period_um
+    eps_top = float(stack.half_space_permittivity("incident", wavelengths[0]))
+    eps_bottom = float(stack.half_space_permittivity("exit", wavelengths[0]))
+    if index_range is None:
+        guided = _guided_indices(stack, wavelengths[0])
+        index_range = (min(guided) - 0.1, max(guided) + 0.05)
+
+    te, tm, records = [], [], []
+    window, loss = tuple(index_range), None
+    for wavelength in wavelengths:
+        layers = grating_layers(grating, stack, wavelength)
+        result = couplers.grating_coupler(
+            layers, grating.period_um, wavelength, eps_top, eps_bottom, window, waist_um,
+            length, max_order, max_loss=loss,
+        )  # fmt: skip
+        te.append(np.sqrt(result.efficiency_te))
+        tm.append(np.sqrt(result.efficiency_tm))
+        records.append(
+            dict(
+                wavelength_um=wavelength,
+                efficiency=result.efficiency,
+                directionality=result.directionality,
+                radiated=result.radiated,
+                overlap=result.overlap,
+                emission_deg=result.emission_deg,
+                fiber_offset_um=result.fiber_offset_um,
+                bloch_index=result.mode.bloch_index,
+                alpha_per_um=result.mode.alpha_per_um,
+            )  # fmt: skip
+        )
+        centre, decay = result.mode.bloch_index.real, result.mode.bloch_index.imag
+        window, loss = (centre - 0.03, centre + 0.03), 3 * decay
+
+    w, f = f"{waveguide_port}@TE", fiber_port
+    te, tm = np.asarray(te, dtype=complex), np.asarray(tm, dtype=complex)
+    sparameters = {
+        f"{w},{f}@TE": te, f"{f}@TE,{w}": te,
+        f"{w},{f}@TM": tm, f"{f}@TM,{w}": tm,
+        "wavelengths": wavelengths,
+    }  # fmt: skip
+    metadata = dict(
+        settings=settings, grating=dataclasses.asdict(grating),
+        stack=[(layer.name, layer.thickness_um) for layer in stack.layers],
+        results=records,
+    )  # fmt: skip
+    _save(path, sparameters, metadata)
+    return sparameters
+
+
+# ---------------------------------------------------------------------------
+# Planar stacks
+# ---------------------------------------------------------------------------
+
+
+def write_sparameters_stack(
+    component: gf.Component,
+    layer_stack: LayerStack,
+    point_um: tuple[float, float],
+    wavelengths_um,
+    angle_deg: float = 0.0,
+    azimuth_deg: float = 0.0,
+    materials: Mapping[str, MaterialSpec] | None = None,
+    ambient: MaterialSpec = 1.0,
+    dirpath: Path | str | None = None,
+    overwrite: bool = False,
+) -> dict[str, np.ndarray]:
+    """The plane-wave S-matrix of the PDK stack at a point of a layout, over wavelength.
+
+    Returns ``{"top@p,bottom@s": …, …, "wavelengths": …}``: all 16 entries of
+    :func:`hyperbolic_optics.bcm.stack_smatrix`, power-normalised, for light at
+    ``angle_deg`` in the ambient (``kx`` fixed from it), the sample turned by
+    ``azimuth_deg``.
+    """
+    wavelengths = np.atleast_1d(np.asarray(wavelengths_um, dtype=float))
+    settings = dict(
+        tool="hyperbolic_optics.stack", point_um=point_um, wavelengths_um=wavelengths,
+        angle_deg=angle_deg, azimuth_deg=azimuth_deg, materials=materials, ambient=ambient,
+    )  # fmt: skip
+    path = get_sparameters_path(component, dirpath, **settings)
+    if path.exists() and not overwrite:
+        return _load(path)
+    stack = vertical_stack(component, layer_stack, point_um, materials, ambient)
+    eps_ambient = float(stack.half_space_permittivity("incident", wavelengths[0]))
+    kx = np.sqrt(eps_ambient) * np.sin(np.radians(angle_deg))
+    sd = stack_sax_model(stack)(wl=jnp.asarray(wavelengths), kx=kx, azimuth=np.radians(azimuth_deg))
+    sparameters = {f"{a},{b}": np.asarray(v) for (a, b), v in sd.items()}
+    sparameters["wavelengths"] = wavelengths
+    metadata = dict(
+        settings=settings, stack=[(layer.name, layer.thickness_um) for layer in stack.layers]
+    )
+    _save(path, sparameters, metadata)
+    return sparameters

@@ -607,3 +607,109 @@ class TestOtherLattices:
             azimuth_rad=np.radians(20.0), truncation="circular",
         )  # fmt: skip
         np.testing.assert_allclose(response.R[0, 0], direct.R, atol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# gplugins-style S-parameters
+# ---------------------------------------------------------------------------
+
+from hyperbolic_optics import bcm, couplers  # noqa: E402
+from hyperbolic_optics.integrations.gdsfactory import sparameters as hsp  # noqa: E402
+
+
+class TestSparameters:
+    @pytest.fixture(scope="class")
+    def coupler(self):
+        return gf.components.grating_coupler_rectangular()
+
+    def test_teeth_are_read_from_a_pdk_grating_coupler(self, coupler):
+        grating = hog.extract_line_grating(coupler, "WG", teeth_only=True)
+        assert grating.period_um == pytest.approx(0.75, abs=1e-9)
+        assert grating.n_periods == 19  # the 20th is merged into the taper
+        assert grating.fill == pytest.approx(0.5, abs=2e-3)
+        with pytest.raises(ValueError, match="rectangle"):
+            hog.extract_line_grating(coupler, "WG")
+        _, stack = hog.grating_stack(
+            coupler, "WG", gf.get_active_pdk().layer_stack, teeth_only=True
+        )
+        names = [(layer.name, round(layer.thickness_um, 4)) for layer in stack.layers]
+        assert names == [("clad", 2.78), ("core / clad", 0.07), ("core", 0.15), ("box", 3.0)]
+        assert stack.layers[1].background == "SiO2" and stack.exit == "Si"
+
+    def test_grating_coupler_sparameters_are_cached_and_consistent(self, coupler, tmp_path):
+        layer_stack = gf.get_active_pdk().layer_stack
+        sp = hsp.write_sparameters_grating_coupler(coupler, layer_stack, [1.55], dirpath=tmp_path)
+        assert set(sp) == {
+            "o1@TE,o2@TE",
+            "o2@TE,o1@TE",
+            "o1@TE,o2@TM",
+            "o2@TM,o1@TE",
+            "wavelengths",
+        }
+        np.testing.assert_array_equal(sp["o1@TE,o2@TE"], sp["o2@TE,o1@TE"])
+        assert abs(sp["o1@TE,o2@TM"][0]) < 1e-6  # an isotropic stack keeps TE
+        efficiency = abs(sp["o1@TE,o2@TE"][0]) ** 2
+        assert 0.05 < efficiency < 0.8
+
+        files = list((tmp_path / "hyperbolic_optics").glob("*.npz"))
+        assert len(files) == 1
+        metadata = __import__("json").loads(files[0].with_suffix(".json").read_text())
+        record = metadata["results"][0]
+        assert record["efficiency"] == pytest.approx(efficiency)
+        # the same numbers from the coupler model on the extracted geometry
+        grating, stack = hog.grating_stack(coupler, "WG", layer_stack, teeth_only=True)
+        direct = couplers.grating_coupler(
+            hog.grating_layers(grating, stack, 1.55), grating.period_um, 1.55, 1.0,
+            float(stack.half_space_permittivity("exit", 1.55)),
+            (record["bloch_index"][0] - 0.03, record["bloch_index"][0] + 0.03),
+            length_um=grating.n_periods * grating.period_um, max_loss=0.2,
+        )  # fmt: skip
+        assert direct.efficiency == pytest.approx(efficiency, rel=1e-6)
+        assert direct.emission_deg == pytest.approx(record["emission_deg"], abs=1e-6)
+
+        again = hsp.write_sparameters_grating_coupler(
+            coupler, layer_stack, [1.55], dirpath=tmp_path
+        )
+        np.testing.assert_array_equal(again["o1@TE,o2@TE"], sp["o1@TE,o2@TE"])
+        assert len(list((tmp_path / "hyperbolic_optics").glob("*.npz"))) == 1
+
+    def test_stack_sparameters(self, tmp_path):
+        component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        sp = hsp.write_sparameters_stack(
+            component, _tfln_stack(), (0.2, 10.0), [1.5, 1.55], angle_deg=20.0,
+            materials=LN_X_CUT, dirpath=tmp_path,
+        )  # fmt: skip
+        column = hog.vertical_stack(component, _tfln_stack(), (0.2, 10.0), LN_X_CUT)
+        tensors = jnp.stack(
+            [
+                hog.material_tensor(layer.material, 1.55, layer.rotation_deg)
+                for layer in column.layers
+            ]
+        )
+        thickness = jnp.array([layer.thickness_um for layer in column.layers])
+        eps_si = float(hog.material_tensor("Si", 1.55)[0, 0].real)
+        direct = bcm.stack_smatrix(tensors, thickness, 1.55, np.sin(np.radians(20.0)), 1.0, eps_si)
+        for i_in, port_in in enumerate(bcm.PORTS):
+            for i_out, port_out in enumerate(bcm.PORTS):
+                assert complex(sp[f"{port_in},{port_out}"][1]) == pytest.approx(
+                    complex(direct.s[i_out, i_in]), abs=1e-12
+                )
+
+    def test_model_from_npz_interpolates_with_modes_kept(self, tmp_path):
+        data = {
+            "a@TE,b@TE": np.array([1.0 + 0j, 0.0 + 1j]),
+            "a@TE,b@TM": np.array([0.5 + 0j, 0.5 + 0j]),
+            "wavelengths": np.array([1.5, 1.6]),
+        }
+        path = tmp_path / "s.npz"
+        np.savez(path, **data)
+        model = hsp.model_from_npz(path)
+        sd = model(wl=np.array([1.5, 1.55]))
+        np.testing.assert_allclose(sd["a@TE", "b@TE"], [1.0, 0.5 + 0.5j])
+        np.testing.assert_allclose(sd["a@TE", "b@TM"], [0.5, 0.5])
+
+    def test_the_hash_follows_the_geometry(self):
+        one = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        same = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
+        other = hog.line_grating(period_um=0.9, fill=0.4, n_periods=10, layer=RIB)
+        assert hsp.component_hash(one) == hsp.component_hash(same) != hsp.component_hash(other)

@@ -89,7 +89,10 @@ def line_grating(
 
 
 def extract_line_grating(
-    component: gf.Component, layer: gf.typings.LayerSpec, tolerance_um: float | None = None
+    component: gf.Component,
+    layer: gf.typings.LayerSpec,
+    tolerance_um: float | None = None,
+    teeth_only: bool = False,
 ) -> LineGrating:
     """Read a line grating back from the polygons of ``component`` on ``layer``.
 
@@ -102,6 +105,10 @@ def extract_line_grating(
         component: A gdsfactory component, e.g. from ``gf.import_gds``.
         layer: The layer the ridges are drawn on.
         tolerance_um: Allowed deviation; defaults to one database unit.
+        teeth_only: Read only the teeth of a device drawn on the same layer --
+            a grating coupler's taper, say, or a first tooth merged into it:
+            keep the axis-aligned rectangles of the most common size, ignore
+            the rest. The kept teeth must still form a clean line grating.
 
     Returns:
         The :class:`LineGrating`, with the period from a least-squares fit to the
@@ -119,10 +126,22 @@ def extract_line_grating(
         polygon = np.asarray(polygon, dtype=float)
         xs, ys = np.unique(np.round(polygon[:, 0], 9)), np.unique(np.round(polygon[:, 1], 9))
         if len(polygon) != 4 or len(xs) != 2 or len(ys) != 2:
+            if teeth_only:
+                continue
             raise ValueError(
                 f"polygon on layer {layer} is not an axis-aligned rectangle: {polygon}"
             )
         rectangles.append((xs[0], xs[1], ys[0], ys[1]))
+    if teeth_only and rectangles:
+        sizes = [(round(x1 - x0, 6), round(y1 - y0, 6)) for x0, x1, y0, y1 in rectangles]
+        values, counts = np.unique(np.array(sizes), axis=0, return_counts=True)
+        tooth = values[np.argmax(counts)]
+        rectangles = [
+            r for r, size in zip(rectangles, sizes, strict=True)
+            if np.allclose(size, tooth, atol=tolerance)
+        ]  # fmt: skip
+    if len(rectangles) < 2:
+        raise ValueError(f"need at least two ridges on layer {layer}, found {len(rectangles)}")
     rectangles.sort()
     x0, x1, y0, y1 = (np.array(column) for column in zip(*rectangles, strict=True))
 

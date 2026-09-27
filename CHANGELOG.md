@@ -95,6 +95,15 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **gplugins-style S-parameters** (`hog.write_sparameters_grating_coupler`,
+  `hog.write_sparameters_stack`, `hog.model_from_npz`):
+  - S-parameters of PDK cells, keyed by the component's port names and saved
+    as `.npz` under `gf.config.PATH.sparameters`, cached by a hash of the
+    geometry and settings, with a JSON record of the physics;
+  - a mode-aware SAX loader.
+
+  `extract_line_grating(teeth_only=True)` reads the teeth of a
+  grating-coupler cell, whose taper shares their layer.
 - **Resonances** (`hyperbolic_optics.resonances`): poles of the S-matrix in the
   complex plane by Beyn's contour method.
   - `band_edge_modes`: band-edge modes of photonic-crystal slabs (PCSELs) on

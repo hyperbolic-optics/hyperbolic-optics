@@ -805,7 +805,8 @@ def grating_leaky_modes(
         max_loss: Largest ``Im kx₀/k₀`` searched; by default a quarter of the
             range (grating couplers are strongly leaky by design).
         split: ``(layer, fraction)`` of the internal plane; by default the
-            middle of the last layer (the waveguide core, under the grating).
+            middle of the layer of highest index (the waveguide core), where
+            the mode is strong.
         factorization: ``"li"`` (default) or ``"laurent"``.
         doublings, quadrature, probes, tolerance, seed: As in :func:`band_edge_modes`.
 
@@ -816,7 +817,9 @@ def grating_leaky_modes(
 
     layers = list(layers)
     doublings = default_doublings(max_order) if doublings is None else doublings
-    split = (len(layers) - 1, 0.5) if split is None else split
+    if split is None:
+        peak = [float(np.max(np.real(np.asarray(layer.eps)))) for layer in layers]
+        split = (int(np.argmax(peak)), 0.5)
     low, high = (float(v) for v in index_range)
     depth = 0.25 * (high - low) if max_loss is None else float(max_loss)
 

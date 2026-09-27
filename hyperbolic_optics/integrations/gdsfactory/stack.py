@@ -236,6 +236,7 @@ def grating_stack(
     materials: Mapping[str, MaterialSpec] | None = None,
     ambient: MaterialSpec = 1.0,
     samples: int = 3,
+    teeth_only: bool = False,
 ) -> tuple[LineGrating, VerticalStack]:
     """A line grating and the patterned stack its etch makes in the PDK's LayerStack.
 
@@ -244,7 +245,7 @@ def grating_stack(
     layout is not a single line grating in this stack and a ``ValueError`` says
     so. Where the ridge and gap columns differ, the layer is patterned.
     """
-    grating = extract_line_grating(component, grating_layer)
+    grating = extract_line_grating(component, grating_layer, teeth_only=teeth_only)
     period, width = grating.period_um, grating.fill * grating.period_um
     x0, y0 = grating.origin_um
     y = y0 + grating.length_um / 2
