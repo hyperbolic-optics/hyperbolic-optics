@@ -99,7 +99,8 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   `hog.metasurface_component`): unit-cell libraries of zeroth-order Jones
   matrices from 2D RCWA, the hyperbolic lens phase, cell choice per site,
   geometric-phase (Pancharatnam–Berry) rotation of anisotropic cells, and
-  angular-spectrum propagation to the focus. Layouts are drawn as one
+  angular-spectrum propagation to the focus. Cells may be any stack of turned anisotropic
+  layers, patterned or not: a twisted half-wave pair is a 2α rotator. Layouts are drawn as one
   reference per site to a cell per library entry, turned as designed.
 
   Checked: a uniform film's library is its Airy transmission, and a turned
