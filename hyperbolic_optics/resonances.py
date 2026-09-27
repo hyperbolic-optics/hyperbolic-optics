@@ -802,7 +802,8 @@ def grating_leaky_modes(
             effective index, inside ``(λ/Λ − n, n_eff_max)`` so that the
             radiating order is the −1st.
         max_order: Harmonics ``|m| ≤ max_order`` (static).
-        max_loss: Largest ``Im kx₀/k₀`` searched; by default 5 % of the range.
+        max_loss: Largest ``Im kx₀/k₀`` searched; by default a quarter of the
+            range (grating couplers are strongly leaky by design).
         split: ``(layer, fraction)`` of the internal plane; by default the
             middle of the last layer (the waveguide core, under the grating).
         factorization: ``"li"`` (default) or ``"laurent"``.
@@ -817,7 +818,7 @@ def grating_leaky_modes(
     doublings = default_doublings(max_order) if doublings is None else doublings
     split = (len(layers) - 1, 0.5) if split is None else split
     low, high = (float(v) for v in index_range)
-    depth = 0.05 * (high - low) if max_loss is None else float(max_loss)
+    depth = 0.25 * (high - low) if max_loss is None else float(max_loss)
 
     def matrix(kx0):
         parts = _grating_parts(layers, period_um, wavelength_um, eps_top, eps_bottom,
@@ -832,6 +833,8 @@ def grating_leaky_modes(
     k0 = 2 * np.pi / float(wavelength_um)
     modes = []
     for kx0, residual, multiplicity in sorted(roots, key=lambda r: -r[0].real):
+        if kx0.imag < -1e-9 * abs(kx0):
+            continue  # grows as it propagates: not a mode of a passive grating
         parts = _grating_parts(layers, period_um, wavelength_um, eps_top, eps_bottom,
                                max_order, factorization, kx0)  # fmt: skip
         above, below = _grating_cascades(layers, parts, split, doublings)
@@ -849,8 +852,9 @@ def grating_leaky_modes(
                                         + np.abs(amplitudes[size:]) ** 2)  # fmt: skip
 
         up_power, down_power = radiated(top, kz_top), radiated(bottom, kz_bottom)
-        open_top = np.real(kz_top) > 1e-6 * np.abs(kz_top).max()
-        open_bottom = np.real(kz_bottom) > 1e-6 * np.abs(kz_bottom).max()
+        # an order radiates where it propagates on the real axis: |Re kx_m| < n
+        open_top = np.abs(kx.real) < np.sqrt(float(np.real(eps_top)))
+        open_bottom = np.abs(kx.real) < np.sqrt(float(np.real(eps_bottom)))
         total = up_power[open_top].sum() + down_power[open_bottom].sum()
         orders = tuple(int(m) for m in np.arange(-max_order, max_order + 1)[open_top | open_bottom])
         emission, polarization = {}, {}
