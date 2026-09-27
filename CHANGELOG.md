@@ -95,6 +95,15 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
+- **Stacks on bulk crystals, differentiable** (`bcm.solve_stack_on_crystal`):
+  semi-infinite anisotropic, lossy or hyperbolic substrates in any
+  orientation, as the NumPy engine's `Semi Infinite Anisotropic Layer`.
+  - The substrate's outgoing subspace comes from a matrix sign function
+    (Newton), with a causal loss for propagating waves, refined to the
+    lossless subspace by Newton steps on its Riccati equation.
+  - No eigenvectors are formed, so degenerate substrate modes have exact
+    results and finite gradients.
+  - The r coefficients match the NumPy engine to 1e-12.
 - **gplugins-style S-parameters** (`hog.write_sparameters_grating_coupler`,
   `hog.write_sparameters_stack`, `hog.model_from_npz`):
   - S-parameters of PDK cells, keyed by the component's port names and saved

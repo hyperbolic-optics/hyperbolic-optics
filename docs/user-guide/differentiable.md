@@ -104,6 +104,43 @@ fields.z_um, fields.fields   # depths, and (Ex, Ey, Ez, Hx, Hy, Hz) there, per p
     `ε_a = (ε − ε†)/2i`. This check is independent of the interface fluxes,
     whose differences alone would only telescope.
 
+### Stacks on bulk crystals
+
+```python
+from hyperbolic_optics import dispersion
+
+calcite = bcm.rotate_tensor(dispersion.permittivity("Calcite", 1470.0),
+                            bcm.rotation_matrix(0.0, jnp.radians(65.0), jnp.radians(30.0)))
+result = bcm.solve_stack_on_crystal(
+    eps=jnp.eye(3, dtype=complex)[None], thickness_um=jnp.array([1.0]),   # an air gap
+    wavelength_um=1e4 / 1470.0, incidence_rad=0.6, eps_incident=5.5, eps_substrate=calcite,
+)
+result.r, result.R, result.T      # T: power carried into the crystal, per input
+```
+
+This is the NumPy engine's `Semi Infinite Anisotropic Layer`, in the
+differentiable solver. Bulk crystals can be the substrate in any orientation,
+lossy, lossless or hyperbolic: calcite, sapphire, hBN, SiC, α-MoO₃, a LiNbO₃
+wafer.
+
+The waves the substrate carries away are found without eigendecomposition:
+
+- **Sign function.** The matrix sign function of `−iΔ`, by Newton's method,
+  separates the waves that decay into the crystal from those that don't.
+- **Causal loss.** A tiny causal loss assigns a lossless crystal's
+  propagating waves by the direction their energy flows. In a hyperbolic
+  crystal that need not be the sign of `kz`.
+- **Refinement.** Newton steps on the invariant-subspace (Riccati) equation
+  then give the lossless crystal's own subspaces, exactly.
+
+Degenerate modes, such as an optic axis along z at normal incidence where
+eigenvector methods fail, are handled exactly, with finite gradients.
+
+`tests/test_crystal_substrates.py` checks the r coefficients against the NumPy
+engine to 1e-12, for hyperbolic lossy calcite behind an Otto gap and lossless
+LiNbO₃ under a film. It also checks energy conservation, the isotropic limit,
+the degenerate case and gradients.
+
 ## Method
 
 Each layer's scattering matrix is built without eigendecomposition. The field
@@ -147,8 +184,9 @@ reproduction of that method.
 
 ## Limitations
 
-- Incident and exit half-spaces must be isotropic and lossless. A
-  `Semi Infinite Anisotropic Layer` exit is not supported yet.
+- In `solve_stack` and `stack_smatrix` the half-spaces are isotropic and
+  lossless. For a semi-infinite crystal below the stack, use
+  `solve_stack_on_crystal` (see above).
 - For wavelength derivatives that include the material's dispersion, take the
   tensor from `hyperbolic_optics.dispersion` (the built-in materials in JAX), not
   from the NumPy material classes, which carry no gradient.
