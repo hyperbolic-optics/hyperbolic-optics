@@ -68,6 +68,13 @@ film(wl=6.7, kx=0.3, azimuth=0.2)    # SDict: {("top@p", "bottom@s"): ..., ...}
   wavelength, so dispersion comes along.
 - **From a PDK.** `hog.stack_sax_model(stack)` does the same for a stack read
   from a PDK with `vertical_stack`.
+- **Metasurface cells.** `rcwa2d.crossed_grating_smatrix` is a 2D-periodic
+  stack's zeroth-order S-matrix on the same four ports, and
+  `hog.cell_sax_model(cell, lattice)` wraps it as a SAX model (see
+  [gdsfactory](gdsfactory.md#metasurfaces-with-different-cells-at-every-site)).
+  Only the zeroth order is a port, so it holds for a subwavelength array.
+  Connect it to other elements across a spacer thick enough for its
+  evanescent orders to decay.
 - **Connections.** In a netlist, connect one model's `bottom` to another's
   `top`, and pass `kx` as a global setting. SAX matches the `@p` and `@s`
   modes itself.

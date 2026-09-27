@@ -60,6 +60,7 @@ __all__ = [
     "Lattice",
     "PatternedLayer",
     "Shape",
+    "crossed_grating_smatrix",
     "ellipse",
     "polygon_fourier",
     "rectangle",
@@ -587,6 +588,103 @@ def _operators(
     return w_ref, w_in, flux_in, w_out, flux_out, deltas
 
 
+def _scattering(
+    layers, period_um, wavelength_um, incidence_rad, eps_incident, eps_exit, max_order,
+    azimuth_rad, factorization, doublings, grid, truncation,
+):  # fmt: skip
+    """``(orders, zeroth, scattering blocks, flux_in, flux_out)`` over every harmonic."""
+    _check_x64()
+    mx, my = max_order
+    lattice = _as_lattice(period_um)
+    _, _, b1, b2, _ = _vectors(lattice)
+    orders = _orders(mx, my, lattice, truncation)
+    # the index box the kept harmonics span (circular truncation may widen it)
+    mx, my = int(np.abs(orders[:, 0]).max()), int(np.abs(orders[:, 1]).max())
+    max_order = (mx, my)
+    zeroth = int(np.flatnonzero((orders[:, 0] == 0) & (orders[:, 1] == 0))[0])
+    if doublings is None:
+        doublings = default_doublings(max(mx, my))
+    if grid is None:
+        grid = (max(32, 8 * mx + 8), max(32, 8 * my + 8))
+
+    eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
+    wavelength_um, azimuth_rad = jnp.asarray(wavelength_um), jnp.asarray(azimuth_rad)
+    k_par = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+    scale = (wavelength_um / (2 * jnp.pi))[..., None]
+    gx = orders[:, 0] * b1[0] + orders[:, 1] * b2[0]
+    gy = orders[:, 0] * b1[1] + orders[:, 1] * b2[1]
+    kx = (k_par * jnp.cos(azimuth_rad))[..., None] + gx * scale
+    ky = (k_par * jnp.sin(azimuth_rad))[..., None] + gy * scale
+    direction = (jnp.cos(azimuth_rad)[..., None], jnp.sin(azimuth_rad)[..., None])
+    k0 = 2 * jnp.pi / wavelength_um
+
+    w_ref, w_in, flux_in, w_out, flux_out, deltas = _operators(
+        layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
+        eps_incident, eps_exit,
+    )  # fmt: skip
+    scattering = _interface(w_in, w_ref)
+    for layer, delta_ref in zip(layers, deltas, strict=True):
+        k0d = k0 * jnp.asarray(layer.thickness_um)
+        scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
+    scattering = _star(scattering, _interface(w_ref, w_out))
+
+    return orders, zeroth, scattering, flux_in, flux_out
+
+
+def crossed_grating_smatrix(
+    layers: list[PatternedLayer],
+    period_um,
+    wavelength_um: jax.Array,
+    incidence_rad: jax.Array,
+    eps_top: jax.Array,
+    eps_bottom: jax.Array,
+    max_order: tuple[int, int],
+    azimuth_rad: jax.Array = 0.0,
+    factorization: str = "normal",
+    doublings: int | None = None,
+    grid: tuple[int, int] | None = None,
+    truncation: str = "parallelogram",
+):
+    """The zeroth-order, four-port scattering matrix of a 2D-periodic stack.
+
+    A metasurface as a circuit element: light from either side, in either
+    polarization, into the zeroth order on either side, power-normalised over
+    :data:`hyperbolic_optics.bcm.PORTS` as :func:`hyperbolic_optics.bcm.stack_smatrix`
+    is. The higher orders are solved for but are not ports, so the matrix is
+    unitary only while they are evanescent (a subwavelength lattice, lossless).
+    Arguments as in :func:`solve_crossed_grating`, with ``incidence_rad`` in the
+    top medium.
+
+    Returns:
+        :class:`hyperbolic_optics.bcm.PlanarSMatrix`.
+    """
+    from hyperbolic_optics.bcm import PlanarSMatrix
+
+    orders, zeroth, (s00, s01, s10, s11), flux_top, flux_bottom = _scattering(
+        layers, period_um, wavelength_um, incidence_rad, eps_top, eps_bottom, max_order,
+        azimuth_rad, factorization, doublings, grid, truncation,
+    )  # fmt: skip
+    size = orders.shape[0]
+    index = jnp.array([zeroth, size + zeroth])  # p and s of the zeroth order
+
+    def pick(block):
+        return block[..., index, :][..., :, index]
+
+    raw = jnp.concatenate(
+        [
+            jnp.concatenate([pick(s10), pick(s11)], axis=-1),
+            jnp.concatenate([pick(s00), pick(s01)], axis=-1),
+        ],
+        axis=-2,
+    )  # rows: out at top, out at bottom; columns: in at top, in at bottom
+    flux = jnp.concatenate([flux_top[..., index], flux_bottom[..., index]], axis=-1)
+    tolerance = 1e-12
+    carried = jnp.abs(flux) > tolerance  # evanescent (or cutoff) ports are left unscaled
+    root = jnp.where(carried, jnp.sqrt(jnp.where(carried, jnp.abs(flux), 1.0)), 1.0)
+    s = raw * root[..., :, None] / root[..., None, :]
+    return PlanarSMatrix(s=s, propagating=jnp.broadcast_to(carried, s.shape[:-1]))
+
+
 def solve_crossed_grating(
     layers: list[PatternedLayer],
     period_um: tuple[float, float],
@@ -625,42 +723,11 @@ def solve_crossed_grating(
         :class:`CrossedGratingResult`: ``orders`` ``[N, 2]`` and ``r``, ``t``,
         ``R``, ``T`` ``[..., N, out, in]``. Only order (0, 0) is incident.
     """
-    _check_x64()
-    mx, my = max_order
-    lattice = _as_lattice(period_um)
-    _, _, b1, b2, _ = _vectors(lattice)
-    orders = _orders(mx, my, lattice, truncation)
-    # the index box the kept harmonics span (circular truncation may widen it)
-    mx, my = int(np.abs(orders[:, 0]).max()), int(np.abs(orders[:, 1]).max())
-    max_order = (mx, my)
-    size = orders.shape[0]
-    zeroth = int(np.flatnonzero((orders[:, 0] == 0) & (orders[:, 1] == 0))[0])
-    if doublings is None:
-        doublings = default_doublings(max(mx, my))
-    if grid is None:
-        grid = (max(32, 8 * mx + 8), max(32, 8 * my + 8))
-
-    eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
-    wavelength_um, azimuth_rad = jnp.asarray(wavelength_um), jnp.asarray(azimuth_rad)
-    k_par = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
-    scale = (wavelength_um / (2 * jnp.pi))[..., None]
-    gx = orders[:, 0] * b1[0] + orders[:, 1] * b2[0]
-    gy = orders[:, 0] * b1[1] + orders[:, 1] * b2[1]
-    kx = (k_par * jnp.cos(azimuth_rad))[..., None] + gx * scale
-    ky = (k_par * jnp.sin(azimuth_rad))[..., None] + gy * scale
-    direction = (jnp.cos(azimuth_rad)[..., None], jnp.sin(azimuth_rad)[..., None])
-    k0 = 2 * jnp.pi / wavelength_um
-
-    w_ref, w_in, flux_in, w_out, flux_out, deltas = _operators(
-        layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
-        eps_incident, eps_exit,
+    orders, zeroth, scattering, flux_in, flux_out = _scattering(
+        layers, period_um, wavelength_um, incidence_rad, eps_incident, eps_exit, max_order,
+        azimuth_rad, factorization, doublings, grid, truncation,
     )  # fmt: skip
-    scattering = _interface(w_in, w_ref)
-    for layer, delta_ref in zip(layers, deltas, strict=True):
-        k0d = k0 * jnp.asarray(layer.thickness_um)
-        scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
-    scattering = _star(scattering, _interface(w_ref, w_out))
-
+    size = orders.shape[0]
     t_full, _, r_full, _ = scattering
     incident = jnp.array([zeroth, size + zeroth])
 

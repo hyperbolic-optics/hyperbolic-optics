@@ -16,6 +16,7 @@ import jax.numpy as jnp  # noqa: E402
 
 from hyperbolic_optics import dispersion, rcwa  # noqa: E402
 from hyperbolic_optics.integrations import gdsfactory as hog  # noqa: E402
+from hyperbolic_optics.integrations.gdsfactory import stack as hstack  # noqa: E402
 
 LAYER = (1, 0)
 
@@ -105,9 +106,11 @@ class TestMaterialsAndStack:
             hog.StackLayer(0.8, 1.85),
         ]
         wavelength = 1e4 / 1480.0
-        grating, result = hog.simulate_component(
-            component, LAYER, stack, wavelength, 0.2, 1.0, 2.0, 8
-        )
+        grating = hog.extract_line_grating(component, LAYER)
+        result = rcwa.solve_grating(
+            hog.grating_layers(grating, stack, wavelength), grating.period_um, wavelength,
+            0.2, 1.0, 2.0, 8,
+        )  # fmt: skip
         eps = dispersion.at_wavelength("hBN", wavelength)
         direct = rcwa.solve_grating(
             [
@@ -192,14 +195,14 @@ class TestPdkStacks:
             "a": _wafer(0.0, 1.0, "si", 5), "b": _wafer(0.5, 1.0, "sio2", 5),
         })  # fmt: skip
         with pytest.raises(ValueError, match="tie on mesh_order"):
-            hog.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
+            hstack.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
 
     def test_a_gap_in_the_stack_is_refused(self):
         stack = PdkLayerStack(layers={
             "a": _wafer(0.0, 1.0, "si", 5), "b": _wafer(2.0, 1.0, "sio2", 5),
         })  # fmt: skip
         with pytest.raises(ValueError, match="No layer-stack level covers"):
-            hog.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
+            hstack.vertical_profile(hog.line_grating(), stack, (0.1, 1.0))
 
     def test_unmapped_material_names_what_to_do(self):
         with pytest.raises(KeyError, match="Oriented"):

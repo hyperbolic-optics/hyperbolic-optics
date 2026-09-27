@@ -488,3 +488,30 @@ def test_tilted_axis_nanofin_against_the_paper():
     transmitted = np.asarray(result.T[zeroth])
     assert transmitted[0, 0] == pytest.approx(0.9496, abs=3e-3)
     assert transmitted[1, 0] < 1e-20
+
+
+class TestZerothOrderSMatrix:
+    LN = bcm.rotate_tensor(
+        jnp.diag(jnp.array([4.9, 5.2, 4.6], dtype=complex)), bcm.rotation_matrix(0.3, 0.7, 0.4)
+    )
+
+    @pytest.mark.parametrize("azimuth, angle", [(0.0, 0.0), (0.6, 0.35)])
+    def test_uniform_layers_are_the_planar_smatrix(self, azimuth, angle):
+        layers = [rcwa2d.uniform(self.LN, 0.3), rcwa2d.uniform(2.1 * EYE, 0.2)]
+        s = rcwa2d.crossed_grating_smatrix(layers, (0.4, 0.4), 0.9, angle, 1.0, 2.25, (1, 1),
+                                           azimuth_rad=azimuth).s  # fmt: skip
+        turn = bcm.rotation_matrix(0.0, 0.0, -azimuth)  # the sample, turned into x-z
+        tensors = jnp.stack([bcm.rotate_tensor(layer.background, turn) for layer in layers])
+        planar = bcm.stack_smatrix(tensors, jnp.array([0.3, 0.2]), 0.9, np.sin(angle), 1.0, 2.25)
+        np.testing.assert_allclose(s, planar.s, atol=1e-13)
+
+    def test_a_subwavelength_lossless_cell_is_unitary_and_matches_the_solver(self):
+        fin = rcwa2d.Shape(rcwa2d.rectangle((0.2, 0.2), (0.25, 0.1)), self.LN)
+        layers = [rcwa2d.PatternedLayer(0.3, EYE, (fin,))]
+        s = np.asarray(rcwa2d.crossed_grating_smatrix(layers, (0.4, 0.4), 0.9, 0.0, 1.0, 2.25,
+                                                      (3, 3)).s)  # fmt: skip
+        np.testing.assert_allclose(s.conj().T @ s, np.eye(4), atol=1e-12)
+        result = rcwa2d.solve_crossed_grating(layers, (0.4, 0.4), 0.9, 0.0, 1.0, 2.25, (3, 3))
+        zeroth = int(np.flatnonzero((result.orders == 0).all(axis=1))[0])
+        np.testing.assert_allclose(np.abs(s[:2, :2]) ** 2, result.R[zeroth], atol=1e-12)
+        np.testing.assert_allclose(np.abs(s[2:, :2]) ** 2, result.T[zeroth], atol=1e-12)

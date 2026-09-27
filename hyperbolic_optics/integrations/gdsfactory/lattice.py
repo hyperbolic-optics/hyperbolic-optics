@@ -419,14 +419,16 @@ def crossed_grating_stack(
 
 
 def crossed_grating_layers(
-    cell: UnitCell,
+    cell: UnitCell | None,
     stack: VerticalStack | Sequence[StackLayer],
     wavelength_um: Any,
 ) -> list[rcwa2d.PatternedLayer]:
     """:mod:`~hyperbolic_optics.rcwa2d` layers for a unit cell etched into a stack.
 
-    Every patterned layer shares the cell's shapes (a single etch). Polygons,
-    thicknesses and the wavelength may be JAX values.
+    A patterned layer uses its own ``polygons`` if it has them, else the
+    cell's shapes (a single etch); ``cell`` may be ``None`` when every
+    patterned layer has its own. Polygons, thicknesses, orientations and the
+    wavelength may be JAX values.
     """
     layers = stack.layers if isinstance(stack, VerticalStack) else stack
     out = []
@@ -435,7 +437,8 @@ def crossed_grating_layers(
         if spec.background is None:
             out.append(rcwa2d.uniform(eps, spec.thickness_um))
         else:
-            background = material_tensor(spec.background, wavelength_um)
-            shapes = tuple(rcwa2d.Shape(jnp.asarray(p), eps) for p in cell.polygons)
+            background = material_tensor(spec.background, wavelength_um, spec.rotation_deg)
+            polygons = spec.polygons if spec.polygons is not None else cell.polygons
+            shapes = tuple(rcwa2d.Shape(jnp.asarray(p), eps) for p in polygons)
             out.append(rcwa2d.PatternedLayer(spec.thickness_um, background, shapes))
     return out
