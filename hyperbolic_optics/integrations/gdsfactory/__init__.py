@@ -21,9 +21,10 @@ Everything is importable from here::
   :class:`CrossedGratingResponse`, with Jones, Mueller and ellipsometric
   analysis.
 
-- **Metasurfaces** (:mod:`.metasurface`): :func:`metasurface_component`
-  places a unit-cell library (:mod:`hyperbolic_optics.metasurfaces`) site by
-  site, as references.
+- **Metasurfaces** (:mod:`.metasurface`): cells that differ site by site in
+  shape, material, crystal orientation, twist and number of layers.
+  :func:`metasurface_component` draws them, :func:`read_metasurface` reads a
+  layout back, and :func:`cell_sax_model` gives a cell's SAX model.
 
 - **S-parameters** (:mod:`.sparameters`): :func:`write_sparameters_stack`,
   cached as ``.npz``, gplugins-style; :func:`model_from_npz` reads them into SAX.
@@ -49,19 +50,20 @@ from hyperbolic_optics.integrations.gdsfactory.materials import (
     MaterialSpec,
     Oriented,
     material_tensor,
-    resolve_material,
     x_cut,
     z_cut,
 )
 from hyperbolic_optics.integrations.gdsfactory.metasurface import (
-    disc_polygons,
+    cell_layers,
+    cell_sax_model,
     metasurface_component,
+    read_metasurface,
+    turned,
 )
 from hyperbolic_optics.integrations.gdsfactory.simulate import (
     CrossedGratingResponse,
     GratingResponse,
     PlanarResponse,
-    simulate_component,
     simulate_crossed_grating,
     simulate_grating,
     simulate_stack,
@@ -79,8 +81,6 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     VerticalStack,
     grating_layers,
     grating_stack,
-    patterned_stack,
-    vertical_profile,
     vertical_stack,
 )
 
@@ -94,10 +94,11 @@ __all__ = [
     "PlanarResponse",
     "StackLayer",
     "UnitCell",
+    "cell_layers",
+    "cell_sax_model",
     "VerticalStack",
     "crossed_grating_layers",
     "crossed_grating_stack",
-    "disc_polygons",
     "extract_line_grating",
     "extract_unit_cell",
     "grating_layers",
@@ -106,10 +107,8 @@ __all__ = [
     "material_tensor",
     "metasurface_component",
     "model_from_npz",
-    "patterned_stack",
     "periodic_array",
-    "resolve_material",
-    "simulate_component",
+    "read_metasurface",
     "simulate_crossed_grating",
     "simulate_grating",
     "simulate_stack",
@@ -117,7 +116,7 @@ __all__ = [
     "solve_grating",
     "solve_stack",
     "stack_sax_model",
-    "vertical_profile",
+    "turned",
     "vertical_stack",
     "write_sparameters_stack",
     "x_cut",

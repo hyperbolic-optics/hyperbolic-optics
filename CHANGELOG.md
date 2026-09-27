@@ -95,214 +95,51 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 
 ### Added
 
-- **Metasurfaces and metalenses** (`hyperbolic_optics.metasurfaces`,
-  `hog.metasurface_component`): unit-cell libraries of zeroth-order Jones
-  matrices from 2D RCWA, the hyperbolic lens phase, cell choice per site,
-  geometric-phase (Pancharatnam–Berry) rotation of anisotropic cells, and
-  angular-spectrum propagation to the focus. Cells may be any stack of turned anisotropic
-  layers, patterned or not: a twisted half-wave pair is a 2α rotator. Layouts are drawn as one
-  reference per site to a cell per library entry, turned as designed.
-
-  Checked: a uniform film's library is its Airy transmission, and a turned
-  half-wave cell gives exactly the 2θ phase. A TiO₂-pillar lens designed
-  from its RCWA library focuses at f, and the GDS reads back fin by fin.
-  `examples/metalens_gdsfactory.py` is a TiO₂-nanofin geometric-phase lens:
-  0.94 conversion per fin, a diffraction-limited spot, and the on-axis
-  maximum at the Li–Wolf focal shift.
-- **2D waveguide modes** (`hyperbolic_optics.modes2d`, and
-  `hog.waveguide_cross_section` / `hog.waveguide_modes` from a layout and
-  its `LayerStack`): a full-vector finite-difference mode solver on a Yee
-  grid, for cross-sections with diagonal anisotropic tensors (x- or z-cut
-  LiNbO₃ ribs along a crystal axis).
-
-  Checked: the film limit against the 1D solver (isotropic and uniaxial,
-  second-order convergence) and the square core's exact TE/TM symmetries.
-  Reading from a layout matches the hand-drawn cross-section exactly.
-- **Apodized, chirped and focusing grating couplers**
-  (`couplers.apodized_grating_coupler`, `couplers.coupling_from_profile`,
-  `resonances.refine_leaky_mode`, `hog.extract_grating_teeth`,
-  `hog.teeth_stack`):
-  - the local leaky-mode model, tooth by tooth, following the mode from each
-    tooth to the next;
-  - `write_sparameters_grating_coupler` now reads any coupler cell along its
-    axis, and optimises the fibre's angle.
-
-  Checked: the uniform limit (1e-6), the ideal Gaussian apodisation (99.99%),
-  and continuation against fresh searches.
-- **Electro-optics** (`hyperbolic_optics.electro_optics`):
-  - the Pockels effect for any crystal orientation and field direction,
-    differentiable in the field, with LiNbO₃'s 3m coefficients;
-  - first-order mode index shifts and Vπ·L for phase shifters.
-
-  Checked against the textbook bulk index changes and exact mode roots.
-- **Stacks on bulk crystals, differentiable** (`bcm.solve_stack_on_crystal`):
-  semi-infinite anisotropic, lossy or hyperbolic substrates in any
-  orientation, as the NumPy engine's `Semi Infinite Anisotropic Layer`.
-  - The substrate's outgoing subspace comes from a matrix sign function
-    (Newton), with a causal loss for propagating waves, refined to the
-    lossless subspace by Newton steps on its Riccati equation.
-  - No eigenvectors are formed, so degenerate substrate modes have exact
-    results and finite gradients.
-  - The r coefficients match the NumPy engine to 1e-12.
-- **gplugins-style S-parameters** (`hog.write_sparameters_grating_coupler`,
-  `hog.write_sparameters_stack`, `hog.model_from_npz`):
-  - S-parameters of PDK cells, keyed by the component's port names and saved
-    as `.npz` under `gf.config.PATH.sparameters`, cached by a hash of the
-    geometry and settings, with a JSON record of the physics;
-  - a mode-aware SAX loader.
-
-  `extract_line_grating(teeth_only=True)` reads the teeth of a
-  grating-coupler cell, whose taper shares their layer.
-- **Resonances** (`hyperbolic_optics.resonances`): poles of the S-matrix in the
-  complex plane by Beyn's contour method.
-  - `band_edge_modes`: band-edge modes of photonic-crystal slabs (PCSELs) on
-    any lattice, with Q and degeneracy.
-  - `slab_modes` / `slab_mode_fields`: full-vector guided modes of
-    anisotropic waveguides, and their profiles.
-  - `grating_leaky_modes`: leaky Bloch modes of grating couplers.
-  - `spectrum_poles`: AAA poles of any sampled spectrum.
-
-  Checked against closed forms (Fabry–Pérot poles, folded guided modes, slab
-  dispersion), the poles of their own reflection spectra, lattice symmetry,
-  absorbed power, and prism coupling in the NumPy engine.
-- **Gaussian beams** (`hyperbolic_optics.beams`): beam-mode S-matrices and
-  beam shifts, checked against Artmann's Goos–Hänchen shift and the
-  helicity-odd Imbert–Fedorov shift.
-- **Grating couplers** (`hyperbolic_optics.couplers`): waveguide-to-fibre
-  efficiency from the leaky mode's decay, emission angle, directionality and
-  its overlap with the fibre mode, plus a SAX model. The directionality agrees
-  with the one read from the grating's own spectrum to 3e-5.
-- **Any lattice for 2D RCWA** (`rcwa2d.Lattice`): hexagonal (triangular),
-  oblique and rectangular lattices.
-  - A circular truncation respects the lattice's symmetry and does not depend
-    on the choice of primitive vectors.
-  - A triangular lattice matches its rectangular supercell to 1e-12, and
-    silicon discs on one agree with FMMAX to within both codes' convergence.
-  - The gdsfactory bridge draws (`periodic_array(lattice_um=…)`) and infers
-    such lattices (`extract_unit_cell`), dimers included.
-- **Payloads into SAX** (`integrations.sax.structure_smatrix` /
-  `structure_sdict`): the four-port S-matrix of an executed `Structure` on its
-  scenario grid `[angle, azimuth, frequency, thickness]`, built from the
-  payload's own tensors. It completes the engine's incident-side Jones
-  matrices with light from below, and its r and t match the engine's to 1e-11.
-- **Differentiable fields and absorption** (`bcm.stack_fields`):
-  - layer-resolved absorption, interface fluxes, and the six field components
-    against depth, for p and s light, from partial scattering matrices;
-  - stable for thick, absorbing and evanescent layers, and differentiable
-    (thicknesses included).
-
-  Tests check it against the NumPy `FieldProfile` (1e-12) and against the
-  electric and magnetic loss density integrated over each layer.
-- **Scattering-matrix contract** (`bcm.stack_smatrix`, `bcm.cascade`):
-  - the four-port (`top@p`, `top@s`, `bottom@p`, `bottom@s`) bidirectional
-    S-matrix of a planar stack, power-normalized between propagating ports;
-  - evanescent ports flagged but carried, so stacks compose through a
-    tunnelling gap.
-
-  Tests check that it is unitary when lossless and passive when lossy, that
-  reciprocity takes the form `s(kx) = D s(−kx)ᵀ D`, that it agrees with
-  `solve_stack`, and that cascading equals the stack of both, including
-  frustrated total internal reflection against its closed form.
-- **SAX models** (`hyperbolic_optics.integrations.sax`, and
-  `hog.stack_sax_model` for PDK stacks). SAX is not imported (it pins an
-  older JAX); tests with SAX run via `uv run --with sax`.
-  `examples/sax_otto_calcite.py` couples a prism to calcite's surface phonon
-  polaritons as a SAX circuit, and tunes it to critical coupling by gradient
-  descent through the circuit.
-- **2D-periodic layouts in the gdsfactory bridge**: `periodic_array`,
-  `extract_unit_cell`, `crossed_grating_stack`, `simulate_crossed_grating`.
-  `examples/moo3_metasurface_gdsfactory.py` designs a hyperbolic α-MoO₃
-  polarization converter and verifies it from the GDS.
-- **Differentiable RCWA for 2D-periodic metasurfaces** (`hyperbolic_optics.rcwa2d`):
-  - layers of a background material and polygons (pillars, holes, anything
-    drawn), each with a full ε/μ tensor;
-  - exact polygon Fourier coefficients, so gradients reach every vertex;
-  - the normal-vector factorisation, generalised to full tensors with Li's
-    rule in the local edge frame. It is averaged with its product-reversed
-    twin, so energy is conserved to rounding in lossless structures.
-
-  It reduces exactly (1e-12) to the planar solver for uniform layers and to
-  the 1D solver for stripes along x or y. It agrees with FMMAX on silicon and
-  birefringent pillars (within 3e-3 and 5e-5 at 529 harmonics), and brackets
-  arXiv:2608.06185's tilted-axis LiNbO₃ nanofins to within 0.4%.
-  `benchmarks/fmmax/compare_2d.py` and `benchmarks/crossed_grating/` have
-  the figures.
-- **`examples/calcite_negative_refraction_gdsfactory.py`**: tilted calcite at
-  1470 cm⁻¹, the setting of FDTDX's asymmetric-refraction example.
-  - The ±45° energy angles from the Berreman modes match FDTDX's (+23.1°,
-    +53.3°).
-  - A symmetric calcite grating is optimised to send 3.2× more light into
-    its negatively refracted −1 order than into the +1.
-  - The design is exported to GDS and re-simulated from a `LayerStack`.
-- **PDK layer stacks, gplugins-style** (`integrations.gdsfactory`, now a
-  subpackage with the same import path):
-  - `simulate_stack` reads the PDK `LayerStack` at a point of a layout
-    (`WAFER` levels everywhere, derived layers evaluated, overlaps by
-    `mesh_order`) and returns a `PlanarResponse` over wavelength, angle and
-    in-plane rotation, with Jones, Mueller and generalized ellipsometry;
-  - `simulate_grating` does the same under a line grating: ridge and gap
-    columns are compared, so etch depth and groove fill come from the PDK. It
-    returns per-order efficiencies and Mueller matrices;
-  - `Oriented`, `x_cut` and `z_cut` state a crystal's cut, which a PDK cannot.
-
-  Planar results run on the JAX solver or the NumPy engine, which agree to
-  rounding. `examples/tfln_gdsfactory.py` reads Luxtelligence's open-source
-  LNOI400 PDK (`lnoi400`): its rib waveguide columns, and a partial-etch
-  grating with SiO₂-filled grooves, under an assumed x-cut. Tests check the same
-  extraction when `lnoi400` is installed.
-- **Birefringent crystals at chip wavelengths**: LiNbO₃, rutile TiO₂, and
-  quartz, calcite and sapphire in their transparency windows, with the PIC
-  materials SiO₂, Si₃N₄ and Si. They are lossless Sellmeier fits from the
-  primary literature, registered alongside the phonon models, usable in payloads
-  and (through `dispersion`) the JAX solvers, and checked against published
-  indices to 1e-3.
-- **gdsfactory integration** (`hyperbolic_optics.integrations.gdsfactory`,
-  optional `gdsfactory` extra):
-  - a line-grating PCell whose period and width snap to the layout grid;
-  - extraction of a grating from any component or GDS file, which refuses
-    non-rectangles, uneven pitch or unequal widths rather than guessing;
-  - vertical stacks whose materials can be the built-in dispersive media.
-
-  `examples/hbn_absorber_gdsfactory.py` optimises an hBN ribbon absorber to 94%
-  absorption at 1500 cm⁻¹, exports it, and re-simulates the GDS (0.938 at 81 and
-  161 orders).
-- **Dispersion in JAX** (`hyperbolic_optics.dispersion`): every built-in
-  material's oscillator model, matching the NumPy classes to 1e-12 and
-  differentiable in frequency.
-- **Edge smoothing** for grating layers (`edge_width`): an exact box
-  convolution of the profile, for optimising the geometry of ridges whose
-  gradients ripple under truncation.
-- **Differentiable RCWA for 1D gratings** (`hyperbolic_optics.rcwa`, optional
-  `jax` extra): diffraction by x-periodic stacks in which every segment has a
-  full ε/μ tensor (including the xz/yz terms of a tilted axis), with conical
-  incidence. It uses Li's factorisation for anisotropic lamellar gratings and the
-  eigendecomposition-free layer engine of `bcm`, so gradients are exact with
-  respect to fill factor, ridge position, thickness, period, tensors,
-  orientation, wavelength and incidence; edges enter through exact Fourier
-  coefficients, not a pixel grid. Reduces to the planar solver to 1e-13 for
-  uniform layers, and agrees with FMMAX to 4e-7–2e-5 on isotropic gratings
-  (`benchmarks/fmmax/`). Validated for hyperbolic (in-plane MoO₃ against FMMAX,
-  tilted full-tensor hBN against an eigenmode solution and the NumPy engine) and
-  gyrotropic, non-symmetric tensors. Hyperbolic gratings converge slowly, and
-  their geometry gradients carry a truncation ripple; both are documented in
-  `docs/user-guide/gratings.md`.
-- **Differentiable planar solver** (`hyperbolic_optics.bcm`, optional `jax`
-  extra): reflection and transmission of anisotropic stacks in JAX, with exact
-  gradients with respect to thicknesses, full ε/μ tensors (including loss),
-  orientations, incidence and wavelength. Layers are built without
-  eigendecomposition by bisection doubling, as in arXiv:2608.06185, but in a
-  reference-medium wave basis in which a passive layer's scattering matrix is
-  power-normalised, so the quarter-wave singularities of that paper's mixed
-  E/H representation cannot occur. The reference's `kz = √(1 + kx²)` tracks the
-  impedance of evanescent and high-k waves: a fixed `kz = 1` reference cost up to
-  1e-3 in accuracy on high-order hyperbolic gratings. Matches the NumPy engine's
-  complex coefficients to ~1e-14; `examples/optimize_polarization_converter.py`
-  optimises a LiNbO₃ film into a half-wave plate with it.
-- **Independent cross-check against DiffTMM** (`benchmarks/difftmm/`): all eight
-  polarization-resolved R/T channels on five planar stacks, including the
-  anisotropic multilayer of arXiv:2608.06185 Fig. 3, a full-tensor tilted axis
-  and a lossy hyperbolic film. Agreement is at DiffTMM's complex64 floor; the
-  package matches the closed-form Airy result to 1e-15.
+- **Differentiable solvers in JAX** (optional `jax` extra), with exact
+  gradients with respect to geometry, tensors, orientations, incidence and
+  wavelength:
+  - `bcm`: planar stacks of full ε/μ tensors, built without
+    eigendecomposition (bisection doubling in a power-normalised reference
+    basis), matching the NumPy engine to ~1e-14. `stack_smatrix` gives the
+    four-port S-matrix with evanescent channels kept, and `cascade` connects
+    two. `stack_fields` gives fields and absorption. `solve_stack_on_crystal`
+    handles semi-infinite anisotropic, lossy or hyperbolic substrates.
+  - `rcwa`: 1D gratings of full-tensor media (Li's rule, conical incidence,
+    `edge_width` smoothing). Agrees with FMMAX to 4e-7–2e-5 on isotropic
+    gratings.
+  - `rcwa2d`: 2D-periodic polygons of full-tensor media on any Bravais
+    lattice, with the normal-vector factorisation generalised to anisotropy.
+    `crossed_grating_smatrix` gives a cell's zeroth-order four-port S-matrix.
+  - `dispersion`: every built-in material in JAX (1e-12 against the NumPy
+    classes), and `pockels_tensor` for the Pockels effect.
+  - `modes`: full-vector guided modes of anisotropic stacks, and `beams`:
+    Goos–Hänchen and Imbert–Fedorov shifts.
+- **Birefringent crystals at chip wavelengths**: LiNbO₃, rutile TiO₂, quartz,
+  calcite and sapphire (Sellmeier), with SiO₂, Si₃N₄ and Si. Checked against
+  published indices to 1e-3.
+- **Metasurface design** (`metasurfaces`): compiled, differentiable cell
+  libraries, choice of cell per site, geometric phase, and angular-spectrum
+  focusing.
+- **gdsfactory integration** (`integrations.gdsfactory`, optional
+  `gdsfactory` extra):
+  - a PDK `LayerStack` read at a point, under a line grating or under a 2D
+    pattern, with crystal cuts stated explicitly;
+  - grid-snapped PCells, with extraction that refuses anything not exactly
+    periodic;
+  - metasurfaces whose cells differ site by site in shape, material, crystal
+    orientation, twist and number of layers, drawn as references
+    (`metasurface_component`) and read back (`read_metasurface`);
+  - Jones, Mueller and ellipsometric results;
+  - `write_sparameters_stack` and `model_from_npz`, gplugins-style.
+- **SAX** (`integrations.sax`): models of stacks, payload structures and (with
+  `hog.cell_sax_model`) metasurface cells, with polarization as a port mode. A
+  cell connected in SAX to a stack equals the whole structure to 1e-9.
+- Examples: `tfln_gdsfactory.py` (a real PDK), `moo3_metasurface_gdsfactory.py`
+  (the crystal's orientation optimised, then GDS and re-simulation),
+  `metalens_gdsfactory.py`, `sax_otto_calcite.py` and
+  `optimize_polarization_converter.py`. The metalens example shows that
+  nanofins turned in a fixed lattice fall short of the ideal geometric phase
+  (0.61 against 0.77 focusing efficiency).
 - **Fully general ε/μ tensors**: `ArbitraryMaterial` accepts all nine components
   of each tensor (`eps_yx`, `eps_zx`, `eps_zy` and the `mu_` counterparts), so
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —

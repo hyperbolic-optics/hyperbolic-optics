@@ -33,7 +33,7 @@ from gdsfactory.technology.layer_stack import LayerStack
 from numpy.typing import ArrayLike
 
 from hyperbolic_optics import bcm, rcwa, rcwa2d
-from hyperbolic_optics.integrations.gdsfactory.geometry import LineGrating, extract_line_grating
+from hyperbolic_optics.integrations.gdsfactory.geometry import LineGrating
 from hyperbolic_optics.integrations.gdsfactory.lattice import (
     UnitCell,
     crossed_grating_layers,
@@ -52,7 +52,6 @@ __all__ = [
     "CrossedGratingResponse",
     "GratingResponse",
     "PlanarResponse",
-    "simulate_component",
     "simulate_crossed_grating",
     "simulate_grating",
     "simulate_stack",
@@ -347,32 +346,6 @@ def simulate_grating(
         grating, stack, wavelengths_um, angles_deg, azimuth_deg, max_order, edge_width
     )
     return grating, stack, response
-
-
-def simulate_component(
-    component: gf.Component,
-    layer: gf.typings.LayerSpec,
-    stack,
-    wavelength_um: float,
-    incidence_rad: float,
-    eps_incident: float,
-    eps_exit: float,
-    max_order: int,
-    azimuth_rad: float = 0.0,
-) -> tuple[LineGrating, rcwa.GratingResult]:
-    """Extract the grating from a layout and solve it with a hand-written stack."""
-    grating = extract_line_grating(component, layer)
-    result = rcwa.solve_grating(
-        grating_layers(grating, stack, wavelength_um),
-        grating.period_um,
-        wavelength_um,
-        incidence_rad,
-        eps_incident,
-        eps_exit,
-        max_order,
-        azimuth_rad=azimuth_rad,
-    )
-    return grating, result
 
 
 # ---------------------------------------------------------------------------

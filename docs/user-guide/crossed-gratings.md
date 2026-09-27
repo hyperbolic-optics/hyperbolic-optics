@@ -55,6 +55,10 @@ result.T.shape       # (121, 2, 2): [order, out, in], 0 = p and 1 = s
 - **Batching.** Tensors, thicknesses and vertices can carry leading batch
   dimensions, and the whole solve can be `jax.jit`-compiled (with
   `max_order` and `factorization` static).
+- **Four-port S-matrix.** `crossed_grating_smatrix` takes the same arguments
+  and returns the zeroth-order `PlanarSMatrix` (light from either side, both
+  polarizations, power-normalised), for SAX circuits of metasurfaces
+  ([Scattering Matrices and SAX](sax.md)).
 
 ## Lattices
 
@@ -139,47 +143,23 @@ slowly under every Fourier factorisation, because the fields concentrate at
 corners and edges. Check your own design at two truncations before trusting a
 third digit.
 
-## Validation of other lattices
-
-In `tests/test_rcwa2d.py`:
-
-- **Exact reductions.** A uniform layer on a hexagonal lattice is the planar
-  solver (1e-12). A triangular lattice equals its rectangular supercell,
-  `(a, a√3)` with two discs per cell (1e-12, Laurent's rule).
-- **Basis independence.** A square lattice described by a skewed basis gives
-  the same answer under circular truncation: 1e-12 with Laurent's rule, 1e-5
-  with the normal-vector rule.
-- **Symmetry.** Hexagonal lattices are unchanged under 60° rotation: 1e-12
-  with Laurent's rule. With the normal-vector rule the error is 1e-4, limited
-  by its sampling grid, and falls with a finer `grid`.
-- **FMMAX.** Silicon discs on a 0.6 µm triangular lattice, at 0.3 rad. FMMAX,
-  at 1615 terms, gives R_p = 0.56889 and R_s = 0.99224. This package gives
-  R_p = 0.575 and R_s = 0.991 at 439 harmonics, still converging towards
-  FMMAX's values.
-- **Gradients** with respect to the lattice constant match finite differences.
-
 ## Validation
 
 In `tests/test_rcwa2d.py`:
 
-- **Polygon transforms** match direct quadrature, and a rectangle's matches
-  the product of two sincs exactly.
-- **Reductions:**
-  - uniform layers reproduce the planar solver (1e-12);
-  - stripes along x and along y reproduce the 1D grating solver per order
-    (1e-12), for full tensors at conical incidence, under both
-    factorisations.
-- **Physics:**
-  - lossless patterns conserve energy to 1e-11 across all orders, including
-    tilted-axis crystals;
-  - metal and hyperbolic pillars absorb and never gain energy;
-  - a square pillar at normal incidence is polarization-blind and does not
-    convert, and incidence from φ and φ + 90° agree.
-- **FMMAX:** a birefringent disc with an in-plane axis agrees in all four
-  zeroth-order channels, cross-polarized included, to 1e-4 at 121 harmonics.
-- **Gradients** with respect to a polygon vertex, a width, a disc radius,
-  thickness and wavelength match finite differences to 1e-5, under both
-  factorisations.
+- **Exact reductions** (1e-12): uniform layers are the planar solver, on any
+  lattice; stripes along x or y are the 1D solver; a triangular lattice is
+  its rectangular supercell; the zeroth-order S-matrix of uniform layers is
+  `bcm.stack_smatrix`.
+- **Physics:** lossless patterns conserve energy to 1e-11, tilted-axis
+  crystals included; metal and hyperbolic pillars never gain energy; a
+  lossless subwavelength cell's S-matrix is unitary; symmetric lattices keep
+  their symmetry (square 90°, hexagonal 60°).
+- **External references:** FMMAX for a birefringent disc (all four
+  zeroth-order channels to 1e-4) and for a triangular lattice, and the
+  tilted-axis LiNbO₃ nanofins of arXiv:2608.06185 (T_xx within 3e-3).
+- **Gradients** with respect to vertices, radii, thickness, wavelength and
+  the lattice constant match finite differences.
 
 ## Limitations
 

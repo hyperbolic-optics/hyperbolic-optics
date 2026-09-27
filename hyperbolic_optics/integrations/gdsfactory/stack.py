@@ -50,12 +50,16 @@ class StackLayer:
 
     Attributes:
         thickness_um: Thickness in µm (may be a JAX value for optimisation).
-        material: The layer's material -- the ridges, if ``background`` is set.
-        background: Material between the ridges. ``None`` makes the layer
-            unpatterned (a uniform film of ``material``).
-        rotation_deg: Crystal orientation of ``material`` (payload-style,
-            degrees); :class:`Oriented` materials carry their own.
+        material: The layer's material -- the ridges or shapes, if ``background`` is set.
+        background: Material around them. ``None`` makes the layer unpatterned
+            (a uniform film of ``material``).
+        rotation_deg: Orientation of the layer's crystals, ``material`` and
+            ``background`` alike (payload-style ``(x, y, z)``, degrees), applied
+            after an :class:`Oriented` material's own cut: a twist.
         name: Label, e.g. the PDK level it came from.
+        polygons: The layer's own shapes (vertices ``[V, 2]`` in µm, cell
+            coordinates) for a 2D-periodic cell whose layers are patterned
+            differently; ``None`` to use the unit cell's.
     """
 
     thickness_um: Any
@@ -63,6 +67,7 @@ class StackLayer:
     background: MaterialSpec | Oriented | None = None
     rotation_deg: Sequence = (0.0, 0.0, 0.0)
     name: str = ""
+    polygons: tuple | None = None
 
 
 @dataclass(frozen=True)
@@ -116,7 +121,7 @@ def grating_layers(
         if spec.background is None:
             out.append(rcwa.uniform_layer(eps, spec.thickness_um))
         else:
-            groove = material_tensor(spec.background, wavelength_um)
+            groove = material_tensor(spec.background, wavelength_um, spec.rotation_deg)
             out.append(
                 rcwa.lamellar_layer(
                     eps,
