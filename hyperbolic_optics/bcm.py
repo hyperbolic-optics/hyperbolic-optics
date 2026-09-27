@@ -68,6 +68,7 @@ import jax.numpy as jnp
 __all__ = [
     "PORTS",
     "PlanarResult",
+    "CrystalResult",
     "PlanarSMatrix",
     "StackFields",
     "cascade",
@@ -75,6 +76,7 @@ __all__ = [
     "rotation_matrix",
     "solve_stack",
     "stack_fields",
+    "solve_stack_on_crystal",
     "stack_smatrix",
     "system_matrix",
 ]
@@ -665,3 +667,176 @@ def stack_fields(
         z_um=z_um,
         fields=fields,
     )
+
+
+# ---------------------------------------------------------------------------
+# Semi-infinite anisotropic substrates
+# ---------------------------------------------------------------------------
+
+
+class CrystalResult(NamedTuple):
+    """Response of a stack on a semi-infinite anisotropic (or lossy) substrate.
+
+    Attributes:
+        r: ``[..., 2, 2]`` reflection Jones matrix ``[out, in]`` (0 = p, 1 = s),
+            on the same convention as :func:`solve_stack`.
+        R: ``|r|²``.
+        T: ``[..., 2]`` total power carried into the substrate, per incident
+            polarization, from the normal Poynting flux just inside it
+            (``1 − R − T`` is absorbed in the layers).
+    """
+
+    r: jax.Array
+    R: jax.Array
+    T: jax.Array
+
+
+def _matrix_sign(m: jax.Array, iterations: int) -> jax.Array:
+    """``sign(m)`` by the scaled Newton iteration ``X ← (X/c + c·X⁻¹)/2``."""
+    eye = jnp.eye(m.shape[-1], dtype=m.dtype)
+
+    def step(x, _):
+        inverse = _solve(x, jnp.broadcast_to(eye, x.shape))
+        # determinant scaling speeds the early steps
+        scale = jnp.abs(jnp.linalg.det(x)) ** (-1.0 / x.shape[-1])
+        scale = jnp.where(jnp.isfinite(scale) & (scale > 0), scale, 1.0)[..., None, None]
+        return 0.5 * (scale * x + inverse / scale), None
+
+    x, _ = jax.lax.scan(step, m, None, length=iterations)
+    return x
+
+
+def _sylvester(a: jax.Array, b: jax.Array, c: jax.Array) -> jax.Array:
+    """``X`` with ``a·X − X·b = c`` for small square blocks (a Kronecker solve)."""
+    n, m = a.shape[-1], b.shape[-1]
+    eye_n, eye_m = jnp.eye(n, dtype=a.dtype), jnp.eye(m, dtype=a.dtype)
+    kron = jnp.einsum("ij,...kl->...ikjl", eye_m, a).reshape(a.shape[:-2] + (n * m, n * m))
+    kron = kron - jnp.einsum("...ji,kl->...ikjl", b, eye_n).reshape(kron.shape)
+    vec = jnp.swapaxes(c, -1, -2).reshape(c.shape[:-2] + (n * m,))
+    x = jnp.linalg.solve(kron, vec[..., None])[..., 0]
+    return jnp.swapaxes(x.reshape(c.shape[:-2] + (m, n)), -1, -2)
+
+
+def _invariant(delta: jax.Array, basis: jax.Array, complement: jax.Array, steps: int = 3):
+    """The invariant subspace of ``delta`` nearest ``span(basis)``, by Newton (Riccati).
+
+    In the coordinates of ``Q = qr([basis, complement])`` the subspace is
+    ``span [I; Z]``, with ``A₂₁ + A₂₂Z − ZA₁₁ − ZA₁₂Z = 0``; each Newton step is a
+    Sylvester solve, and converges quadratically from a close start.
+    """
+    q, _ = jnp.linalg.qr(jnp.concatenate([basis, complement], axis=-1))
+    a = jnp.conj(jnp.swapaxes(q, -1, -2)) @ delta @ q
+    k = basis.shape[-1]
+    a11, a12, a21, a22 = a[..., :k, :k], a[..., :k, k:], a[..., k:, :k], a[..., k:, k:]
+    z = jnp.zeros_like(a21)
+    for _ in range(steps):
+        residual = a21 + a22 @ z - z @ a11 - z @ a12 @ z
+        z = z + _sylvester(a22 - z @ a12, a11 + a12 @ z, -residual)
+    eye = jnp.broadcast_to(jnp.eye(k, dtype=a.dtype), a11.shape)
+    return q @ jnp.concatenate([eye, z], axis=-2)
+
+
+def _substrate_modes(eps, mu, kx, loss: float, iterations: int):
+    """Mode columns ``[forward ×2, backward ×2]`` spanning the substrate's two subspaces.
+
+    The forward (into the substrate) subspace is that of the waves that decay
+    into it: the range of ``(I + sign(−iΔ))/2``. A lossless substrate's
+    propagating waves are assigned by a small causal loss, ``loss·|ε|``: their
+    energy flows in, which for a hyperbolic crystal need not be the sense of
+    ``kz``. The subspaces so found are then refined to those of the lossless
+    ``Δ`` itself (:func:`_invariant`), so the result is exact to rounding. No
+    eigenvector is formed, and degenerate modes (a uniaxial axis along z)
+    cost nothing.
+    """
+    scale = jnp.max(jnp.abs(eps), axis=(-2, -1), keepdims=True)
+    causal = eps + 1j * loss * scale * jnp.eye(3)
+    sign = _matrix_sign(-1j * system_matrix(causal, mu, kx), iterations)
+    eye = jnp.eye(4, dtype=sign.dtype)
+    forward, backward = 0.5 * (eye + sign), 0.5 * (eye - sign)
+    # starting bases: the projectors applied to an isotropic medium's modes (of the
+    # mean permittivity), which lie close to the substrate's own
+    guess = _isotropic_modes(jnp.trace(eps, axis1=-2, axis2=-1) / 3, kx)
+    start_forward = forward @ guess[..., :, :2]
+    start_backward = backward @ guess[..., :, 2:]
+    delta = system_matrix(eps, mu, kx)
+    columns = jnp.concatenate(
+        [
+            _invariant(delta, start_forward, start_backward),
+            _invariant(delta, start_backward, start_forward),
+        ],
+        axis=-1,
+    )
+    return columns / jnp.linalg.norm(columns, axis=-2, keepdims=True)
+
+
+def solve_stack_on_crystal(
+    eps: jax.Array,
+    thickness_um: jax.Array,
+    wavelength_um: jax.Array,
+    incidence_rad: jax.Array,
+    eps_incident: jax.Array,
+    eps_substrate: jax.Array,
+    mu: jax.Array | None = None,
+    mu_substrate: jax.Array | None = None,
+    doublings: int = DEFAULT_DOUBLINGS,
+    causal_loss: float = 1e-8,
+    sign_iterations: int = 60,
+) -> CrystalResult:
+    """A planar stack on a semi-infinite anisotropic, lossy or hyperbolic substrate.
+
+    The NumPy engine's ``Semi Infinite Anisotropic Layer``, in the
+    differentiable solver: bulk crystals (calcite, sapphire, hBN, SiC,
+    α-MoO₃, a LiNbO₃ wafer) as substrates, in any orientation. The waves the
+    substrate carries away are found without eigendecomposition, by a matrix
+    sign function (see :func:`_substrate_modes`), so reflection is exact and
+    differentiable even where the substrate's modes are degenerate.
+
+    Args:
+        eps, thickness_um, wavelength_um, incidence_rad, eps_incident, mu,
+        doublings: As in :func:`solve_stack` (``L`` may be zero: a bare crystal).
+        eps_substrate: The substrate's tensor ``[..., 3, 3]`` in the lab frame
+            (rotate it with :func:`rotate_tensor`); lossy is fine.
+        mu_substrate: Its permeability; identity if omitted.
+        causal_loss: For a lossless substrate, the relative loss that decides
+            which propagating waves carry energy in; the subspaces are then
+            refined to the lossless ones, so it does not limit the accuracy.
+        sign_iterations: Newton steps of the sign function (static).
+
+    Returns:
+        :class:`CrystalResult`: ``r``, ``R`` and the power transmitted into
+        the substrate ``T``.
+    """
+    complex_dtype = jnp.result_type(jnp.asarray(eps).dtype, jnp.complex64)
+    eps = jnp.asarray(eps, dtype=complex_dtype)
+    mu = (
+        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps.shape)
+        if mu is None
+        else jnp.asarray(mu, dtype=complex_dtype)
+    )
+    eps_substrate = jnp.asarray(eps_substrate, dtype=complex_dtype)
+    mu_substrate = (
+        jnp.broadcast_to(jnp.eye(3, dtype=complex_dtype), eps_substrate.shape)
+        if mu_substrate is None
+        else jnp.asarray(mu_substrate, dtype=complex_dtype)
+    )
+    thickness_um = jnp.asarray(thickness_um)
+    eps_incident = jnp.asarray(eps_incident)
+    kx = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+    k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
+    w_ref = _reference_modes(kx)
+    w_in = _isotropic_modes(eps_incident, kx)
+    w_sub = _substrate_modes(eps_substrate, mu_substrate, kx, causal_loss, sign_iterations)
+
+    scattering = _interface(w_in, w_ref)
+    for index in range(eps.shape[-3]):
+        delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
+        delta_ref = _solve(w_ref, delta @ w_ref)
+        k0d = k0 * thickness_um[..., index]
+        scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
+    scattering = _star(scattering, _interface(w_ref, w_sub))
+    t, _, r, _ = scattering
+    field = w_sub[..., :, :2] @ t  # the transmitted field at the substrate's face, per input
+    ex, ey, hx, hy = (field[..., i, :] for i in range(4))
+    flux = 0.5 * jnp.real(ex * jnp.conj(hy) - ey * jnp.conj(hx))
+    incident = 0.5 * jnp.real(_kz(eps_incident, kx))[..., None]
+    return CrystalResult(r=r, R=jnp.abs(r) ** 2, T=flux / incident)
