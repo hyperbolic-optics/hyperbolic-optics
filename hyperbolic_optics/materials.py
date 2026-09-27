@@ -1100,8 +1100,6 @@ class Air(IsotropicMaterial):
         self.name = "Air"
 
 
-# Single source of truth for the material name -> class mapping, shared by the
-# layer factory, frequency-range resolution, and list_materials().
 class SellmeierMaterial(UniaxialMaterial):
     """A lossless uniaxial (or isotropic) crystal in its transparency window.
 
@@ -1233,6 +1231,8 @@ class Silicon(SellmeierMaterial):
         super().__init__("silicon", freq_min, freq_max, mu_r)
 
 
+# Single source of truth for the material name -> class mapping, shared by the
+# layer factory, frequency-range resolution, and list_materials().
 _MATERIAL_REGISTRY: dict[str, type[BaseMaterial]] = {
     "Quartz": Quartz,
     "Sapphire": Sapphire,
