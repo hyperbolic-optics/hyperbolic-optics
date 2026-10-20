@@ -62,3 +62,30 @@ jobs:
     - name: Check formatting with ruff
       run: |
         uv run ruff format --check hyperbolic_optics tests
+
+  wheel:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v4
+    - run: uv build --wheel
+    - name: Core-only installed wheel
+      run: |
+        uv venv --python 3.12 /tmp/ho-core
+        uv pip install --python /tmp/ho-core/bin/python dist/*.whl
+        /tmp/ho-core/bin/python -I scripts/check_install.py
+    - name: Minimum supported integration versions
+      run: |
+        uv venv --python 3.12 /tmp/ho-integration
+        uv pip install --python /tmp/ho-integration/bin/python dist/*.whl 'jax==0.9.2' 'gdsfactory==9.51.0' 'sax==0.18.2'
+        /tmp/ho-integration/bin/python -I scripts/check_install.py --integration
+
+  sax:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v4
+    - run: uv python install 3.12
+    - name: Optional SAX and minimum-JAX integration tests
+      run: |
+        uv run --with 'sax==0.18.2' --with 'jax==0.9.2' pytest tests/test_sax.py tests/test_metasurfaces.py tests/test_gdsfactory.py tests/test_bcm.py tests/test_rcwa.py tests/test_rcwa2d.py tests/test_modes.py -q -o addopts='' -p no:cacheprovider
