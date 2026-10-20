@@ -873,3 +873,28 @@ class TestCellSparameters:
         monkeypatch.setattr(sparameters, "cell_sax_model", cached_only)
         again = hog.write_sparameters_cell(cell, lattice, wl, (1, 1), dirpath=tmp_path)
         np.testing.assert_array_equal(again["top@p,bottom@s"], saved["top@p,bottom@s"])
+
+
+def test_cells_on_a_crystal_wafer():
+    """An x-cut LiNbO₃ wafer as the exit: the cell's bottom ports are the crystal's modes."""
+    wafer = hog.Oriented("LiNbO3", hog.x_cut(30.0))
+    film = hog.StackLayer(0.2, "Si3N4")
+    lattice = ((0.6, 0.0), (0.0, 0.6))
+    uniform = hog.VerticalStack((film,), incident=1.0, exit=wafer)
+    model = hog.cell_sax_model(uniform, lattice, (1, 1))
+    planar = bcm.solve_stack_on_crystal(
+        hog.material_tensor("Si3N4", 1.55)[None], jnp.array([0.2]), 1.55, 0.0, 1.0,
+        hog.material_tensor(wafer, 1.55),
+    )  # fmt: skip
+    for s in (model(wl=1.55), jax.jit(model)(wl=1.55)):
+        reflection = np.array([[s[(i, o)] for i in ("top@p", "top@s")] for o in ("top@p", "top@s")])
+        np.testing.assert_allclose(reflection, planar.r, atol=1e-12)
+    fin = np.array([[-0.2, -0.08], [0.2, -0.08], [0.2, 0.08], [-0.2, 0.08]])
+    patterned = hog.VerticalStack(
+        (hog.StackLayer(0.3, 2.4**2, background=1.0, polygons=(fin,)), film), exit=wafer
+    )
+    s = hog.cell_sax_model(patterned, lattice, (3, 3))(wl=1.55)
+    matrix = np.array([[s[(i, o)] for i in bcm.PORTS] for o in bcm.PORTS])
+    np.testing.assert_allclose(np.sum(abs(matrix) ** 2, axis=0), 1.0, atol=1e-10)
+    with pytest.raises(ValueError, match="isotropic and lossless"):
+        hog.stack_sax_model(uniform)(wl=1.55)

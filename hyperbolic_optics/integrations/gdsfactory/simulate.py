@@ -402,7 +402,7 @@ def solve_crossed_grating(
     wavelengths = np.atleast_1d(np.asarray(wavelengths_um, dtype=float))
     angles = np.atleast_1d(np.asarray(angles_deg, dtype=float))
     eps_in = stack.half_space_permittivity("incident", wavelengths)[:, None]  # [F, 1]
-    eps_out = stack.half_space_permittivity("exit", wavelengths)[:, None]
+    eps_out = stack.exit_medium(wavelengths)[:, None]  # [F, 1] or a crystal's [F, 1, 3, 3]
     layers = crossed_grating_layers(cell, stack, jnp.asarray(wavelengths)[:, None])
     result = rcwa2d.solve_crossed_grating(
         layers,
@@ -473,6 +473,8 @@ def stack_sax_model(stack: VerticalStack, doublings: int = bcm.DEFAULT_DOUBLINGS
     layers = [
         (evaluate(layer.material, layer.rotation_deg), layer.thickness_um) for layer in stack.layers
     ]
-    return hsax.planar_model(
-        layers, evaluate(stack.incident), evaluate(stack.exit), doublings=doublings
+    # half-spaces validated: planar models need isotropic, lossless ones
+    top, bottom = (
+        lambda wl, w=which: stack.half_space_permittivity(w, wl) for which in ("incident", "exit")
     )
+    return hsax.planar_model(layers, top, bottom, doublings=doublings)

@@ -421,10 +421,15 @@ def stack_smatrix(
     return _normalize_smatrix(raw, kx, eps_top, eps_bottom)
 
 
-def _normalize_smatrix(raw, kx, eps_top, eps_bottom):
-    """Shared four-port convention, including complex √kz on evanescent ports."""
+def _normalize_smatrix(raw, kx, eps_top, eps_bottom, bottom_propagating=None):
+    """Shared four-port convention, including complex √kz on evanescent ports.
+
+    ``bottom_propagating`` (``[..., 2]``) marks bottom ports whose modes are
+    already power-normalised (a crystal's, from :mod:`hyperbolic_optics.rcwa2d`).
+    """
     kz_top = _kz(jnp.asarray(eps_top), kx) + 0j
-    kz_bottom = _kz(jnp.asarray(eps_bottom), kx) + 0j
+    crystal = bottom_propagating is not None
+    kz_bottom = jnp.ones_like(kz_top) if crystal else _kz(jnp.asarray(eps_bottom), kx) + 0j
     kz = jnp.stack(jnp.broadcast_arrays(kz_top, kz_top, kz_bottom, kz_bottom), -1)
     tolerance = 1e-12
     # at exact cutoff (grazing, kz = 0) a port carries no power: leave it unscaled
@@ -433,6 +438,9 @@ def _normalize_smatrix(raw, kx, eps_top, eps_bottom):
     s = raw * root[..., :, None] / root[..., None, :]
     propagating = (jnp.abs(jnp.imag(kz)) < tolerance) & ~cutoff
     propagating = jnp.broadcast_to(propagating, s.shape[:-1])
+    if crystal:
+        bottom = jnp.broadcast_to(bottom_propagating, s.shape[:-2] + (2,))
+        propagating = jnp.concatenate([propagating[..., :2], bottom], axis=-1)
     return PlanarSMatrix(s=s, propagating=propagating)
 
 
@@ -701,15 +709,25 @@ def _substrate_modes(eps, mu, kx, loss: float, iterations: int):
     """
     scale = jnp.max(jnp.abs(eps), axis=(-2, -1), keepdims=True)
     causal = eps + 1j * loss * scale * jnp.eye(3)
-    sign = _matrix_sign(-1j * system_matrix(causal, mu, kx), iterations)
-    eye = jnp.eye(4, dtype=sign.dtype)
-    forward, backward = 0.5 * (eye + sign), 0.5 * (eye - sign)
     # A positive reference remains nonsingular when a hyperbolic tensor's trace
     # vanishes, or its mean permittivity happens to put the guess at cutoff.
-    guess = _reference_modes(kx)
-    start_forward = forward @ guess[..., :, :2]
-    start_backward = backward @ guess[..., :, 2:]
-    delta = system_matrix(eps, mu, kx)
+    return _split_modes(
+        system_matrix(eps, mu, kx), system_matrix(causal, mu, kx), _reference_modes(kx), iterations
+    )
+
+
+def _split_modes(delta, delta_causal, guess, iterations):
+    """Columns ``[forward ×n, backward ×n]`` of ``Δ``'s two invariant subspaces.
+
+    The forward subspace is the range of ``(I + sign(−iΔ_causal))/2``, seeded
+    from ``guess``'s columns (forward first) and refined to ``Δ`` itself.
+    """
+    sign = _matrix_sign(-1j * delta_causal, iterations)
+    eye = jnp.eye(delta.shape[-1], dtype=sign.dtype)
+    forward, backward = 0.5 * (eye + sign), 0.5 * (eye - sign)
+    half = delta.shape[-1] // 2
+    start_forward = forward @ guess[..., :, :half]
+    start_backward = backward @ guess[..., :, half:]
     columns = jnp.concatenate(
         [
             _invariant(delta, start_forward, start_backward),

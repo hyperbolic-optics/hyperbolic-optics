@@ -536,3 +536,60 @@ class TestZerothOrderSMatrix:
         zeroth = int(np.flatnonzero((result.orders == 0).all(axis=1))[0])
         np.testing.assert_allclose(np.abs(s[:2, :2]) ** 2, result.R[zeroth], atol=1e-12)
         np.testing.assert_allclose(np.abs(s[2:, :2]) ** 2, result.T[zeroth], atol=1e-12)
+
+
+class TestCrystalSubstrate:
+    """A 3×3 ``eps_exit``: transmitted orders in the crystal's own, power-normalised modes."""
+
+    ROTATION = bcm.rotation_matrix(np.radians(17), np.radians(31), np.radians(23))
+    CALCITE = bcm.rotate_tensor(jnp.diag(jnp.array([2.75, 2.75, 2.21 + 0j])), ROTATION)
+    HYPERBOLIC = bcm.rotate_tensor(jnp.diag(jnp.array([-2.0, -2.0, 5.0 + 0j])), ROTATION)
+    TRIANGLE = jnp.array([[-0.15, -0.1], [0.17, -0.08], [0.02, 0.16]])
+
+    @pytest.mark.parametrize("name", ["CALCITE", "HYPERBOLIC"])
+    def test_uniform_cell_is_the_planar_crystal_solver(self, name):
+        substrate = getattr(self, name)
+        film = (LN_TILTED[None], jnp.array([0.3]))
+        planar = bcm.solve_stack_on_crystal(*film, 1.2, 0.4, 1.5, substrate)
+        result = rcwa2d.solve_crossed_grating(
+            [rcwa2d.uniform(LN_TILTED, 0.3)], (0.4, 0.4), 1.2, 0.4, 1.5, substrate, (1, 1)
+        )
+        zeroth = int(np.flatnonzero((result.orders == 0).all(axis=1))[0])
+        np.testing.assert_allclose(result.r[zeroth], planar.r, atol=1e-13)
+        np.testing.assert_allclose(result.T[zeroth].sum(axis=0), planar.T, atol=1e-13)
+
+    def test_isotropic_tensor_is_the_scalar_half_space(self):
+        layers = [rcwa2d.uniform(LN_TILTED, 0.3)]
+        scalar, tensor = (
+            rcwa2d.solve_crossed_grating(layers, (0.4, 0.4), 1.2, 0.4, 1.5, eps, (1, 1))
+            for eps in (2.1, 2.1 * EYE)
+        )
+        np.testing.assert_allclose(tensor.R, scalar.R, atol=1e-14)
+        np.testing.assert_allclose(tensor.T.sum(axis=1), scalar.T.sum(axis=1), atol=1e-14)
+
+    def test_patterned_cell_conserves_energy_into_high_k_orders(self):
+        # a lossless hyperbolic crystal carries away orders far beyond its index
+        layers = [rcwa2d.PatternedLayer(0.25, EYE, (rcwa2d.Shape(self.TRIANGLE, LN_TILTED),))]
+        args = ((0.45, 0.45), 1.2, 0.4, 1.5)
+        for substrate, carrying in ((self.CALCITE, 1), (self.HYPERBOLIC, 50)):
+            result = rcwa2d.solve_crossed_grating(layers, *args, substrate, (4, 4), azimuth_rad=0.6)
+            total = jnp.sum(result.R, axis=(0, 1)) + jnp.sum(result.T, axis=(0, 1))
+            np.testing.assert_allclose(total, 1.0, atol=1e-10)
+            assert int(jnp.sum(jnp.sum(result.T, axis=(1, 2)) > 1e-12)) >= carrying
+        s = rcwa2d.crossed_grating_smatrix(layers, *args, self.CALCITE, (4, 4), azimuth_rad=0.6).s
+        np.testing.assert_allclose(s.conj().T @ s, np.eye(4), atol=1e-12)
+
+    def test_gradient_through_a_degenerate_crystal(self):
+        # optic axis along z at normal incidence: the two transmitted modes are degenerate
+        uniaxial = jnp.diag(jnp.array([2.75, 2.75, 2.21 + 0j]))
+
+        def transmitted(height):
+            layer = rcwa2d.PatternedLayer(height, EYE, (rcwa2d.Shape(self.TRIANGLE, LN_TILTED),))
+            result = rcwa2d.solve_crossed_grating(
+                [layer], (0.45, 0.45), 1.2, 0.0, 1.5, uniaxial, (2, 2)
+            )
+            return jnp.sum(result.T)
+
+        step = 1e-6
+        difference = (transmitted(0.25 + step) - transmitted(0.25 - step)) / (2 * step)
+        assert float(jax.grad(transmitted)(0.25)) == pytest.approx(float(difference), rel=1e-6)

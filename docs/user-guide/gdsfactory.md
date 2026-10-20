@@ -58,7 +58,9 @@ planar.mueller().shape      # (1, 3, 2, 4, 4): [wavelength, angle, azimuth, 4, 4
 - **The column at a point.** Levels on `WAFER` are everywhere; others where
   their layer has shapes, derived layers included. Where levels overlap, the
   lowest `mesh_order` wins. The lowest level is the exit half-space, and
-  `ambient` (air) the incident one. Gaps and mesh-order ties between
+  `ambient` (air) the incident one. For 2D-periodic cells the exit may be a
+  crystal or absorbing wafer (sapphire, LiNbO₃, or a complex ε you give):
+  its two transmitted modes replace p and s (`VerticalStack.exit_medium`). Gaps and mesh-order ties between
   materials are refused.
 - **Gratings and 2D patterns.** `grating_stack` and `crossed_grating_stack`
   compare the column inside the shapes with the column around them. Where

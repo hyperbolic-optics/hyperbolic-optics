@@ -124,7 +124,7 @@ def _stack_settings(stack, wavelengths):
         version=__version__,
         schema=2,
         incident=stack.half_space_permittivity("incident", wavelengths),
-        exit=stack.half_space_permittivity("exit", wavelengths),
+        exit=stack.exit_medium(wavelengths),
         layers=[
             dict(
                 thickness_um=layer.thickness_um,

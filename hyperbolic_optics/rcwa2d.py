@@ -52,7 +52,15 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from hyperbolic_optics.bcm import _check_x64, _interface, _layer, _normalize_smatrix, _solve, _star
+from hyperbolic_optics.bcm import (
+    _check_x64,
+    _interface,
+    _layer,
+    _normalize_smatrix,
+    _solve,
+    _split_modes,
+    _star,
+)
 from hyperbolic_optics.rcwa import _fourier_system_matrix, _harmonic_modes, default_doublings
 
 __all__ = [
@@ -567,6 +575,64 @@ def _orders(mx: int, my: int, lattice=None, truncation: str = "parallelogram") -
     return orders[np.linalg.norm(g, axis=1) <= radius]
 
 
+def _is_tensor(eps) -> bool:
+    return jnp.ndim(eps) >= 2 and jnp.shape(eps)[-2:] == (3, 3)
+
+
+# S_z = ½ Re(Ex·Hy* − Ey·Hx*) = v†·_FLUX·v for v = [Ex, Ey, Hx, Hy]
+_FLUX = 0.25 * np.array([[0, 0, 0, 1], [0, 0, -1, 0], [0, -1, 0, 0], [1, 0, 0, 0]])
+
+
+def _crystal_modes(eps, kx, ky, w_ref):
+    """A uniform crystal's modes for every harmonic, in :func:`_harmonic_modes`' layout.
+
+    A uniform medium does not couple harmonics, so each one's 4×4 operator is
+    split into waves leaving and entering as
+    :func:`hyperbolic_optics.bcm.solve_stack_on_crystal` splits the planar one.
+    Each pair is then made power-orthonormal (normal flux ±½ apiece), so a
+    mode's ``|t|²`` is its power even where the two are degenerate or the
+    crystal is hyperbolic. Returns ``(W, flux)``; flux is 0 for modes that
+    carry none (evanescent).
+    """
+    size = kx.shape[-1]
+    eps = jnp.asarray(eps) + 0j
+    mu = jnp.eye(3, dtype=complex)[:, :, None, None]
+
+    def operator(tensor):  # one harmonic per batch entry: [..., N, 4, 4]
+        return _fourier_system_matrix(tensor[..., None, :, :, None, None], mu, kx[..., None],
+                                      jnp.broadcast_to(ky, kx.shape)[..., None])  # fmt: skip
+
+    loss = 1e-8 * jnp.max(jnp.abs(eps), axis=(-2, -1), keepdims=True) * jnp.eye(3)
+    rows = np.arange(4)[None, :] * size + np.arange(size)[:, None]  # harmonic i: [i, N+i, …]
+    guess = w_ref[..., rows[:, :, None], rows[:, None, :]]
+    modes = _split_modes(operator(eps), operator(eps + 1j * loss), guess, 60)
+
+    def orthonormal(first, second, sign):
+        def power(a, b):
+            return sign * jnp.einsum("...i,ij,...j->...", jnp.conj(a), _FLUX, b)
+
+        def unit(v, p):  # scale to flux ±½ if it carries power, else leave it
+            carries = jnp.real(p) > 1e-12
+            return v * jnp.where(carries, jnp.sqrt(0.5 / jnp.where(carries, jnp.real(p), 1.0)),
+                                 1.0)[..., None], carries  # fmt: skip
+
+        first, carries_first = unit(first, power(first, first))
+        overlap = jnp.where(carries_first, 2 * power(first, second), 0.0)
+        second = second - overlap[..., None] * first
+        second, carries_second = unit(second, power(second, second))
+        return first, second, carries_first, carries_second
+
+    f1, f2, c1, c2 = orthonormal(modes[..., 0], modes[..., 1], 1.0)
+    b1, b2, d1, d2 = orthonormal(modes[..., 2], modes[..., 3], -1.0)
+    modes = jnp.stack([f1, f2, b1, b2], axis=-1)
+    batch = modes.shape[:-3]
+    w = jnp.zeros(batch + (4 * size, 4 * size), complex)
+    w = w.at[..., rows[:, :, None], rows[:, None, :]].set(modes)
+    signs = np.array([1, 1, -1, -1])[:, None]  # forward, backward
+    flux = 0.5 * signs * jnp.stack([c1, c2, d1, d2], axis=-2)  # [..., 4, N]
+    return w, flux.reshape(batch + (4 * size,))
+
+
 def _operators(
     layers, lattice, orders, max_order, factorization, grid, kx, ky, direction,
     eps_incident, eps_exit,
@@ -579,7 +645,10 @@ def _operators(
     w_ref, flux_ref = _harmonic_modes(eps_ref, kx, ky, direction)
     w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
     w_in, flux_in = _harmonic_modes(jnp.asarray(eps_incident)[..., None], kx, ky, direction)
-    w_out, flux_out = _harmonic_modes(jnp.asarray(eps_exit)[..., None], kx, ky, direction)
+    if _is_tensor(eps_exit):
+        w_out, flux_out = _crystal_modes(eps_exit, kx, ky, w_ref)
+    else:
+        w_out, flux_out = _harmonic_modes(jnp.asarray(eps_exit)[..., None], kx, ky, direction)
     deltas = []
     for layer in layers:
         eps = _factorize(layer, "eps", max_order, lattice, orders, factorization, grid)
@@ -662,12 +731,13 @@ def crossed_grating_smatrix(
     top medium. Alternatively, ``kx`` supplies the conserved in-plane wavevector
     over k₀ and overrides ``incidence_rad``, including evanescent top ports.
     Evanescent ports retain BCM's complex √kz normalization; |s|² is not power there.
+    A crystal ``eps_bottom`` (3×3) makes the bottom ports its power-normalised modes.
 
     Returns:
         :class:`hyperbolic_optics.bcm.PlanarSMatrix`.
     """
     _check_x64()
-    orders, zeroth, (s00, s01, s10, s11), _, _ = _scattering(
+    orders, zeroth, (s00, s01, s10, s11), _, flux_out = _scattering(
         layers, period_um, wavelength_um, incidence_rad, eps_top, eps_bottom, max_order,
         azimuth_rad, factorization, doublings, grid, truncation, kx,
     )  # fmt: skip
@@ -689,7 +759,8 @@ def crossed_grating_smatrix(
         if kx is None
         else jnp.asarray(kx)
     )
-    return _normalize_smatrix(raw, k_par, eps_top, eps_bottom)
+    bottom = flux_out[..., index] > 0 if _is_tensor(eps_bottom) else None
+    return _normalize_smatrix(raw, k_par, eps_top, eps_bottom, bottom)
 
 
 def solve_crossed_grating(
@@ -713,7 +784,11 @@ def solve_crossed_grating(
         period_um: A :class:`Lattice`, or ``(Λx, Λy)`` in µm for a rectangular one.
         wavelength_um: Vacuum wavelength in µm.
         incidence_rad: Polar angle of incidence in the incident medium.
-        eps_incident, eps_exit: Real, positive permittivities of the half-spaces.
+        eps_incident: Real, positive permittivity of the incident half-space.
+        eps_exit: The exit half-space: a real, positive permittivity, or a
+            3×3 tensor for a crystal substrate (anisotropic, hyperbolic or
+            lossy, any orientation). Its orders are then the crystal's two
+            transmitted modes, each power-normalised, in place of p and s.
         max_order: ``(M₁, M₂)``: orders ``|m| ≤ M₁``, ``|n| ≤ M₂`` along ``b₁``, ``b₂`` (static).
         azimuth_rad: Plane of incidence, from the x axis.
         factorization: ``"normal"`` (default) or ``"laurent"`` (static).
