@@ -551,10 +551,10 @@ def stack_fields(
     fixed fractions of its thickness.
 
     Args:
-        eps, thickness_um, wavelength_um, incidence_rad, eps_incident, eps_exit,
-        mu, doublings: As in :func:`solve_stack`.
         samples_per_layer: Field samples per layer (static), evenly spaced from
             its top to its bottom, both included. ``0`` skips the depth profile.
+
+    The other arguments are as in :func:`solve_stack`.
 
     Returns:
         :class:`StackFields`.
@@ -758,9 +758,10 @@ def solve_stack_on_crystal(
     sign function (see :func:`_substrate_modes`), so reflection is exact and
     differentiable even where the substrate's modes are degenerate.
 
+    The other arguments are as in :func:`solve_stack` (``L`` may be zero: a
+    bare crystal).
+
     Args:
-        eps, thickness_um, wavelength_um, incidence_rad, eps_incident, mu,
-        doublings: As in :func:`solve_stack` (``L`` may be zero: a bare crystal).
         eps_substrate: The substrate's tensor ``[..., 3, 3]`` in the lab frame
             (rotate it with :func:`rotate_tensor`); lossy is fine.
         mu_substrate: Its permeability; identity if omitted.

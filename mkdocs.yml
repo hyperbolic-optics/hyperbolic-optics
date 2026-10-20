@@ -50,6 +50,10 @@ plugins:
         python:
           options:
             docstring_style: google
+            # grouped parameters ("a, b: …") and untyped arguments are deliberate
+            docstring_options:
+              warn_unknown_params: false
+              warn_missing_types: false
             show_source: true
             show_root_heading: true
             members_order: source
