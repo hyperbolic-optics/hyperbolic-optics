@@ -179,6 +179,83 @@ LN_X_CUT = {"ln": hog.Oriented("LiNbO3", hog.x_cut(30.0))}
 
 
 class TestPdkStacks:
+    def test_cell_from_pdk_preserves_derived_mask_holes(self):
+        component = gf.Component()
+        for width, layer in ((0.2, (2, 0)), (0.1, (3, 0))):
+            half = width / 2
+            component.add_polygon(
+                [(-half, -half), (half, -half), (half, half), (-half, half)], layer=layer
+            )
+        pdk = _tfln_stack()
+        pdk.layers["ln_rib"].layer = LogicalLayer(layer=(2, 0)) - LogicalLayer(layer=(3, 0))
+        cell = hog.cell_from_pdk(component, pdk, ((0.4, 0), (0, 0.4)), LN_X_CUT)
+        area = 0.0
+        for polygon in cell.layers[0].polygons:
+            x, y = polygon.T
+            area += abs(x @ np.roll(y, 1) - y @ np.roll(x, 1)) / 2
+        assert area == pytest.approx(0.2**2 - 0.1**2)
+
+    def test_cell_from_pdk_wraps_shapes_across_the_cell_edge(self):
+        # an odd number of grid steps per period: the footprint cannot be exactly centred
+        component = gf.Component()
+        fin = [(-0.05, -0.05), (0.25, -0.05), (0.25, 0.05), (-0.05, 0.05)]
+        component.add_polygon(fin, layer=RIB)
+        cell = hog.cell_from_pdk(component, _tfln_stack(), ((0.325, 0), (0, 0.325)), LN_X_CUT)
+        area = 0.0
+        for polygon in cell.layers[0].polygons:
+            x, y = polygon.T
+            area += abs(x @ np.roll(y, 1) - y @ np.roll(x, 1)) / 2
+        assert area == pytest.approx(0.3 * 0.1)
+
+    def test_metasurface_of_pdk_cells_reads_through_the_stack(self, tmp_path):
+        fin = gf.Component()
+        fin.add_polygon([(-0.12, -0.05), (0.12, -0.05), (0.12, 0.05), (-0.12, 0.05)], layer=RIB)
+        pdk, lattice = _tfln_stack(), ((0.4, 0.0), (0.0, 0.4))
+        sites, turns = [[0, 0], [0.4, 0]], [0, np.pi / 2]
+        layout = hog.metasurface_component(sites, [fin, fin], (), lattice, turns)
+        layout.write_gds(tmp_path / "pdk.gds")
+        read_sites, cells, read_lattice = hog.read_metasurface(
+            gf.import_gds(tmp_path / "pdk.gds"), LN_X_CUT, layer_stack=pdk
+        )
+        cells = [cells[k] for k in np.argsort(read_sites[:, 0])]
+        assert read_lattice == lattice
+        direct = hog.cell_from_pdk(fin, pdk, lattice, LN_X_CUT)
+        # the fin turns on a fixed x-cut wafer: its crystal does not
+        quarter = hog.turned(direct, np.pi / 2, rotate_materials=False)
+        for back, expected in ((cells[0], direct), (cells[1], quarter)):
+            a = hog.cell_sax_model(back, lattice, (2, 2))(wl=1.55)
+            b = hog.cell_sax_model(expected, lattice, (2, 2))(wl=1.55)
+            for key in a:
+                np.testing.assert_allclose(a[key], b[key], atol=1e-10)
+
+    def test_cell_from_pdk_keeps_each_levels_mask_and_z_intervals(self):
+        component = gf.Component()
+        fin = [(-0.12, -0.05), (0.12, -0.05), (0.12, 0.05), (-0.12, 0.05)]
+        cap = [(-0.04, -0.1), (0.04, -0.1), (0.04, 0.1), (-0.04, 0.1)]
+        component.add_polygon(fin, layer=RIB)
+        component.add_polygon(cap, layer=(3, 0))
+        pdk = _tfln_stack()
+        pdk.layers["cap"] = LayerLevel(
+            layer=LogicalLayer(layer=(3, 0)), zmin=0.7, thickness=0.2, material="sin", mesh_order=1
+        )
+        actual = hog.cell_from_pdk(component, pdk, ((0.4, 0), (0, 0.4)), LN_X_CUT)
+        expected = hog.VerticalStack(
+            (
+                hog.StackLayer(0.2, "Si3N4", background=1.0, polygons=(np.asarray(cap),)),
+                hog.StackLayer(0.1, 1.0),  # zmin leaves a real air spacer
+                hog.StackLayer(0.3, LN_X_CUT["ln"], background=1.0, polygons=(np.asarray(fin),)),
+                hog.StackLayer(0.3, LN_X_CUT["ln"]),
+                hog.StackLayer(2.0, "SiO2"),
+            ),
+            exit="Si",
+        )
+        lattice = ((0.4, 0.0), (0.0, 0.4))
+        a = hog.cell_sax_model(actual, lattice, (1, 1))(wl=1.55)
+        b = hog.cell_sax_model(expected, lattice, (1, 1))(wl=1.55)
+        assert len(actual.layers) == 5
+        for key in a:
+            np.testing.assert_allclose(a[key], b[key], atol=1e-11)
+
     def test_generic_pdk_on_and_off_a_waveguide(self):
         stack = gf.get_active_pdk().layer_stack
         component = gf.components.rectangle(size=(2, 10), layer="WG")
@@ -621,6 +698,54 @@ from hyperbolic_optics.integrations.gdsfactory import sparameters as hsp  # noqa
 
 
 class TestSparameters:
+    def test_cache_follows_pdk_thickness_and_callable_material(self, tmp_path):
+        component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=3, layer=RIB)
+        pdk = _tfln_stack()
+        eps = [4.0]
+        material = {"ln": lambda wl: jnp.zeros_like(wl) + eps[0]}
+
+        def solve(overwrite=False):
+            return hsp.write_sparameters_stack(
+                component,
+                pdk,
+                (0.2, 10.0),
+                [1.55],
+                materials=material,
+                dirpath=tmp_path,
+                overwrite=overwrite,
+            )["top@p,bottom@p"]
+
+        first = solve()
+        pdk.layers["ln_rib"].thickness = 0.5
+        second = solve()
+        assert abs(first - second).max() > 0.1
+        np.testing.assert_array_equal(second, solve(overwrite=True))
+        eps[0] = 6.0
+        third = solve()
+        assert abs(second - third).max() > 0.1
+        np.testing.assert_array_equal(third, solve(overwrite=True))
+
+    def test_cell_cache_round_trip_and_reuse(self, tmp_path, monkeypatch):
+        cell = hog.VerticalStack((hog.StackLayer(0.2, "Si3N4"),), exit="SiO2")
+        lattice = ((0.4, 0.0), (0.0, 0.4))
+        args = (cell, lattice, [1.5, 1.55])
+        expected = hog.cell_sax_model(cell, lattice, (0, 0))(wl=jnp.array([1.5, 1.55]), kx=0.3)
+        data = hsp.write_sparameters_cell(*args, max_order=(0, 0), kx=0.3, dirpath=tmp_path)
+        for key, value in expected.items():
+            np.testing.assert_allclose(data[",".join(key)], value, atol=1e-12)
+        model = hsp.model_from_npz(data)
+        np.testing.assert_allclose(
+            model(1.55)["top@p", "bottom@p"], expected["top@p", "bottom@p"][1], atol=1e-12
+        )
+
+        def forbidden(*args, **kwargs):
+            raise AssertionError("A cache hit must not solve again")
+
+        monkeypatch.setattr(hsp, "cell_sax_model", lambda *a, **kw: forbidden)
+        cached = hsp.write_sparameters_cell(*args, max_order=(0, 0), kx=0.3, dirpath=tmp_path)
+        for key in data:
+            np.testing.assert_array_equal(cached[key], data[key])
+
     def test_stack_sparameters(self, tmp_path):
         component = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
         sp = hsp.write_sparameters_stack(
@@ -661,3 +786,90 @@ class TestSparameters:
         same = hog.line_grating(period_um=0.9, fill=0.5, n_periods=10, layer=RIB)
         other = hog.line_grating(period_um=0.9, fill=0.4, n_periods=10, layer=RIB)
         assert hsp.component_hash(one) == hsp.component_hash(same) != hsp.component_hash(other)
+
+
+class TestProcessGeometry:
+    @pytest.mark.parametrize("bias", [-0.01, 0.01])
+    def test_periodic_stripe_offsets_have_no_seam(self, bias):
+        component = _rectangles(gf.Component(), [(-0.3, 0.3, -0.05, 0.05)], layer=RIB)
+        pdk = _tfln_stack()
+        pdk.layers["ln_rib"].bias = bias
+        cell = hog.cell_from_pdk(component, pdk, ((0.6, 0), (0, 0.6)), LN_X_CUT, sidewall_slices=1)
+        patterned = [lv for lv in cell.layers if lv.polygons is not None]
+        assert len(patterned) == 1
+        polygons = patterned[0].polygons
+        area = sum(
+            abs(np.dot(p[:, 0], np.roll(p[:, 1], 1)) - np.dot(p[:, 1], np.roll(p[:, 0], 1))) / 2
+            for p in polygons
+        )
+        # An infinite stripe changes width only; the cell boundary is not a sidewall.
+        assert area == pytest.approx(0.6 * (0.1 + 2 * bias))
+
+    def test_midpoint_sidewalls_and_bias_follow_pdk_reference_height(self):
+        c = _rectangles(gf.Component(), [(-0.1, 0.1, -0.05, 0.05)], layer=RIB)
+        pdk = _tfln_stack()
+        level = pdk.layers["ln_rib"]
+        level.sidewall_angle, level.width_to_z, level.bias = 13.0, 1.0, 0.005
+        with pytest.warns(UserWarning, match="sidewall_angle/bias/z_to_bias"):
+            hog.cell_from_pdk(c, pdk, ((0.6, 0), (0, 0.6)), LN_X_CUT)
+        cell = hog.cell_from_pdk(c, pdk, ((0.6, 0), (0, 0.6)), LN_X_CUT, sidewall_slices=4)
+        patterned = [lv for lv in cell.layers if lv.polygons is not None]
+        assert len(patterned) == 4
+        for i, lv in enumerate(patterned):
+            z = 0.6 - (i + 0.5) * 0.075
+            offset = round((0.005 + (0.6 - z) * np.tan(np.radians(13))) / c.kcl.dbu) * c.kcl.dbu
+            np.testing.assert_allclose(
+                np.ptp(lv.polygons[0], axis=0), [0.2 + 2 * offset, 0.1 + 2 * offset]
+            )
+            assert lv.thickness_um == pytest.approx(0.075)
+            assert lv.material == LN_X_CUT["ln"]
+        assert level.thickness == 0.3  # extraction never mutates the PDK
+
+    def test_slices_refuse_unsupported_profiles(self):
+        c = _rectangles(gf.Component(), [(-0.1, 0.1, -0.05, 0.05)], layer=RIB)
+        pdk = _tfln_stack()
+        pdk.layers["ln_rib"].z_to_bias = ([0.0, 1.0], [0.0, 0.01])
+        with pytest.raises(ValueError, match="scalar bias only"):
+            hog.cell_from_pdk(c, pdk, ((0.6, 0), (0, 0.6)), LN_X_CUT, sidewall_slices=4)
+        with pytest.raises(ValueError, match="nonnegative integer"):
+            hog.cell_from_pdk(c, pdk, ((0.6, 0), (0, 0.6)), LN_X_CUT, sidewall_slices=-1)
+
+    def test_tapered_cell_spectrum_refines_and_zero_angle_is_unchanged(self):
+        c = _rectangles(gf.Component(), [(-0.1, 0.1, -0.05, 0.05)], layer=RIB)
+        pdk = _tfln_stack()
+        lattice = ((0.6, 0), (0, 0.6))
+
+        def solve(n):
+            cell = hog.cell_from_pdk(c, pdk, lattice, LN_X_CUT, sidewall_slices=n)
+            return complex(hog.cell_sax_model(cell, lattice, (1, 1))(wl=1.55)["top@p", "bottom@s"])
+
+        np.testing.assert_allclose(solve(0), solve(4), atol=1e-12)
+        pdk.layers["ln_rib"].sidewall_angle = 13.0
+        pdk.layers["ln_rib"].width_to_z = 1.0
+        a, b, c0 = [solve(n) for n in (2, 4, 8)]
+        assert abs(c0 - b) < abs(b - a)
+        assert abs(c0 - b) < 2e-4
+
+
+class TestCellSparameters:
+    def test_pdk_cell_cache_and_sax_agree(self, tmp_path, monkeypatch):
+        from hyperbolic_optics.integrations.gdsfactory import sparameters
+
+        component = _rectangles(gf.Component(), [(-0.1, 0.1, -0.05, 0.05)], layer=RIB)
+        pdk, lattice, wl = _tfln_stack(), ((0.4, 0), (0, 0.4)), [1.5, 1.55]
+        pdk.layers["ln_rib"].sidewall_angle = 13.0
+        cell = hog.cell_from_pdk(component, pdk, lattice, LN_X_CUT, sidewall_slices=2)
+        saved = hog.write_sparameters_cell(cell, lattice, wl, (1, 1), dirpath=tmp_path)
+        reference = hog.cell_sax_model(cell, lattice, (1, 1))(wl=jnp.array(wl))
+        for key, values in reference.items():
+            np.testing.assert_allclose(saved[",".join(key)], values, atol=1e-12)
+
+        def cached_only(*args, **kwargs):
+            def solve(**kwargs):
+                raise AssertionError("A cache hit must not invoke the solver")
+
+            return solve
+
+        monkeypatch.setattr(sparameters, "cell_sax_model", cached_only)
+        again = hog.write_sparameters_cell(cell, lattice, wl, (1, 1), dirpath=tmp_path)
+        np.testing.assert_array_equal(again["top@p,bottom@s"], saved["top@p,bottom@s"])

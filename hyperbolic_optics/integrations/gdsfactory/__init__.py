@@ -23,11 +23,13 @@ Everything is importable from here::
 
 - **Metasurfaces** (:mod:`.metasurface`): cells that differ site by site in
   shape, material, crystal orientation, twist and number of layers.
-  :func:`metasurface_component` draws them, :func:`read_metasurface` reads a
+  :func:`cell_from_pdk` reads a cell's masks and PDK levels;
+  :func:`metasurface_component` draws sites, :func:`read_metasurface` reads a
   layout back, and :func:`cell_sax_model` gives a cell's SAX model.
 
-- **S-parameters** (:mod:`.sparameters`): :func:`write_sparameters_stack`,
-  cached as ``.npz``, gplugins-style; :func:`model_from_npz` reads them into SAX.
+- **S-parameters** (:mod:`.sparameters`): :func:`write_sparameters_stack` and
+  :func:`write_sparameters_cell`, cached as ``.npz``, gplugins-style;
+  :func:`model_from_npz` reads them into SAX.
 
 Results describe an infinitely extended stack or grating under plane-wave
 illumination. Requires the ``gdsfactory`` extra and an active PDK.
@@ -54,6 +56,7 @@ from hyperbolic_optics.integrations.gdsfactory.materials import (
     z_cut,
 )
 from hyperbolic_optics.integrations.gdsfactory.metasurface import (
+    cell_from_pdk,
     cell_layers,
     cell_sax_model,
     metasurface_component,
@@ -74,6 +77,7 @@ from hyperbolic_optics.integrations.gdsfactory.simulate import (
 )
 from hyperbolic_optics.integrations.gdsfactory.sparameters import (
     model_from_npz,
+    write_sparameters_cell,
     write_sparameters_stack,
 )
 from hyperbolic_optics.integrations.gdsfactory.stack import (
@@ -95,6 +99,7 @@ __all__ = [
     "StackLayer",
     "UnitCell",
     "cell_layers",
+    "cell_from_pdk",
     "cell_sax_model",
     "VerticalStack",
     "crossed_grating_layers",
@@ -119,6 +124,7 @@ __all__ = [
     "turned",
     "vertical_stack",
     "write_sparameters_stack",
+    "write_sparameters_cell",
     "x_cut",
     "z_cut",
 ]
