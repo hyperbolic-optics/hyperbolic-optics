@@ -167,6 +167,55 @@ class TestDesign:
         assert float(grad[3]) == pytest.approx(float(fd), rel=1e-6)
 
 
+def test_local_periodicity_against_a_gradient_supercell():
+    """Fins etched into an x-cut LiNbO₃ film, turned by kπ/6 on a wafer with fixed axes.
+
+    Each fin's form birefringence adds to or cancels the crystal's, so its
+    conversion depends on its angle (0.31 to 0.63 here). Six of them in one
+    supercell deflect converted light into one order; each fin's library entry
+    (an infinite array of itself) predicts that order's power to within the
+    local-periodicity error (0.37 against 0.40 here).
+    """
+    hog = pytest.importorskip("hyperbolic_optics.integrations.gdsfactory")
+    n, wavelength, pitch, n_glass = 6, 1.55, 0.7, 1.444
+    angles = np.pi * np.arange(n) / n
+    ln = hog.Oriented("LiNbO3", hog.x_cut(0.0))
+    outline = rcwa2d.rectangle((0.0, 0.0), (0.6, 0.24))
+
+    def cell(polygons):
+        layer = hog.StackLayer(1.6, ln, background=1.0, polygons=polygons)
+        return hog.VerticalStack((layer,), incident=n_glass**2)
+
+    def fin(angle):
+        turned = hog.turned(cell((outline,)), angle, rotate_materials=False)
+        return hog.cell_layers(turned, wavelength)
+
+    jones = ms.cell_library(
+        fin, angles, rcwa2d.Lattice.square(pitch), wavelength, n_glass**2, 1.0, (3, 3)
+    )
+    converted = np.einsum("i,kij,j->k", RIGHT.conj(), np.asarray(jones), LEFT)
+    harmonic = np.mean(converted * np.exp(-2j * np.pi * np.arange(n) / n)) * np.sinc(1 / n)
+    predicted = abs(harmonic) ** 2 / n_glass  # the staircase near field's first harmonic
+
+    fins = tuple(
+        fin(a)[0].shapes[0].vertices + jnp.array([(k - (n - 1) / 2) * pitch, 0.0])
+        for k, a in enumerate(angles)
+    )
+    result = rcwa2d.solve_crossed_grating(
+        hog.cell_layers(cell(fins), wavelength), (n * pitch, pitch), wavelength, 0.0,
+        n_glass**2, 1.0, (18, 3),
+    )  # fmt: skip
+
+    def power(order):
+        k = int(np.flatnonzero((result.orders == order).all(axis=1))[0])
+        t, T = np.asarray(result.t[k]), np.asarray(result.T[k])
+        return float(np.sum(abs(t @ LEFT) ** 2 * T[:, 0] / abs(t[:, 0]) ** 2))
+
+    assert np.ptp(abs(converted) ** 2 / n_glass) > 0.2
+    assert power((1, 0)) == pytest.approx(predicted, abs=0.05)
+    assert power((-1, 0)) < 0.02
+
+
 class TestLayout:
     LATTICE = ((0.4, 0.0), (0.0, 0.4))
     LAYERS = ((10, 0), (11, 0), (12, 0))
@@ -209,7 +258,8 @@ class TestLayout:
         )  # fmt: skip
         return np.asarray(result.t[int(np.flatnonzero((result.orders == 0).all(axis=1))[0])])
 
-    def test_round_trip_through_a_gds_file(self, tmp_path):
+    @pytest.mark.parametrize("rotate_materials", [True, False])
+    def test_round_trip_through_a_gds_file(self, tmp_path, rotate_materials):
         import gdsfactory as gf
 
         from hyperbolic_optics.integrations import gdsfactory as hog
@@ -218,10 +268,31 @@ class TestLayout:
         cells = [twisted, holes, film, twisted, holes, twisted]
         sites = np.array([[0.0, 0.0], [0.4, 0.0], [0.8, 0.0], [0.0, 0.4], [0.4, 0.4], [0.8, 0.4]])
         rotations = np.radians([0.0, 0.0, 0.0, 30.0, -60.0, 90.0])
-        component = hog.metasurface_component(sites, cells, self.LAYERS, self.LATTICE, rotations)
+        component = hog.metasurface_component(
+            sites, cells, self.LAYERS, self.LATTICE, rotations, rotate_materials=rotate_materials
+        )
         assert len(component.insts) == 6 and component.info["n_cells"] == 3
-        assert hog.metasurface_component(sites, cells, self.LAYERS, self.LATTICE,
-                                         rotations) is component  # fmt: skip
+        assert (
+            hog.metasurface_component(
+                sites,
+                cells,
+                self.LAYERS,
+                self.LATTICE,
+                rotations,
+                rotate_materials=rotate_materials,
+            )
+            is component
+        )
+        other = hog.metasurface_component(
+            sites,
+            cells,
+            self.LAYERS,
+            self.LATTICE,
+            rotations,
+            rotate_materials=not rotate_materials,
+        )
+        assert other is not component
+        assert other.name != component.name
 
         component.write_gds(tmp_path / "metasurface.gds")
         read_sites, read_cells, lattice = hog.read_metasurface(
@@ -232,10 +303,58 @@ class TestLayout:
         expected = np.lexsort(np.round(sites, 6).T[::-1])
         np.testing.assert_allclose(read_sites[order], sites[expected], atol=1e-9)
         for k_read, k_design in zip(order, expected, strict=True):
-            design = hog.turned(cells[k_design], rotations[k_design])
+            design = hog.turned(
+                cells[k_design], rotations[k_design], rotate_materials=rotate_materials
+            )
             back = read_cells[k_read]
             assert [layer.name for layer in back.layers] == [layer.name for layer in design.layers]
             np.testing.assert_allclose(self._jones(back), self._jones(design), atol=1e-9)
+
+    def test_fixed_wafer_and_placed_crystal_frames(self):
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        shape = (rcwa2d.rectangle((0.0, 0.0), (0.23, 0.12)),)
+        layer = hog.StackLayer(
+            0.2,
+            hog.Oriented("LiNbO3", (17.0, 39.0, 12.0)),
+            background=hog.Oriented("LiNbO3", (21.0, 8.0, 34.0)),
+            rotation_deg=(11.0, 25.0, 16.0),
+            polygons=shape,
+        )
+        cell = hog.VerticalStack((layer,), exit=N_GLASS**2)
+        theta = 0.41
+        rotation = np.asarray(bcm.rotation_matrix(0.0, 0.0, theta))
+        for rotate_materials in (False, True):
+
+            def turn(a):
+                return hog.turned(cell, a, rotate_materials=rotate_materials)
+
+            after = turn(theta).layers[0]
+            np.testing.assert_allclose(after.polygons[0], shape[0] @ rotation[:2, :2].T)
+            for name in ("material", "background"):
+                before = hog.material_tensor(getattr(layer, name), WAVELENGTH, layer.rotation_deg)
+                expected = rotation @ before @ rotation.T if rotate_materials else before
+                actual = hog.material_tensor(getattr(after, name), WAVELENGTH, after.rotation_deg)
+                np.testing.assert_allclose(actual, expected, atol=1e-12)
+
+            @jax.jit
+            def transmission(a):
+                return (
+                    jnp.abs(
+                        hog.cell_sax_model(turn(a), self.LATTICE, (1, 1))(wl=WAVELENGTH)[
+                            ("top@p", "bottom@s")
+                        ]
+                    )
+                    ** 2
+                )
+
+            grad = jax.grad(transmission)(theta)
+            fd = (transmission(theta + 1e-5) - transmission(theta - 1e-5)) / 2e-5
+            np.testing.assert_allclose(grad, fd, rtol=2e-4, atol=1e-7)
+        fixed, placed = (
+            self._jones(hog.turned(cell, theta, rotate_materials=v)) for v in (False, True)
+        )
+        assert np.max(abs(fixed - placed)) > 1e-3
 
     def test_what_a_gds_cannot_hold_is_refused(self):
         from hyperbolic_optics.integrations import gdsfactory as hog
@@ -249,8 +368,173 @@ class TestLayout:
         with pytest.raises(ValueError, match="levels"):
             hog.metasurface_component(np.zeros((1, 2)), [twisted], self.LAYERS[:1], self.LATTICE)
 
+    def test_hyperbolic_wafer_round_trip(self, tmp_path):
+        import gdsfactory as gf
+
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        wavelength = 1e4 / 1450.0
+        material = hog.Oriented("hBN", (0.0, 40.0, 25.0))
+        eigenvalues = np.linalg.eigvalsh(np.real(hog.material_tensor(material, wavelength)))
+        assert eigenvalues.min() < 0 < eigenvalues.max()
+        cell = hog.VerticalStack(
+            (
+                hog.StackLayer(
+                    0.3,
+                    material,
+                    background=1.0,
+                    polygons=(rcwa2d.rectangle((0.0, 0.0), (0.24, 0.12)),),
+                ),
+            ),
+            exit=2.25,
+        )
+        angle = 0.43
+        layout = hog.metasurface_component(
+            [[0.0, 0.0]], [cell], self.LAYERS, self.LATTICE, [angle], rotate_materials=False
+        )
+        layout.write_gds(tmp_path / "hbn.gds")
+        back = hog.read_metasurface(gf.import_gds(tmp_path / "hbn.gds"))[1][0]
+        expected = hog.turned(cell, angle, rotate_materials=False)
+        a = hog.cell_sax_model(back, self.LATTICE, (2, 2))(wl=wavelength)
+        b = hog.cell_sax_model(expected, self.LATTICE, (2, 2))(wl=wavelength)
+        assert back.layers[0].material == material
+        for key in a:
+            np.testing.assert_allclose(a[key], b[key], atol=1e-8)
+
+    def test_legacy_gds_without_rotation_flag_turns_crystals(self, tmp_path):
+        import gdsfactory as gf
+
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        child = gf.Component()
+        child.add_polygon([(-0.1, -0.1), (0.1, -0.1), (0.1, 0.1), (-0.1, 0.1)], layer=(10, 0))
+        child.info.update(
+            dict(
+                lattice_um=self.LATTICE,
+                incident=1.0,
+                exit=2.25,
+                levels=[
+                    dict(
+                        thickness_um=0.2,
+                        material="LiNbO3",
+                        background=None,
+                        rotation_deg=[11.0, 25.0, 16.0],
+                        name="film",
+                        layer=[10, 0],
+                    )
+                ],
+            )
+        )
+        layout = gf.Component()
+        layout.add_ref(child).drotate(23.0)
+        layout.write_gds(tmp_path / "legacy.gds")
+        back = hog.read_metasurface(gf.import_gds(tmp_path / "legacy.gds"))[1][0]
+        np.testing.assert_allclose(back.layers[0].rotation_deg, [11.0, 25.0, 39.0])
+
+    def test_empty_pattern_and_complex_cut_survive_gds(self, tmp_path):
+        import gdsfactory as gf
+
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        material = hog.Oriented(3 + 0.1j, (12, 23, 34))
+        cell = hog.VerticalStack((hog.StackLayer(0.2, material, background=1.0, polygons=()),))
+        layout = hog.metasurface_component([[0, 0]], [cell], self.LAYERS, self.LATTICE)
+        layout.write_gds(tmp_path / "empty.gds")
+        back = hog.read_metasurface(gf.import_gds(tmp_path / "empty.gds"))[1][0]
+        assert back.layers[0].polygons == ()
+        assert back.layers[0].material == material
+        np.testing.assert_allclose(self._jones(back), self._jones(cell), atol=1e-12)
+
+    def test_tensor_material_survives_gds(self, tmp_path):
+        import gdsfactory as gf
+
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        tensor = np.array([[3.0, 0.2j, 0.0], [-0.2j, 3.5, 0.1], [0.0, 0.1, 4.0 + 0.05j]])
+        square = (np.array([[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]]),)
+        cell = hog.VerticalStack((hog.StackLayer(0.2, tensor, background=1.0, polygons=square),))
+        layout = hog.metasurface_component([[0, 0]], [cell], self.LAYERS, self.LATTICE)
+        layout.write_gds(tmp_path / "tensor.gds")
+        back = hog.read_metasurface(gf.import_gds(tmp_path / "tensor.gds"))[1][0]
+        np.testing.assert_array_equal(back.layers[0].material, tensor)
+        np.testing.assert_allclose(self._jones(back), self._jones(cell), atol=1e-12)
+
+    def test_shapes_overlapping_themselves_when_placed_are_refused(self):
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        # 390 × 120 nm fits the 400 nm cell unturned; its half-diagonal (204 nm) does not
+        fin = (np.asarray(rcwa2d.rectangle((0.0, 0.0), (0.39, 0.12))),)
+        cell = hog.VerticalStack((hog.StackLayer(0.3, 5.76, background=1.0, polygons=fin),))
+        hog.metasurface_component([[0, 0]], [cell], self.LAYERS, self.LATTICE)
+        with pytest.raises(ValueError, match="periodic images"):
+            hog.metasurface_component([[0, 0]], [cell], self.LAYERS, self.LATTICE, [0.3])
+        halves = (fin[0] * 0.5, fin[0] * 0.5 + 0.05)
+        pair = hog.VerticalStack((hog.StackLayer(0.3, 5.76, background=1.0, polygons=halves),))
+        with pytest.raises(ValueError, match="overlaps itself"):
+            hog.metasurface_component([[0, 0]], [pair], self.LAYERS, self.LATTICE)
+
+    def test_ambiguous_layers_and_unsupported_references_are_refused(self):
+        import gdsfactory as gf
+        import kfactory as kf
+
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        cell = self._cells()[0]
+        with pytest.raises(ValueError, match="distinct GDS layer"):
+            hog.metasurface_component([[0, 0]], [cell], [(10, 0)] * 2, self.LATTICE)
+        layout = hog.metasurface_component([[0, 0]], [cell], self.LAYERS, self.LATTICE)
+        nested = gf.Component()
+        nested.add_ref(layout)
+        with pytest.raises(ValueError, match="direct cell references"):
+            hog.read_metasurface(nested)
+        for magnitude, mirror in ((2, False), (1, True)):
+            transformed = gf.Component()
+            transformed.create_inst(
+                next(iter(layout.insts)).cell, kf.kdb.DCplxTrans(magnitude, 0, mirror, 0, 0)
+            )
+            with pytest.raises(ValueError, match="Mirrored or magnified"):
+                hog.read_metasurface(transformed)
+
 
 class TestSaxModel:
+    @pytest.mark.parametrize("kx", [-1.6, -0.6, 0.0, 0.6, 1.2, 1.6])
+    def test_anisotropic_cell_has_planar_azimuth_and_evanescent_conventions(self, kx):
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        cell = hog.VerticalStack(
+            (hog.StackLayer(0.23, np.diag([3.0, 4.0, 5.0]), rotation_deg=(20, 35, 17)),),
+            incident=2.25,
+            exit=1.0,
+        )
+        args = dict(wl=1.55, kx=kx, azimuth=0.4)
+        planar = hog.stack_sax_model(cell)(**args)
+        crossed = hog.cell_sax_model(cell, TestLayout.LATTICE, (0, 0))(**args)
+        for key in planar:
+            np.testing.assert_allclose(crossed[key], planar[key], atol=2e-12)
+
+    def test_wavelength_jit_and_gradient_include_half_space_dispersion(self):
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        cell = hog.VerticalStack((hog.StackLayer(0.2, "Si3N4"),), exit="SiO2")
+        model = hog.cell_sax_model(cell, TestLayout.LATTICE, (0, 0))
+
+        def power(wl):
+            return abs(model(wl=wl, kx=0.3)["top@p", "bottom@p"]) ** 2
+
+        compiled = jax.jit(power)
+        np.testing.assert_allclose(compiled(1.55), power(1.55), atol=1e-12)
+        fd = (power(1.550001) - power(1.549999)) / 2e-6
+        np.testing.assert_allclose(jax.grad(compiled)(1.55), fd, rtol=1e-6)
+
+    def test_jit_does_not_silently_replace_invalid_half_space(self):
+        from hyperbolic_optics.integrations import gdsfactory as hog
+
+        cell = hog.VerticalStack((), exit=np.diag([2.0, 3.0, 4.0]))
+        with pytest.raises(ValueError, match="isotropic and lossless"):
+            cell.half_space_permittivity("exit", 1.55)
+        evaluated = jax.jit(lambda wl: cell.half_space_permittivity("exit", wl))(1.55)
+        assert jnp.isnan(evaluated)
+
     def test_zeroth_order_smatrix(self):
         from hyperbolic_optics.integrations import gdsfactory as hog
 

@@ -15,11 +15,14 @@ and what fills the grooves all come from the PDK, not from the user.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 import gdsfactory as gf
+import jax
+import jax.numpy as jnp
 import kfactory as kf
 import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack, LogicalLayer
@@ -88,13 +91,29 @@ class VerticalStack:
     def patterned(self) -> bool:
         return any(layer.background is not None for layer in self.layers)
 
-    def half_space_permittivity(self, which: str, wavelength_um: Any) -> np.ndarray:
-        """Real, scalar ε of the incident or exit half-space; refuses anything else."""
+    def half_space_permittivity(self, which: str, wavelength_um: Any) -> jax.Array:
+        """Real scalar ε; invalid half-spaces raise eagerly and return NaN under JIT."""
         spec = self.incident if which == "incident" else self.exit
-        tensor = np.asarray(material_tensor(spec, np.asarray(wavelength_um, dtype=float)))
+        tensor = material_tensor(spec, jnp.asarray(wavelength_um, dtype=float))
         eps = tensor[..., 0, 0]
+        if isinstance(tensor, jax.core.Tracer):
+            isotropic = jnp.all(
+                jnp.isclose(tensor, eps[..., None, None] * jnp.eye(3), atol=1e-12), axis=(-2, -1)
+            )
+            valid = (
+                isotropic
+                & jnp.all(jnp.isfinite(tensor), axis=(-2, -1))
+                & (jnp.abs(eps.imag) <= 1e-12)
+                & (eps.real > 0)
+            )
+            return jnp.where(valid, eps.real, jnp.nan)
         isotropic = np.allclose(tensor, eps[..., None, None] * np.eye(3), atol=1e-12)
-        if not isotropic or np.abs(eps.imag).max() > 1e-12 or eps.real.min() <= 0:
+        if (
+            not isotropic
+            or not np.isfinite(tensor).all()
+            or np.abs(eps.imag).max() > 1e-12
+            or eps.real.min() <= 0
+        ):
             raise ValueError(
                 f"The {which} half-space ({spec!r}) must be isotropic and lossless; the solvers "
                 "need real, positive ε there. Put an absorbing or anisotropic material in a "
@@ -153,6 +172,16 @@ def _mesh_order(level) -> int:
     return info.get("mesh_order", level.mesh_order)
 
 
+def _warn_process_geometry(name, level):
+    if level.sidewall_angle or level.bias or level.z_to_bias:
+        warnings.warn(
+            f"PDK level {name!r}: sidewall_angle/bias/z_to_bias are ignored by vertical-wall "
+            "extraction. Use cell_from_pdk(..., sidewall_slices=N) for supported tapered cells.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
 def vertical_profile(
     component: gf.Component,
     layer_stack: LayerStack,
@@ -178,7 +207,10 @@ def vertical_profile(
         if logical and gf.get_layer(level.layer.layer) in everywhere:
             inside = True
         else:
-            inside = any(p.inside(point) for p in level.layer.get_shapes(component).each())
+            shapes = level.layer.get_shapes(component)
+            if not shapes.is_empty():
+                _warn_process_geometry(name, level)
+            inside = any(p.inside(point) for p in shapes.each())
         if inside:
             low, high = sorted((level.zmin, level.zmin + level.thickness))
             present.append((name, level, low, high))

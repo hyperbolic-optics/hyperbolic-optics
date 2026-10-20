@@ -12,6 +12,9 @@
 pip install "hyperbolic-optics[gdsfactory]"     # or: uv sync --extra gdsfactory
 ```
 
+It needs gdsfactory `>=9.51,<10` and JAX `>=0.9.2,<0.12`; SAX is optional
+(see [SAX](sax.md)).
+
 gdsfactory needs an active PDK before it draws anything:
 
 ```python
@@ -123,6 +126,27 @@ coordinates about its centre). Each layer has its own material, thickness,
 shapes and crystal orientation, and cells may have different numbers of
 layers.
 
+Use `cell_from_pdk` to get those layers from a centred cell layout. Each mask
+is read separately; thicknesses, materials and vertical positions come from
+the PDK. Gaps become ambient spacers, lower `mesh_order` wins overlaps and
+shapes crossing the cell's edge wrap around. The lowest interval must be
+uniform (the substrate); each remaining interval can contain at most two
+materials.
+
+```python
+mask = gf.Component()
+mask.add_polygon([(-0.12, -0.05), (0.12, -0.05), (0.12, 0.05), (-0.12, 0.05)], layer=(2, 0))
+pdk_cell = hog.cell_from_pdk(mask, tfln, ((0.4, 0.0), (0.0, 0.4)), materials=materials)
+```
+
+For tapered levels, pass `sidewall_slices=N` to `cell_from_pdk`. It uses
+midpoint slices with PDK `sidewall_angle`, `width_to_z` and scalar `bias`
+(µm per edge); a positive angle narrows towards increasing z. Offsets wrap
+across the periodic boundary and snap to dbu. Refine slice count and layout
+grid separately. Arbitrary `z_to_bias` profiles and directional biases are
+refused when slicing. The default, and the other PDK extraction paths, use
+vertical walls and warn when patterned levels have omitted process geometry.
+
 ```python
 from hyperbolic_optics import metasurfaces as ms
 
@@ -150,16 +174,24 @@ model = hog.cell_sax_model(cells_back[0], lattice, max_order=(3, 3))   # SAX: wl
 model(wl=0.633)["top@p", "bottom@s"]
 ```
 
-- **Layout.** Each distinct cell is drawn once: level `k` goes on
-  `layers[k]`, and an unpatterned level is drawn as the cell's footprint.
-  Its levels (material names, thicknesses, orientations) are recorded in the
-  cell's `info`. Every site is a reference, turned if asked; a turned
-  reference turns the whole cell, crystal included. The same design gives the
-  same cached component.
-- **Reading back.** `read_metasurface` gives each site's cell, with geometry
-  from the polygons and materials from `info` (named materials are resolved
-  through `materials=`). What is re-simulated is what was drawn.
-  Flattening the layout discards `info`.
+- **Layout.** Each distinct cell is drawn once, level `k` on `layers[k]`
+  (an unpatterned level as the cell's footprint), with its materials,
+  thicknesses and orientations in the cell's `info`. Every site is a
+  reference, turned if asked; the lattice never turns. A turned reference
+  turns the crystals too, unless `rotate_materials=False` (a mask etched into
+  a wafer with fixed axes; `hog.turned` takes the same flag). Shapes that,
+  turned, overlap each other or their periodic images are refused, and
+  vertices off the layout grid warn: they are snapped when drawn.
+- **Reading back.** `read_metasurface` gives each site's cell: geometry from
+  the polygons, so what is re-simulated is what was drawn, and materials from
+  `info` (callables by name, through `materials=`). Pass the top component;
+  nested layouts, arrays, mirrors and magnification are refused, and
+  flattening discards `info`.
+- **From a PDK.** `metasurface_component` also places cells drawn as
+  `gf.Component`s on PDK layers. `read_metasurface(layout, materials,
+  layer_stack=…)` then reads every site through the PDK with `cell_from_pdk`:
+  the cell turned as placed, periodised in the lattice, its crystals on the
+  wafer's axes.
 - **Solving.** `hog.cell_layers(cell, λ)` gives a cell's
   [rcwa2d](crossed-gratings.md) layers. `ms.cell_library(f, parameters, …)`
   solves a batch of cells in one compiled call, differentiable in the
@@ -170,15 +202,26 @@ model(wl=0.633)["top@p", "bottom@s"]
   `ms.focus` (angular spectrum, in JAX) cover a lens. `ms.focus` is also a
   differentiable objective in per-site parameters. All of this is local
   periodicity: each cell as in an infinite array of itself, not a full-wave
-  simulation of the finite surface.
+  simulation of the finite surface. As a check, six fins etched into x-cut
+  LiNbO₃ and turned by kπ/6 on the fixed wafer (their conversion ranges from
+  0.31 to 0.63 with angle) put 0.40 of the power into the deflected order
+  when solved as one supercell; their library entries predict 0.37.
 
-`examples/metalens_gdsfactory.py` designs a geometric-phase lens of TiO₂
-nanofins. The ideal rotator (`e^{2iθ}` at 0.95 conversion) assumes the lattice
-turns with the fin. Solving the fin turned in its fixed lattice gives 0.68
-between about 25° and 65°, with phase errors up to 0.3 rad. Choosing each site's
-angle from that real library gives a diffraction-limited focus at 0.61
-focusing efficiency, against 0.77 for ideal rotators. The GDS reads back and
-re-simulates to 1e-13.
+`examples/metalens_gdsfactory.py` compares fins turned in a fixed lattice
+with ideal geometric-phase rotators: 300 × 110 × 600 nm fins of index 2.4 on
+glass (1.46), 325 nm pitch, 660 nm wavelength.
+
+At 1089 harmonics (`--max-order 16`; the default is 289), the fin at 0°
+converts 0.86 of the incident power. Turned in its lattice it falls to about
+0.675 around 45°, with phase errors up to 0.18 rad. Choosing each site's
+angle from that library focuses 0.59 of the power within 1.5 FWHM, against
+0.70 for ideal rotators, at a diffraction-limited 1.06 µm FWHM. The 45° value
+holds within 0.006 from 81 harmonics up. The 0° fin, 25 nm from its
+neighbours' ends, converges slowly: it reads 0.95 at 81 harmonics. An
+independent RCWA (grcwa, Laurent's rule on a raster, 1597 harmonics) gives
+0.855 at 0° and 0.658 at 45°, still rising as Laurent's rule does here.
+These are local-periodicity predictions with scalar focusing, not a
+full-wave simulation of the finite lens.
 
 ## SAX models and S-parameters
 
@@ -191,22 +234,43 @@ re-simulates to 1e-13.
   (`rcwa2d.crossed_grating_smatrix`) on the same ports. Only the zeroth
   order is a port, so it describes a subwavelength array. Connected in SAX
   to a stack below it across a spacer thick enough for the evanescent
-  orders to decay, it equals the whole structure solved at once (tested to
-  1e-9).
+  orders to decay, it approximates the whole structure solved at once.
+  Required spacer thickness depends on the slowest omitted order; near its
+  diffraction threshold a nominally subwavelength pitch is insufficient.
 - **`hog.write_sparameters_stack(component, layer_stack, point, wavelengths)`**:
   the PDK stack's S-matrix at a point, cached gplugins-style as `.npz` under
   `gf.config.PATH.sparameters` and keyed `"port@mode,port@mode"`.
   `hog.model_from_npz` reads it into SAX with the polarization modes kept
   (gplugins' reader drops them).
+- **`hog.write_sparameters_cell(cell, lattice, wavelengths, …)`** caches
+  a cell's model in the same format. Both writers include evaluated material
+  tensors and thicknesses in the key, so PDK and dispersion changes invalidate it.
 
 ```python
 strip = gf.components.straight(length=10, width=0.5)
 sp = hog.write_sparameters_stack(strip, gf.get_active_pdk().layer_stack, (5.0, 0.0),
-                                 np.linspace(1.5, 1.6, 3), angle_deg=20.0)
+                                 np.linspace(1.5, 1.6, 3), angle_deg=20.0, dirpath="sparameters")
 hog.model_from_npz(sp)(wl=1.55)[("top@p", "bottom@s")]
+
+cell_sp = hog.write_sparameters_cell(cells_back[0], lattice, [0.63, 0.64],
+                                    max_order=(1, 1), dirpath="sparameters")
+hog.model_from_npz(cell_sp)(wl=0.633)[("top@p", "bottom@s")]
 ```
 
+A PDK cell's cached S-parameters are
+`hog.write_sparameters_cell(hog.cell_from_pdk(component, layer_stack, lattice, materials), lattice, wavelengths)`;
+a gplugins plugin can wrap that call.
+
 ## Scope
+
+| Capability | Status |
+|---|---|
+| PDK layers, crystal cuts, anisotropic periodic-cell gradients | Supported |
+| Linear sidewalls and scalar bias | Sliced approximation; refinement required |
+| Cached four-port plane-wave models | Supported; closed model only below diffraction thresholds |
+| Finite metasurface | Local periodicity and scalar propagation |
+| Guided waveguide ports or a waveguide/free-space bridge | Not provided |
+| Independent full-wave comparison | One rotated biaxial periodic cell; see `benchmarks/validation/README.md` in the repository |
 
 - Results are for infinitely periodic structures under plane waves. A
   finite device's edges are outside them.

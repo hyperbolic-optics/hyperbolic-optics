@@ -100,7 +100,10 @@ def choose_cells(target_phase, library_t, polarization=(1.0, 0.0), analyzer=None
 
 
 def geometric_phase_jones(jones, angle_rad):
-    """The Jones matrix of a cell turned by ``angle_rad`` about the normal: ``R·J·Rᵀ``."""
+    """Ideal normal-incidence rotation ``R·J·Rᵀ``, with the lattice turning too.
+
+    Turning only a shape in a fixed lattice generally requires a new cell solve.
+    """
     c, s = jnp.cos(angle_rad), jnp.sin(angle_rad)
     rotation = jnp.moveaxis(jnp.array([[c, -s], [s, c]]), (0, 1), (-2, -1))
     return rotation @ jnp.asarray(jones) @ jnp.swapaxes(rotation, -1, -2)

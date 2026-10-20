@@ -11,10 +11,10 @@ neighbours see it differently at every angle.
 1. **Fin.** A scan of fin length and width (660 nm, 600 nm tall, 325 nm
    pitch, 2D RCWA), for the largest conversion at the worst angle (0° or 45°
    in the lattice).
-2. **Angle library.** That fin turned through 48 angles in its lattice, each
-   one RCWA solve: its real converted amplitude against angle, against the
-   ideal ``e^{2iθ}``. Between about 25° and 65° it converts 0.68, not 0.95
-   (converged to ±0.01 from 81 to 289 harmonics).
+2. **Angle library.** That fin turned through 48 angles in its lattice,
+   reconstructed from 13 RCWA solves by symmetry: its converted amplitude against the
+   ideal ``e^{2iθ}``. Converged (``--max-order 16``), it converts 0.86 at 0°
+   but about 0.675 around 45°; the 0° fin converges slowly.
 3. **Lens.** The hyperbolic phase for f = 30 µm over a 20 µm aperture (NA
    0.32). Each site takes the angle whose real converted field best matches
    the target, and the lens is propagated to the focus by the angular
@@ -26,6 +26,7 @@ Needs the gdsfactory extra:  uv sync --extra gdsfactory
 Run:  python examples/metalens_gdsfactory.py   (writes to examples/output/)
 """
 
+import argparse
 import time
 from pathlib import Path
 
@@ -50,6 +51,7 @@ N_TIO2, N_GLASS = 2.4, 1.46
 RADIUS, FOCAL = 10.0, 30.0
 LATTICE = rcwa2d.Lattice.square(PITCH)
 LEFT, RIGHT = np.array([1, 1j]) / np.sqrt(2), np.array([1, -1j]) / np.sqrt(2)
+ANGLES = np.linspace(0.0, np.pi, 48, endpoint=False)
 
 
 def fin(dims) -> hog.VerticalStack:
@@ -59,16 +61,31 @@ def fin(dims) -> hog.VerticalStack:
     return hog.VerticalStack((layer,), incident=N_GLASS**2, exit=1.0)
 
 
-def library(cell_of, parameters, max_order=(4, 4)):
+def library(cell_of, parameters, max_order=(8, 8)):
     """Jones matrices ``[P, 2, 2]`` of ``cell_of(p)`` for each ``p``."""
     return np.asarray(ms.cell_library(lambda p: hog.cell_layers(cell_of(p), WAVELENGTH),
                                       parameters, LATTICE, WAVELENGTH, N_GLASS**2, 1.0,
-                                      max_order))  # fmt: skip
+                                      max_order, batch_size=1))  # fmt: skip
 
 
 def converted(t):
     """The field converted to the opposite handedness, ``a†·t·p``."""
     return np.einsum("i,...ij,j->...", np.conj(RIGHT), t, LEFT)
+
+
+def angle_library(dims, max_order):
+    """48 angles from 13 solves, using this rectangle/square lattice's symmetries."""
+    reduced = library(lambda a: hog.turned(fin(dims), a), ANGLES[:13], (max_order, max_order))
+    quarter_turn, mirror = np.array([[0.0, -1.0], [1.0, 0.0]]), np.diag([1.0, -1.0])
+    full = []
+    for k in range(len(ANGLES)):
+        index, transform = k % 24, np.eye(2)
+        if index > 12:
+            index, transform = 24 - index, quarter_turn @ mirror
+        if k >= 24:
+            transform = quarter_turn @ transform
+        full.append(transform @ reduced[index] @ transform.T)
+    return np.stack(full)
 
 
 def spot(sites, values):
@@ -96,7 +113,7 @@ def _style(ax):
     ax.tick_params(colors="#6b6a64", labelcolor="#1f1f1e", labelsize=8)
 
 
-def main():
+def main(max_order=8):
     OUT.mkdir(exist_ok=True)
     gf.gpdk.PDK.activate()
 
@@ -115,8 +132,13 @@ def main():
           f"{at[0][best]:.3f} at 0° and {at[45][best]:.3f} at 45°")  # fmt: skip
 
     # 2. the angle library: the real turned fin, and the ideal rotation
-    angles = np.linspace(0.0, np.pi, 48, endpoint=False)
-    real = library(lambda a: hog.turned(fin(fin_dims), a), angles)  # [48, 2, 2]
+    angles = ANGLES
+    order = (max_order, max_order)
+    real = angle_library(fin_dims, max_order)  # [48, 2, 2]
+    print(
+        f"Angle library: {(2 * max_order + 1) ** 2} harmonics; "
+        "repeat with higher --max-order to check convergence."
+    )
     ideal = np.asarray(ms.geometric_phase_jones(real[0], angles))
     efficiencies = np.abs(converted(real)) ** 2 / N_GLASS
     print(
@@ -133,8 +155,9 @@ def main():
     x_ideal, cut_ideal, _, efficiency_ideal = spot(sites, ideal_field)
     airy = 0.51 * WAVELENGTH / np.sin(np.arctan(RADIUS / FOCAL))
     print(f"\nLens: {len(sites)} fins, f = {FOCAL:.0f} µm; FWHM {fwhm * 1e3:.0f} nm "
-          f"(diffraction limit {airy * 1e3:.0f} nm); focusing efficiency {efficiency:.2f}, "
-          f"against {efficiency_ideal:.2f} if every fin were the ideal rotator")  # fmt: skip
+          f"(diffraction limit {airy * 1e3:.0f} nm); scalar local-periodicity efficiency "
+          f"{efficiency:.4f}, "
+          f"against {efficiency_ideal:.4f} if every fin were the ideal rotator")  # fmt: skip
 
     # 4. GDS: one fin cell, a turned reference per site; read back and re-simulated
     component = hog.metasurface_component(sites, [fin(fin_dims)] * len(sites), [(1, 0)],
@@ -143,7 +166,9 @@ def main():
     component.write_gds(gds)
     read_sites, read_cells, _ = hog.read_metasurface(gf.import_gds(gds))
     probe = np.arange(0, len(read_cells), len(read_cells) // 5)
-    resolved = np.stack([library(lambda _, c=read_cells[k]: c, np.zeros(1))[0] for k in probe])
+    resolved = np.stack(
+        [library(lambda _, c=read_cells[k]: c, np.zeros(1), order)[0] for k in probe]
+    )
     nearest = [int(np.argmin(np.hypot(*(sites - read_sites[k]).T))) for k in probe]
     mismatch = np.abs(resolved - real[indices[nearest]]).max()
     print(f"\nWritten {gds.name}: {len(component.insts)} references to "
@@ -191,4 +216,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--max-order", type=int, default=8, help="Fourier order on each lattice axis"
+    )
+    main(parser.parse_args().max_order)
