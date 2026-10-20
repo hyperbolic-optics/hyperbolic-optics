@@ -54,29 +54,8 @@ Fourier truncation error. These are refinement measurements for one positive
 biaxial dielectric cell, not rigorous error bounds or independent validation
 of other media, magnetic tensors or a finite lens.
 
-## Lossy hyperbolic cell
-
-The `--case hbn` extension uses natural hBN at 1560 cm⁻¹ (6.41026 µm),
-with the same 17°, 31°, 23° crystal rotation. The Lorentz model is evaluated
-separately from the package, using explicit ordinary parameters
-`(ε∞, TO, LO, γ) = (4.9, 1360, 1614, 7)` and extraordinary parameters
-`(2.95, 760, 825, 2)` (frequencies in cm⁻¹). This is the package's chosen
-[Caldwell et al. parameterization](https://arxiv.org/abs/1404.0494), not an
-independent measurement of material dispersion. Its principal permittivities
-are approximately −1.43587 + 0.11847i (twice) and 2.78625 + 0.000275i.
-
-The rectangular pillar is 1.24069 × 0.82713 × 0.413565 µm on a 2.48139 µm
-square lattice, in air; all nonzero diffraction orders are evanescent. The
-script runs it at normal or oblique incidence (`--angle`, `--azimuth`), but
-no hBN results are stored or tested yet.
-
-For oblique incidence the FEM solves the periodic envelope of
-`E = exp(i q·r) u`, replacing curl by `curl + i q×`. Its boundary admittance
-uses the separate p/s values. Empty-space and isotropic-film controls check
-the resulting phase, normalization and reflected-p sign. Absorption is
-computed twice: from `I − r†r − t†t` and from the volume integral of
-`E† Im(ε) E`, normalized by incident flux. Agreement of these two expressions
-checks energy accounting, not spatial convergence.
+The script also has an untested `--case hbn` (lossy hyperbolic) option with
+oblique incidence (`--angle`, `--azimuth`); no results for it are stored.
 
 The FEM `--meshes`, `--crystal-meshes` and spacer sizes are expressed in
 coordinate units of `wavelength / 1.55`; each record includes this scale in µm.

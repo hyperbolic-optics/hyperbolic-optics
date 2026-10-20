@@ -26,6 +26,18 @@ from hyperbolic_optics.bcm import _interface, _layer, _longitudinal, _star
 __all__ = ["GuidedMode", "slab_mode_fields", "slab_modes"]
 
 
+_DOUBLINGS = bcm.DEFAULT_DOUBLINGS
+_QUADRATURE = 64  # contour points per rectangle
+_PROBES = 8  # random probe vectors (at most two are independent for this 2×2 problem)
+_TOLERANCE = 1e-12  # |1 − μ| at which a root is accepted
+
+
+def _split(eps) -> tuple[int, float]:
+    """The internal plane: the middle of the highest-index layer."""
+    peak = [float(np.max(np.real(np.linalg.eigvals(np.asarray(e))))) for e in eps]
+    return int(np.argmax(peak)), 0.5
+
+
 class GuidedMode(NamedTuple):
     """A guided, possibly lossy mode of a planar stack, propagating along x.
 
@@ -60,10 +72,7 @@ def _planar_parts(eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu, kx)
         # switch based on Re(ε−kx²) introduces a discontinuity off the real axis.
         return bcm._isotropic_modes(eps_half, kx, 1j * jnp.sqrt(kx**2 - eps_half + 0j))
 
-    deltas = [
-        bcm._solve(w_ref, bcm.system_matrix(eps[..., i, :, :], mu[..., i, :, :], kx) @ w_ref)
-        for i in range(eps.shape[-3])
-    ]
+    deltas = bcm._deltas(eps, mu, kx, w_ref)
     slices = [k0 * jnp.asarray(thickness_um)[..., i] for i in range(eps.shape[-3])]
     return w_ref, half_space(eps_top), half_space(eps_bottom), deltas, slices, mu, k0
 
@@ -114,12 +123,6 @@ def slab_modes(
     index_range: tuple[float, float] | None = None,
     max_loss: float | None = None,
     mu=None,
-    split: tuple[int, float] | None = None,
-    quadrature: int = 64,
-    probes: int = 8,
-    tolerance: float = 1e-12,
-    doublings: int = 20,
-    seed: int = 0,
 ) -> list[GuidedMode]:
     """Guided modes of a planar stack of anisotropic layers, propagating along x.
 
@@ -141,15 +144,6 @@ def slab_modes(
             mode stops being guided.
         max_loss: Largest ``Im n_eff`` searched; by default 5 % of the range.
         mu: Layer permeabilities; identity if omitted.
-        split: ``(layer, fraction)`` of the internal plane; by default the
-            middle of the highest-index layer.
-        quadrature, probes: Contour quadrature points and random probe vectors
-            (at most two independent vectors for this 2×2 problem). Higher
-            moments and adaptive subdivision handle contours with more roots.
-        tolerance: ``|1 − μ|`` at which a root is accepted.
-        doublings: Doublings per layer, as in :func:`hyperbolic_optics.bcm.solve_stack`.
-        seed: Seed of the probe vectors.
-
     Returns:
         :class:`GuidedMode` s, highest effective index first (fundamental first).
     """
@@ -168,19 +162,15 @@ def slab_modes(
         if low <= max(np.sqrt(eps_top), np.sqrt(eps_bottom)):
             raise ValueError("A guided index_range must lie above both cladding indices.")
     depth = 0.05 * (high - low) if max_loss is None else float(max_loss)
-    if not high > low or not depth > 0 or quadrature < 16 or probes < 1:
-        raise ValueError(
-            "Need an increasing index_range, positive max_loss/probes and quadrature ≥16."
-        )
-    if split is None:
-        peak = [float(np.max(np.real(np.linalg.eigvals(np.asarray(e))))) for e in eps]
-        split = (int(np.argmax(peak)), 0.5)
+    if not high > low or not depth > 0:
+        raise ValueError("Need an increasing index_range and a positive max_loss.")
+    split = _split(eps)
     round_trip = _planar_round_trip(
-        eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu, split, doublings
+        eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu, split, _DOUBLINGS
     )
     branch = float(np.sqrt(max(np.real(eps_top), np.real(eps_bottom))))
     roots = _contour_roots(
-        round_trip, (low, high), depth, quadrature, probes, tolerance, seed, branch
+        round_trip, (low, high), depth, _QUADRATURE, _PROBES, _TOLERANCE, 0, branch
     )
     k0 = 2 * np.pi / float(wavelength_um)
     return [
@@ -205,8 +195,6 @@ def slab_mode_fields(
     samples_per_layer: int = 50,
     cladding_um: tuple[float, float] = (1.0, 1.0),
     cladding_samples: int = 50,
-    split: tuple[int, float] | None = None,
-    doublings: int = 20,
 ):
     """The field profile of a guided mode, normalised to unit power along x.
 
@@ -234,7 +222,7 @@ def slab_mode_fields(
     )
     count = len(deltas)
     fractions = np.linspace(0.0, 1.0, samples_per_layer)
-    step = [_layer(deltas[i], k0d[i] / (samples_per_layer - 1), doublings) for i in range(count)]
+    step = [_layer(deltas[i], k0d[i] / (samples_per_layer - 1), _DOUBLINGS) for i in range(count)]
 
     # planes: every sample of every layer, top down; slices between consecutive ones
     planes = [(i, j) for i in range(count) for j in range(samples_per_layer)]
@@ -251,9 +239,7 @@ def slab_mode_fields(
     for k in range(len(planes) - 2, -1, -1):
         below.insert(0, _star(between(k, k + 1), below[0]))
 
-    if split is None:
-        peak = [float(np.max(np.real(np.linalg.eigvals(np.asarray(e))))) for e in eps]
-        split = (int(np.argmax(peak)), 0.5)
+    split = _split(eps)
     s = split[0] * samples_per_layer + int(round(split[1] * (samples_per_layer - 1)))
     mu_values, vectors = np.linalg.eig(np.asarray(above[s][1] @ below[s][2]))
     down = {s: jnp.asarray(vectors[:, np.argmin(np.abs(1 - mu_values))])}
@@ -402,7 +388,8 @@ def _beyn(round_trip, centre, semi_real, semi_imag, quadrature, probes, toleranc
     points = (corners[:, None] + edges[:, None] * (nodes + 1) / 2).ravel()
     tangents = (edges[:, None] * weights / 2).ravel()
 
-    size = np.asarray(round_trip(points[0])).shape[-1]
+    matrices = np.asarray(round_trip(jnp.asarray(points)))  # every node in one call
+    size = matrices.shape[-1]
     probes = min(probes, size)
     rng = np.random.default_rng(seed)
     probe = rng.standard_normal((size, probes)) + 1j * rng.standard_normal((size, probes))
@@ -410,8 +397,8 @@ def _beyn(round_trip, centre, semi_real, semi_imag, quadrature, probes, toleranc
     moments = np.zeros((2 * blocks, size, probes), dtype=complex)
     radius = max(semi_real, semi_imag)
     magnitude = 0.0  # Σ|integrand·dz|: the scale of rounding in the moments
-    for z, dz in zip(points, tangents, strict=True):
-        t = np.eye(size) - np.asarray(round_trip(z))
+    for z, dz, matrix in zip(points, tangents, matrices, strict=True):
+        t = np.eye(size) - matrix
         solved = np.linalg.solve(t, probe) * dz / (2j * np.pi)
         magnitude += np.linalg.norm(solved)
         local = (z - centre) / radius

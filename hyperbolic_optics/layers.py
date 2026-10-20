@@ -159,20 +159,16 @@ class AmbientExitMedium(AmbientMedium):
     Moved from material_params.py to better organize layer-related functionality.
     """
 
-    def __init__(
-        self, incident_angle: float, permittivity_incident: float, permittivity_exit: float
-    ) -> None:
+    def __init__(self, kx: float | np.ndarray, permittivity_exit: float) -> None:
         """Initialize the ambient exit medium.
 
         Args:
-            incident_angle: Incident angle at the first interface in radians
-            permittivity_incident: Permittivity of the incident medium
+            kx: In-plane wavevector over k₀ (``n_incident·sin θ``, conserved).
             permittivity_exit: Permittivity of the exit medium
         """
         super().__init__()
-        self.theta_incident = incident_angle
+        self.kx = np.asarray(kx, dtype=np.float64)
         self.N_exit = np.sqrt(permittivity_exit)
-        self.N_incident = np.sqrt(permittivity_incident)
 
     def construct_tensor(self) -> np.ndarray:
         """Construct the transfer matrix for the ambient exit medium.
@@ -188,8 +184,7 @@ class AmbientExitMedium(AmbientMedium):
             forward-propagating modes are included.
         """
 
-        sin_theta_incident = np.sin(self.theta_incident)
-        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
+        expr_inside_sqrt = np.asarray(1.0 - (self.kx / self.N_exit) ** 2.0)
         expr_inside_sqrt_complex = expr_inside_sqrt.astype(np.complex128)
         cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
         N_exit = self.N_exit.astype(np.complex128)
@@ -244,8 +239,7 @@ class AmbientExitMedium(AmbientMedium):
         Returns:
             Transfer matrix with shape [4, 4] for scalar case
         """
-        sin_theta_incident = np.sin(self.theta_incident)
-        expr_inside_sqrt = 1.0 - ((self.N_incident / self.N_exit) * sin_theta_incident) ** 2.0
+        expr_inside_sqrt = np.asarray(1.0 - (self.kx / self.N_exit) ** 2.0)
         expr_inside_sqrt_complex = np.complex128(expr_inside_sqrt)
         cos_theta_f = np.sqrt(expr_inside_sqrt_complex)
         N_exit = np.complex128(self.N_exit)
@@ -636,20 +630,6 @@ class IsotropicSemiInfiniteLayer(Layer):
             ValueError: If exit permittivity is not provided
         """
         super().__init__(data, scenario, kx, k0)
-        # eps_incident equals the prism permittivity (kx = sqrt(eps)*sin(theta)),
-        # constant across the angle sweep; recover it as a scalar from canonical
-        # kx [A, 1, 1] and the incident angle. Use the angle furthest from normal:
-        # at theta = 0 the ratio is 0/0, which made a sweep starting at normal
-        # incidence all-NaN. If every angle is normal, eps_incident only ever
-        # multiplies sin(theta) = 0, so any finite value is exact.
-        kx_flat = np.atleast_1d(np.asarray(kx, dtype=np.float64)).reshape(-1)
-        inc_flat = np.atleast_1d(np.asarray(self.incident_angle, dtype=np.float64)).reshape(-1)
-        sin_flat = np.sin(inc_flat)
-        best = int(np.argmax(np.abs(sin_flat)))
-        if sin_flat[best] == 0.0:
-            self.eps_incident = 1.0
-        else:
-            self.eps_incident = float((kx_flat[best] / sin_flat[best]) ** 2)
         # Check before the cast, not after: np.float64(None) is nan on numpy 2,
         # not an error, so the guard below never fired and a missing
         # permittivity silently produced an all-NaN spectrum.
@@ -667,14 +647,15 @@ class IsotropicSemiInfiniteLayer(Layer):
         only); the size-1 azimuth/frequency axes broadcast against the stack.
         This works for every scenario, including FullSweep, via broadcasting.
         """
-        exit_medium = AmbientExitMedium(self.incident_angle, self.eps_incident, self.eps_exit)
+        kx = np.asarray(self.kx, dtype=np.float64).reshape(-1)  # the angle axis [A]
         if np.ndim(self.incident_angle) == 0:
+            exit_medium = AmbientExitMedium(kx[0], self.eps_exit)
             # scalar incident angle (Simple) -> [4, 4]; no swept batch axes.
             matrix = exit_medium.construct_tensor_singular()
             self.matrix = canonicalize(matrix, batch_axes=(), matrix_ndim=2)
         else:
             # array incident angle -> [A, 4, 4]; lift the angle axis to A.
-            matrix = exit_medium.construct_tensor()
+            matrix = AmbientExitMedium(kx, self.eps_exit).construct_tensor()
             self.matrix = canonicalize(matrix, batch_axes=(A,), matrix_ndim=2)
 
 

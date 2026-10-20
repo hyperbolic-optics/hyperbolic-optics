@@ -29,14 +29,9 @@ This package provides a comprehensive suite of tools to study the reflective pro
 ## Features
 
 - **4×4 transfer-matrix engine** for reflection coefficients of arbitrary anisotropic multilayers, plus an opt-in **numerically-stable scattering-matrix backend** for thick / lossy / evanescent stacks
-- **Differentiable solver in JAX** (`hyperbolic_optics.bcm`, optional `[jax]` extra): exact gradients with respect to thickness, tensor components, orientation, angle and wavelength, from an eigendecomposition-free cascade that matches the NumPy engine to ~1e-14
-- **Differentiable RCWA for 1D gratings** (`hyperbolic_optics.rcwa`): full-tensor anisotropic ridges and profiles, conical incidence, and exact gradients with respect to geometry (fill factor, position, thickness, period) and materials
-- **Differentiable RCWA for 2D-periodic metasurfaces** (`hyperbolic_optics.rcwa2d`): pillars, holes and arbitrary polygons of full-tensor media, with a normal-vector factorisation generalised to anisotropy, energy conserved to rounding, and exact gradients with respect to every polygon vertex
-- **Scattering matrices and SAX** (`bcm.stack_smatrix`, `hyperbolic_optics.integrations.sax`): the full four-port, power-normalized S-matrix of any anisotropic stack, and SAX models of it for differentiable circuits of stacks, evanescent (tunnelling) connections included
-- **Guided modes and beam shifts** (`modes`, `beams`): full-vector guided modes of anisotropic stacks, the Pockels effect (`dispersion.pockels_tensor`), and Goos–Hänchen and Imbert–Fedorov shifts
-- **gdsfactory integration** (`hyperbolic_optics.integrations.gdsfactory`, optional `[gdsfactory]` extra), gplugins-style: read a PDK `LayerStack` at any point, under a grating or under a 2D pattern, with crystal cuts stated (`x_cut`, `z_cut`); draw metasurfaces whose cells differ site by site in shape, material, crystal orientation, twist and number of layers, read them back, and turn cells and stacks into SAX models and S-parameters
-- **Differentiable dispersion** (`hyperbolic_optics.dispersion`): the built-in phonon-polariton materials (hBN, α-MoO₃, calcite, …) in JAX, so wavelength gradients include the Reststrahlen dispersion
-- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux, also differentiable in JAX (`bcm.stack_fields`)
+- **Differentiable solvers in JAX** (optional `[jax]` extra): planar stacks on any substrate (`bcm`), 1D and 2D-periodic gratings and metasurfaces of full-tensor media (`rcwa`, `rcwa2d`), guided modes (`modes`) and the built-in materials' dispersion (`dispersion`), with exact gradients in geometry, tensors, orientation, angle and wavelength
+- **gdsfactory and SAX** (optional `[gdsfactory]` extra): PDK layer stacks with crystal cuts stated, metasurface layouts drawn and read back, and stacks and cells as SAX models
+- **Transmission, layer-resolved absorption, and field profiles** (E, H, Sₙ vs depth) computed numerically from the Poynting flux
 - **Polarization toolkit:** Mueller *and* Jones calculus, ellipsometry (Ψ/Δ), eigenpolarizations / exceptional points, co- vs cross-polarized power, and Poincaré-sphere trajectories
 - **Materials library:** Quartz, Calcite, Sapphire, Ga₂O₃ (monoclinic), α-MoO₃ (biaxial), AlN, SiC, hBN, GaN — plus arbitrary permittivity/permeability tensors
 - **Scenarios:** incident-angle, azimuthal, k-space dispersion (kₓ–k_y), full 3-D sweep, single-point — and a swept **layer-thickness** axis

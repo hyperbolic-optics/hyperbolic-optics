@@ -21,12 +21,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp  # noqa: E402
 
 from hyperbolic_optics import bcm  # noqa: E402
-
-
-def _uniaxial(eps_o, eps_e, tilt, azimuth):
-    axis = np.array([np.cos(tilt) * np.cos(azimuth), np.cos(tilt) * np.sin(azimuth), np.sin(tilt)])
-    return jnp.asarray((eps_o * np.eye(3) + (eps_e - eps_o) * np.outer(axis, axis)).astype(complex))
-
+from tests._helpers import uniaxial as _uniaxial  # noqa: E402
 
 EYE = jnp.eye(3, dtype=complex)
 LN = _uniaxial(5.46, 5.06, 0.7, 0.4)  # every off-diagonal component nonzero

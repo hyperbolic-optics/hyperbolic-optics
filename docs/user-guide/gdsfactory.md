@@ -1,12 +1,8 @@
 # gdsfactory Integration
 
-`hyperbolic_optics.integrations.gdsfactory` (`hog`) connects the solvers to
-[gdsfactory](https://gdsfactory.github.io/) layouts:
-- read a PDK `LayerStack` at a point, under a line grating or under a 2D
-  pattern, with crystals in the cut you state;
-- draw metasurfaces whose cells differ site by site (shape, material, crystal
-  orientation, twist, number of layers) and read them back;
-- turn any of it into SAX models and gplugins-style S-parameters.
+`hyperbolic_optics.integrations.gdsfactory` (`hog`) reads PDK layer stacks and
+[gdsfactory](https://gdsfactory.github.io/) layouts into the solvers, with
+crystal cuts stated, draws metasurfaces cell by cell, and exports SAX models.
 
 ```bash
 pip install "hyperbolic-optics[gdsfactory]"     # or: uv sync --extra gdsfactory
@@ -58,10 +54,9 @@ planar.mueller().shape      # (1, 3, 2, 4, 4): [wavelength, angle, azimuth, 4, 4
 - **The column at a point.** Levels on `WAFER` are everywhere; others where
   their layer has shapes, derived layers included. Where levels overlap, the
   lowest `mesh_order` wins. The lowest level is the exit half-space, and
-  `ambient` (air) the incident one. For 2D-periodic cells the exit may be a
-  crystal or absorbing wafer (sapphire, LiNbO₃, or a complex ε you give):
-  its two transmitted modes replace p and s (`VerticalStack.exit_medium`). Gaps and mesh-order ties between
-  materials are refused.
+  `ambient` (air) the incident one. Gaps and mesh-order ties between materials
+  are refused. For 2D-periodic cells the exit may be a crystal or absorbing
+  wafer, whose two transmitted modes replace p and s.
 - **Gratings and 2D patterns.** `grating_stack` and `crossed_grating_stack`
   compare the column inside the shapes with the column around them. Where
   they differ the layer is patterned, so etch depth and groove fill come from
@@ -116,23 +111,17 @@ response.R[0, 0, response.order(0, 0)]      # [out, in] of the zeroth order
   (fill, polygons, thicknesses, wavelength), so designs can be optimised and
   then drawn.
 
-`examples/moo3_metasurface_gdsfactory.py` optimises elliptical α-MoO₃ pillars
-and the crystal's in-plane angle for cross-polarized reflection (mean R_ps
-0.08 → 0.86 over 880–920 cm⁻¹). It then draws the design, reads it back
-through a `LayerStack` and re-simulates it.
+`examples/moo3_metasurface_gdsfactory.py` optimises α-MoO₃ pillars and the
+crystal's in-plane angle for cross-polarized reflection, then draws, reads back
+and re-simulates the design.
 
 ## Metasurfaces with different cells at every site
 
-A cell is a `VerticalStack` whose layers carry their own `polygons` (in cell
-coordinates about its centre). Each layer has its own material, thickness,
-shapes and crystal orientation, and cells may have different numbers of
-layers.
-
-Use `cell_from_pdk` to get those layers from a centred cell layout. Each mask
-is read separately; thicknesses, materials and vertical positions come from
-the PDK. Gaps become ambient spacers, lower `mesh_order` wins overlaps and
-shapes crossing the cell's edge wrap around. The lowest interval must be
-uniform (the substrate); each remaining interval can contain at most two
+A cell is a `VerticalStack` whose layers carry their own `polygons`, about
+the cell's centre; each layer has its own material, thickness, shapes and
+orientation. `cell_from_pdk` reads one from a centred layout through the PDK:
+gaps become ambient spacers, shapes crossing the cell's edge wrap around, the
+lowest interval must be uniform, and each other interval may hold at most two
 materials.
 
 ```python
@@ -141,13 +130,9 @@ mask.add_polygon([(-0.12, -0.05), (0.12, -0.05), (0.12, 0.05), (-0.12, 0.05)], l
 pdk_cell = hog.cell_from_pdk(mask, tfln, ((0.4, 0.0), (0.0, 0.4)), materials=materials)
 ```
 
-For tapered levels, pass `sidewall_slices=N` to `cell_from_pdk`. It uses
-midpoint slices with PDK `sidewall_angle`, `width_to_z` and scalar `bias`
-(µm per edge); a positive angle narrows towards increasing z. Offsets wrap
-across the periodic boundary and snap to dbu. Refine slice count and layout
-grid separately. Arbitrary `z_to_bias` profiles and directional biases are
-refused when slicing. The default, and the other PDK extraction paths, use
-vertical walls and warn when patterned levels have omitted process geometry.
+`sidewall_slices=N` models tapered levels by N slices, from the PDK's
+`sidewall_angle`, `width_to_z` and scalar `bias`; otherwise walls are vertical
+and a warning names the ignored process geometry.
 
 ```python
 from hyperbolic_optics import metasurfaces as ms
@@ -176,77 +161,38 @@ model = hog.cell_sax_model(cells_back[0], lattice, max_order=(3, 3))   # SAX: wl
 model(wl=0.633)["top@p", "bottom@s"]
 ```
 
-- **Layout.** Each distinct cell is drawn once, level `k` on `layers[k]`
-  (an unpatterned level as the cell's footprint), with its materials,
-  thicknesses and orientations in the cell's `info`. Every site is a
-  reference, turned if asked; the lattice never turns. A turned reference
-  turns the crystals too, unless `rotate_materials=False` (a mask etched into
-  a wafer with fixed axes; `hog.turned` takes the same flag). Shapes that,
-  turned, overlap each other or their periodic images are refused, and
-  vertices off the layout grid warn: they are snapped when drawn.
-- **Reading back.** `read_metasurface` gives each site's cell: geometry from
-  the polygons, so what is re-simulated is what was drawn, and materials from
-  `info` (callables by name, through `materials=`). Pass the top component;
-  nested layouts, arrays, mirrors and magnification are refused, and
-  flattening discards `info`.
-- **From a PDK.** `metasurface_component` also places cells drawn as
-  `gf.Component`s on PDK layers. `read_metasurface(layout, materials,
-  layer_stack=…)` then reads every site through the PDK with `cell_from_pdk`:
-  the cell turned as placed, periodised in the lattice, its crystals on the
-  wafer's axes.
-- **Solving.** `hog.cell_layers(cell, λ)` gives a cell's
-  [rcwa2d](crossed-gratings.md) layers. `ms.cell_library(f, parameters, …)`
-  solves a batch of cells in one compiled call, differentiable in the
-  parameters: a discrete library, or every site of a design. A layer of
-  zero thickness changes nothing, so padding lets cells with different
-  layer counts share a batch.
-- **Designing.** `ms.lens_phase`, `ms.choose_cells`, `ms.sample_grid` and
-  `ms.focus` (angular spectrum, in JAX) cover a lens. `ms.focus` is also a
-  differentiable objective in per-site parameters. All of this is local
-  periodicity: each cell as in an infinite array of itself, not a full-wave
-  simulation of the finite surface. As a check, six fins etched into x-cut
-  LiNbO₃ and turned by kπ/6 on the fixed wafer (their conversion ranges from
-  0.31 to 0.63 with angle) put 0.40 of the power into the deflected order
-  when solved as one supercell; their library entries predict 0.37.
+- **Layout.** Each distinct cell is drawn once, level `k` on `layers[k]`,
+  with its materials in the cell's `info`; every site is a reference, turned
+  if asked (the lattice never turns). Crystals turn with the reference unless
+  `rotate_materials=False` (a mask on a wafer with fixed axes; `hog.turned`
+  takes the same flag). Shapes that, turned, overlap each other or their
+  periodic images are refused; off-grid vertices warn.
+- **Reading back.** `read_metasurface` gives each site's cell, geometry from
+  the drawn polygons and materials from `info` (callables by name, through
+  `materials=`). Nested layouts, arrays, mirrors and magnification are refused.
+- **From a PDK.** Cells may instead be `gf.Component`s drawn on PDK layers;
+  `read_metasurface(layout, materials, layer_stack=…)` reads each site through
+  `cell_from_pdk`, turned as placed, crystals on the wafer's axes.
+- **Solving.** `hog.cell_layers(cell, λ)` gives a cell's rcwa2d layers;
+  `ms.cell_library` solves a batch in one compiled, differentiable call
+  (zero-thickness layers pad cells to a common layer count). `ms.lens_phase`,
+  `ms.choose_cells`, `ms.sample_grid` and `ms.focus` design a lens by local
+  periodicity: each cell as in an infinite array of itself. Six x-cut LiNbO₃
+  fins turned by kπ/6 on a fixed wafer, solved as one supercell, put 0.40 of
+  the power into the deflected order where their library entries predict 0.37.
 
-`examples/metalens_gdsfactory.py` compares fins turned in a fixed lattice
-with ideal geometric-phase rotators: 300 × 110 × 600 nm fins of index 2.4 on
-glass (1.46), 325 nm pitch, 660 nm wavelength.
-
-At 1089 harmonics (`--max-order 16`; the default is 289), the fin at 0°
-converts 0.86 of the incident power. Turned in its lattice it falls to about
-0.675 around 45°, with phase errors up to 0.18 rad. Choosing each site's
-angle from that library focuses 0.59 of the power within 1.5 FWHM, against
-0.70 for ideal rotators, at a diffraction-limited 1.06 µm FWHM. The 45° value
-holds within 0.006 from 81 harmonics up. The 0° fin, 25 nm from its
-neighbours' ends, converges slowly: it reads 0.95 at 81 harmonics. An
-independent RCWA (grcwa, Laurent's rule on a raster, 1597 harmonics) gives
-0.855 at 0° and 0.658 at 45°, still rising as Laurent's rule does here.
-These are local-periodicity predictions with scalar focusing, not a
-full-wave simulation of the finite lens.
+`examples/metalens_gdsfactory.py` turns 300 × 110 × 600 nm TiO₂ fins in a fixed
+325 nm lattice at 660 nm. Converged (`--max-order 16`), a fin converts 0.86 at
+0° but about 0.675 near 45°, and the lens designed from that library focuses
+0.59 of the power within 1.5 FWHM, against 0.70 for ideal rotators.
 
 ## SAX models and S-parameters
 
-- **`hog.stack_sax_model(stack)`**: an unpatterned stack (for example from
-  `vertical_stack`) as a SAX model over `top@p`, `top@s`, `bottom@p` and
-  `bottom@s`, with dispersion evaluated at SAX's `wl`. See
-  [Scattering Matrices and SAX](sax.md).
-- **`hog.cell_sax_model(cell, lattice)`**: a metasurface cell's
-  zeroth-order S-matrix
-  (`rcwa2d.crossed_grating_smatrix`) on the same ports. Only the zeroth
-  order is a port, so it describes a subwavelength array. Connected in SAX
-  to a stack below it across a spacer thick enough for the evanescent
-  orders to decay, it approximates the whole structure solved at once.
-  Required spacer thickness depends on the slowest omitted order; near its
-  diffraction threshold a nominally subwavelength pitch is insufficient.
-- **`hog.write_sparameters_stack(component, layer_stack, point, wavelengths)`**:
-  the PDK stack's S-matrix at a point, cached gplugins-style as `.npz` under
-  `gf.config.PATH.sparameters` and keyed `"port@mode,port@mode"`.
-  `hog.model_from_npz` reads it into SAX with the polarization modes kept
-  (gplugins' reader drops them).
-- **`hog.write_sparameters_cell(cell, lattice, wavelengths, …)`** caches
-  a cell's model in the same format. Both writers include evaluated material
-  tensors and thicknesses in the key, so PDK and dispersion changes invalidate it.
+- `hog.stack_sax_model(stack)` and `hog.cell_sax_model(cell, lattice)` give
+  SAX models of a stack and of a cell's zeroth order (see [SAX](sax.md)).
+- `hog.write_sparameters_stack` and `hog.write_sparameters_cell` cache them
+  gplugins-style as `.npz`, keyed on the evaluated materials and thicknesses;
+  `hog.model_from_npz` reads one back with the polarization modes kept.
 
 ```python
 strip = gf.components.straight(length=10, width=0.5)
@@ -259,9 +205,8 @@ cell_sp = hog.write_sparameters_cell(cells_back[0], lattice, [0.63, 0.64],
 hog.model_from_npz(cell_sp)(wl=0.633)[("top@p", "bottom@s")]
 ```
 
-A PDK cell's cached S-parameters are
-`hog.write_sparameters_cell(hog.cell_from_pdk(component, layer_stack, lattice, materials), lattice, wavelengths)`;
-a gplugins plugin can wrap that call.
+For a PDK cell, pass `hog.cell_from_pdk(component, layer_stack, lattice, materials)`
+to `write_sparameters_cell`.
 
 ## Scope
 
@@ -274,12 +219,7 @@ a gplugins plugin can wrap that call.
 | Guided waveguide ports or a waveguide/free-space bridge | Not provided |
 | Independent full-wave comparison | One rotated biaxial periodic cell; see `benchmarks/validation/README.md` in the repository |
 
-- Results are for infinitely periodic structures under plane waves. A
-  finite device's edges are outside them.
 - A line grating or `periodic_array` has one etch shared by every patterned
-  layer. Metasurface cells lift this: each layer has its own polygons.
+  layer; metasurface cells give each layer its own polygons.
 - Gradients with respect to edge positions can ripple on hyperbolic ridges;
   see [Gratings](gratings.md#gradients-with-respect-to-geometry-on-hyperbolic-ridges).
-- `benchmarks/calcite_negative_refraction_gdsfactory.py` is a calcite grating
-  kept for a cross-check against the full-wave code
-  [FDTDX](https://github.com/ymahlau/fdtdx).

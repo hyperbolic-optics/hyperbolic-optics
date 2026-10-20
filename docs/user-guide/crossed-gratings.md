@@ -43,26 +43,23 @@ result.orders        # [121, 2]: (m, n) of each order
 result.T.shape       # (121, 2, 2): [order, out, in], 0 = p and 1 = s
 ```
 
-- **Shapes.** `Shape(vertices, eps, mu=None)` takes any simple polygon, in µm
-  and in either winding. `rectangle` and `ellipse` build the common ones.
-  `ellipse` scales the polygon so its area equals the ellipse's. Shapes may
-  cross the cell edge; they are periodised. They must not overlap.
+- **Shapes.** `Shape(vertices, eps, mu=None)` takes any simple polygon in µm,
+  either winding (`rectangle` and `ellipse` build common ones). Shapes may
+  cross the cell edge and are periodised; they must not overlap each other or
+  their images.
 - **Orders.** Order `(m, n)` has in-plane wavevector
-  `(kx₀ + m·λ/Λx, ky₀ + n·λ/Λy)` and is resolved into its own p and s, as in
-  the 1D solver. `max_order=(Mx, My)` keeps `(2Mx + 1)(2My + 1)` harmonics.
-  Cost grows as the cube of that, so a few hundred harmonics is a practical
-  ceiling on a CPU.
-- **Batching.** Tensors, thicknesses and vertices can carry leading batch
-  dimensions, and the whole solve can be `jax.jit`-compiled (with
-  `max_order` and `factorization` static).
-- **Four-port S-matrix.** `crossed_grating_smatrix` takes the same arguments
-  and returns the zeroth-order `PlanarSMatrix` (light from either side, both
-  polarizations, power-normalised), for SAX circuits of metasurfaces
-  ([Scattering Matrices and SAX](sax.md)). Its optional `kx` overrides the
-  incidence angle with the conserved radial in-plane wavevector, allowing
-  evanescent zeroth orders. Normalization matches `bcm.stack_smatrix`.
-  Unitarity requires lossless media, propagating zeroth-order ports and
-  evanescent higher orders.
+  `(kx₀ + m·λ/Λx, ky₀ + n·λ/Λy)`, resolved into its own p and s.
+  `max_order=(Mx, My)` keeps `(2Mx + 1)(2My + 1)` harmonics; cost grows as
+  their cube, so a few hundred is a practical ceiling on a CPU.
+- **Batching.** Tensors, thicknesses and vertices may carry batch dimensions,
+  and the solve can be `jax.jit`-compiled (`max_order`, `factorization` static).
+- **Four-port S-matrix.** `crossed_grating_smatrix` gives the zeroth-order
+  `PlanarSMatrix` for SAX circuits ([Scattering Matrices and SAX](sax.md)), on
+  `bcm.stack_smatrix`'s normalisation; `kx=` replaces the angle, allowing
+  evanescent ports.
+- **Crystal substrates.** `eps_exit` may be a 3×3 tensor (anisotropic,
+  hyperbolic or absorbing). Each order's two transmitted modes, power-normalised,
+  replace p and s.
 
 ## Lattices
 
@@ -81,102 +78,33 @@ result = rcwa2d.solve_crossed_grating(
 )
 ```
 
-- **Harmonics.** They are `G = m·b₁ + n·b₂`, with `b₁`, `b₂` the reciprocal
-  vectors. A `(Λx, Λy)` period still means a rectangular lattice.
-- **Truncation.** `truncation="parallelogram"` (the default) keeps
-  `|m| ≤ M₁, |n| ≤ M₂`. `"circular"` keeps every `G` with
-  `|G| ≤ max(M₁, M₂)·g_min`, where `g_min` is the shortest reciprocal vector.
-  - It respects the lattice's point symmetry, which matters for hexagonal
-    lattices.
-  - It does not depend on the primitive vectors chosen: the same lattice in
-    two bases gives the same answer.
-  - It needs a concrete lattice (not a traced one) because the harmonics it
-    keeps depend on it. Optimise a lattice constant with the parallelogram
-    truncation.
-- **Shapes** are given in real space and periodised on the lattice. The normal
-  field is sampled on a grid of fractions `(u, v)` of the cell, `u·a₁ + v·a₂`.
+`truncation="circular"` keeps every `G = m·b₁ + n·b₂` with
+`|G| ≤ max(M₁, M₂)·g_min`: it respects the lattice's symmetry (hexagonal
+included) and does not depend on the primitive vectors chosen, but needs a
+concrete lattice. To optimise a lattice constant, use the default
+`"parallelogram"` (`|m| ≤ M₁, |n| ≤ M₂`).
 
 ## Fourier factorisation
 
-The two rules differ in how they expand the products of discontinuous
-functions (ε and the field components that jump at an edge).
-
-- **`factorization="normal"`** (the default) is the normal-vector method,
-  generalised here to full tensors.
-  - At every point, the constitutive relation is written in a local frame
-    whose first axis is normal to the pattern's edges.
-  - Li's anisotropic rule is applied in that frame: `E_n`, `D_t` and `D_z` in
-    terms of the components that are continuous across an edge, `D_n`, `E_t`
-    and `E_z`.
-  - For isotropic media this is the textbook normal-vector method; for
-    stripes, the normal is x̂ everywhere and it is the 1D solver's rule
-    exactly.
-  - The assembly is averaged with its product-reversed twin, which keeps it
-    Hermitian for lossless media. Energy is then conserved to rounding at
-    every truncation, which the plain normal-vector method does not do.
-- **`factorization="laurent"`** takes Toeplitz matrices of ε directly: simple,
-  and correct in the limit, but it converges slowly wherever the normal
-  component of E jumps.
-
-The normal field is the gradient direction of the pattern smoothed over a
-tenth of the cell. Only the smooth, frame-dependent factors are sampled on a
-grid (`grid=(Gx, Gy)`, by default 8× the order). The shapes' own Fourier
-coefficients are always exact: a closed-form sum over each polygon's edges.
+`factorization="normal"` (default) is the normal-vector method generalised to
+full tensors: Li's anisotropic rule in a local frame normal to the pattern's
+edges, symmetrised so that lossless cells conserve energy at every truncation
+(details in the [API reference](../api/rcwa2d.md)). `"laurent"` uses Toeplitz
+matrices of ε and converges more slowly where E's normal component jumps.
 
 ## Convergence
 
-Zeroth-order reflectance against FMMAX (Λ = 0.6 µm,
-h = 0.25 µm, λ = 1 µm). The reference is FMMAX's normal-vector formulation
-(`JONES_DIRECT`) at 1605 terms.
+The normal-vector rule converges faster than Laurent's: on a birefringent disc
+(Λ = 0.6 µm, h = 0.25 µm, λ = 1 µm), R_pp is 0.00533 / 0.00539 at 121 / 529
+harmonics, against FMMAX's 0.00543 at 1605, and Laurent's 0.00305 / 0.00415.
+On the tilted-axis LiNbO₃ nanofins of arXiv:2608.06185, which FMMAX cannot
+represent, T_xx at 550 nm is 0.9520 at 289 harmonics, against the paper's
+0.9496 (BCM) and 0.9483 (FEM). Metal and hyperbolic inclusions converge slowly
+under any rule: check a design at two truncations.
 
-| case | channel | FMMAX, 1605 | normal, 121 / 529 | Laurent, 121 / 529 |
-|---|---|---|---|---|
-| silicon square pillar | R_pp | 0.0322 | 0.0232 / 0.0293 | 0.0532 / 0.0425 |
-| silicon disc | R_pp | 0.0224 | 0.0208 / 0.0226 | 0.0297 / 0.0259 |
-| birefringent disc, axis in plane | R_pp | 0.00543 | 0.00533 / 0.00539 | 0.00305 / 0.00415 |
-| birefringent disc, axis in plane | R_ps | 1.09e-4 | 0.96e-4 / 1.04e-4 | 0.93e-4 / 0.98e-4 |
-| hyperbolic disc (ε = 4 / −3 + 0.3i) | R_ps | 0.050 (0.049–0.055 from 193 terms) | 0.057 / 0.054 | 0.062 / 0.050 |
-
-The tilted-axis LiNbO₃ nanofins of arXiv:2608.06185 (Sec. 3A), which FMMAX
-cannot represent (ε_xz ≠ 0): T_xx at 550 nm is 0.9501 / 0.9520 (normal, 121 / 289 harmonics) and
-0.9450 / 0.9464 (Laurent), against the paper's 0.9496 (its BCM) and 0.9483
-(FEM). The two rules bracket the paper's values, within 0.4%.
-
-Metal-like and hyperbolic inclusions (Re ε < 0 in some direction) converge
-slowly under every Fourier factorisation, because the fields concentrate at
-corners and edges. Check your own design at two truncations before trusting a
-third digit.
-
-## Validation
-
-In `tests/test_rcwa2d.py`:
-
-- **Exact reductions** (1e-12): uniform layers are the planar solver, on any
-  lattice; stripes along x or y are the 1D solver; a triangular lattice is
-  its rectangular supercell; the zeroth-order S-matrix of uniform layers is
-  `bcm.stack_smatrix`.
-- **Physics:** lossless patterns conserve energy to 1e-11, tilted-axis
-  crystals included; metal and hyperbolic pillars never gain energy; a
-  lossless subwavelength cell's S-matrix is unitary; symmetric lattices keep
-  their symmetry (square 90°, hexagonal 60°).
-- **External references:** FMMAX for a birefringent disc (all four
-  zeroth-order channels to 1e-4) and for a triangular lattice, and the
-  tilted-axis LiNbO₃ nanofins of arXiv:2608.06185 (T_xx within 3e-3).
-- **Gradients** with respect to vertices, radii, thickness, wavelength and
-  the lattice constant match finite differences.
+Tests: `tests/test_rcwa2d.py`.
 
 ## Limitations
 
-- Circular truncation needs a lattice that is not being optimised (see above).
-- Shapes must not overlap. A hole in a slab is a shape of the hole's material
-  on the slab's background.
-- The incident half-space must be isotropic and lossless. The exit may be a
-  crystal: pass its 3×3 tensor as `eps_exit` (anisotropic, hyperbolic or
-  absorbing, any orientation). Each order's two transmitted modes, power-
-  normalised, then replace p and s; a uniform cell matches
-  `bcm.solve_stack_on_crystal` to 1e-15, and on a lossless hyperbolic crystal
-  energy is conserved across the many high-k orders it carries away.
-- Cost: the operator is `4N × 4N` for `N` harmonics, so memory and time grow
-  as `N²` and `N³`.
-- Plane-wave results for an infinitely periodic structure, as in the 1D
-  solver.
+- The incident half-space must be isotropic and lossless.
+- Plane-wave results for an infinitely periodic structure.

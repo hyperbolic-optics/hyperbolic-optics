@@ -1,36 +1,14 @@
 #!/usr/bin/env python3
 """Negative refraction in tilted calcite at 1470 cm⁻¹, and a grating that uses it.
 
-This mirrors FDTDX's ``examples/hyperbolic_asymmetric_refraction.py``
-(https://github.com/ymahlau/fdtdx). In that example calcite is driven inside
-its ordinary Reststrahlen band at 1470.17 cm⁻¹ (λ = 6.80 µm), where Re ε < 0
-across the ordinary plane and Re ε > 0 along the optic axis. The axis is tilted
-25° above the surface, in the plane of incidence. The tilt breaks the kx → −kx
-mirror symmetry of the interface, so TM beams at +45° and −45° refract to +23°
-and +53° -- one ordinarily, one negatively. There it takes a GPU FDTD run; here
-it is an eigenmode of the 4×4 Berreman matrix, with this package's calcite
-model (which FDTDX's two-pole fit was matched to).
+Mirrors FDTDX's ``hyperbolic_asymmetric_refraction`` example: with the optic
+axis tilted 25° in the plane of incidence, TM beams at ±45° refract to +23° and
++53°, one negatively. A symmetric calcite grating of period λ/sin 45° then sends
+its ±1 orders along those beams, so it diffracts asymmetrically. The script
+checks the refraction angles against FDTDX's, optimises the grating for the
+negatively refracted order, and re-simulates it from its GDS and a LayerStack.
 
-The same asymmetry makes a *symmetric* grating diffract asymmetrically. With a
-period of λ / sin 45° = 9.62 µm, a rectangular calcite grating at normal
-incidence sends its ±1 orders into the crystal with exactly the wavevectors of
-FDTDX's ±45° beams: the +1 order refracts positively and the −1 order
-negatively, so both carry their energy toward +x. Nothing in the layout
-distinguishes +x from −x; only the crystal does.
-
-The script:
-
-    1. Computes the energy-refraction angle in the tilted crystal against the
-       angle of incidence, and checks the ±45° values against FDTDX's.
-    2. Optimises an etched calcite grating on a calcite slab, by gradient
-       ascent through calcite's dispersion, to send the transmitted light into
-       the −1 order (the negatively refracted one) rather than the +1.
-    3. Draws it as a gdsfactory PCell, writes the GDS, reads it back, and
-       re-simulates it at higher order from the layout and a LayerStack, with
-       the crystal cut stated as ``Oriented("Calcite", AXIS)``.
-
-Needs the gdsfactory extra:  uv sync --extra gdsfactory
-Run:  python benchmarks/calcite_negative_refraction_gdsfactory.py   (writes to benchmarks/output/)
+Run:  uv run --extra gdsfactory python benchmarks/calcite_negative_refraction_gdsfactory.py
 """
 
 import time

@@ -1,36 +1,14 @@
 #!/usr/bin/env python3
-"""Thin-film lithium niobate in Luxtelligence's LNOI400 PDK: anisotropy at 1550 nm.
+"""Thin-film LiNbO₃ in Luxtelligence's LNOI400 PDK: anisotropy at 1550 nm.
 
-The stacks come from Luxtelligence's open-source gdsfactory PDK (``lnoi400``,
-MIT; https://github.com/Luxtelligence/lxt_pdk_gf), not from anything written
-here. Its LayerStack is
+Stacks are read from the PDK's LayerStack (https://github.com/Luxtelligence/lxt_pdk_gf)
+in a slab region, under its rib waveguide and under a partially etched line
+grating. The PDK does not record the crystal cut; this assumes x-cut
+(``Oriented("LiNbO3", x_cut(angle))``). The panels show effects only a crystal
+produces: p→s conversion of the slab, the Mueller element M₂₃, and a grating's
+−1 order for the optic axis across or along the ridges.
 
-    SiO₂ cladding (2 µm) | LN ridge (0.2 µm, LN_RIDGE) | LN slab (0.2 µm, LN_SLAB) |
-    SiO₂ box (4.7 µm) | Si
-
-and the functions below read it at points of a layout: in a slab region, under
-the PDK's own rib waveguide ``straight_rwg1000``, and under a line grating drawn
-on LN_RIDGE, where comparing the ridge and gap columns finds the 0.2 µm partial
-etch and the cladding in the grooves.
-
-The PDK records materials but not the crystal cut, which is the one thing an
-anisotropic simulation needs. This assumes an x-cut film -- the orientation the
-PDK's electro-optic cells imply, with the RF field in the chip plane across the
-waveguide -- and states it as ``Oriented("LiNbO3", x_cut(angle))``. Change CUT
-for your wafer.
-
-Each panel shows something only an anisotropic crystal produces:
-
-(a) p→s conversion by the slab region, against the crystal's in-plane rotation
-    and the angle of incidence -- zero for any isotropic stack;
-(b) the Mueller element M₂₃ (linear-to-linear polarization mixing) at 45°,
-    likewise zero without anisotropy;
-(c) the −1 order diffracted back into air by a line grating at 30°, against
-    period, for the optic axis across or along the ridges -- the same layout,
-    a different cut, a different device.
-
-Needs the gdsfactory extra and the PDK (installed only for this run):
-    uv run --with lnoi400 python examples/tfln_gdsfactory.py   (writes to examples/output/)
+Run:  uv run --with lnoi400 python examples/tfln_gdsfactory.py
 """
 
 from pathlib import Path

@@ -1,22 +1,12 @@
 """Differentiable RCWA for 2D-periodic (crossed) gratings of full-tensor media.
 
-Layers periodic in the plane on any Bravais lattice -- square, rectangular,
-hexagonal (triangular) or oblique (:class:`Lattice`) -- and layered in z. Each
-patterned layer is a background material and non-overlapping polygons, each
-with its own 3×3 permittivity and permeability -- any orientation. Circles and
-rectangles are polygons (:func:`ellipse`, :func:`rectangle`), and a GDS
-polygon is one directly.
-
-Geometry enters through the exact Fourier transform of each polygon, a closed
-sum over its edges (the divergence theorem), so every coefficient is exact and
-differentiable with respect to every vertex -- a fill factor, a radius or a
-polygon exported from a layout. Layers are solved by the eigendecomposition-free
-cascade of :mod:`hyperbolic_optics.bcm` on ``4N × 4N`` Fourier-space operators
-for ``N`` harmonics ``G = m·b₁ + n·b₂`` of the reciprocal lattice: all
-``|m| ≤ M₁, |n| ≤ M₂`` (``truncation="parallelogram"``), or every ``G`` with
-``|G| ≤ max(M₁, M₂)·g_min`` for the shortest reciprocal vector ``g_min``
-(``"circular"``), which depends only on the lattice, not on the primitive
-vectors chosen to describe it.
+Any Bravais lattice (:class:`Lattice`); each patterned layer is a background
+and non-overlapping polygons, each with its own 3×3 ε and μ. Polygons enter
+through their exact Fourier transforms (a closed sum over edges), so every
+coefficient is differentiable in every vertex. Harmonics ``G = m·b₁ + n·b₂``
+are kept for ``|m| ≤ M₁, |n| ≤ M₂`` (``truncation="parallelogram"``) or
+``|G| ≤ max(M₁, M₂)·g_min`` (``"circular"``, independent of the primitive
+vectors chosen).
 
 Fourier factorisation
 ---------------------
@@ -61,7 +51,14 @@ from hyperbolic_optics.bcm import (
     _split_modes,
     _star,
 )
-from hyperbolic_optics.rcwa import _fourier_system_matrix, _harmonic_modes, default_doublings
+from hyperbolic_optics.rcwa import (
+    _fourier_system_matrix,
+    _harmonic_modes,
+    _li_functions,
+    _order_results,
+    _reference_basis,
+    default_doublings,
+)
 
 __all__ = [
     "CrossedGratingResult",
@@ -289,24 +286,6 @@ def _toeplitz(coefficients: jax.Array, orders: np.ndarray, centre) -> jax.Array:
 # ---------------------------------------------------------------------------
 # Factorisation
 # ---------------------------------------------------------------------------
-
-
-def _li_functions(tensor: jax.Array) -> dict[str, jax.Array]:
-    """Li's rearrangement of a tensor in its own frame (index 0 = the normal).
-
-    ``(E_n, D_t, D_z) = F · (D_n, E_t, E_z)``; returns the coefficient functions
-    in the form the operator assembly uses: ``nn`` = 1/ε_nn, ``nt`` = ε_nt/ε_nn,
-    ``tn`` = ε_tn/ε_nn and ``tt`` = ε_tt − ε_tn·ε_nt/ε_nn (the Schur complements).
-    """
-    e = [[tensor[..., i, j] for j in range(3)] for i in range(3)]
-    out = {"nn": 1.0 / e[0][0]}
-    for key, j in (("nt", 1), ("nz", 2)):
-        out[key] = e[0][j] / e[0][0]
-    for key, i in (("tn", 1), ("zn", 2)):
-        out[key] = e[i][0] / e[0][0]
-    for key, (i, j) in (("tt", (1, 1)), ("tz", (1, 2)), ("zt", (2, 1)), ("zz", (2, 2))):
-        out[key] = e[i][j] - e[i][0] * e[0][j] / e[0][0]
-    return out
 
 
 def _full(blocks: jax.Array) -> jax.Array:
@@ -641,9 +620,7 @@ def _operators(
 
     Returns ``(w_ref, w_in, flux_in, w_out, flux_out, deltas)``.
     """
-    eps_ref = 2.0 * (kx**2 + ky**2) + 1.0
-    w_ref, flux_ref = _harmonic_modes(eps_ref, kx, ky, direction)
-    w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
+    w_ref = _reference_basis(kx, ky, direction)
     w_in, flux_in = _harmonic_modes(jnp.asarray(eps_incident)[..., None], kx, ky, direction)
     if _is_tensor(eps_exit):
         w_out, flux_out = _crystal_modes(eps_exit, kx, ky, w_ref)
@@ -737,30 +714,21 @@ def crossed_grating_smatrix(
         :class:`hyperbolic_optics.bcm.PlanarSMatrix`.
     """
     _check_x64()
-    orders, zeroth, (s00, s01, s10, s11), _, flux_out = _scattering(
+    orders, zeroth, scattering, _, flux_out = _scattering(
         layers, period_um, wavelength_um, incidence_rad, eps_top, eps_bottom, max_order,
         azimuth_rad, factorization, doublings, grid, truncation, kx,
     )  # fmt: skip
     size = orders.shape[0]
     index = jnp.array([zeroth, size + zeroth])  # p and s of the zeroth order
 
-    def pick(block):
-        return block[..., index, :][..., :, index]
-
-    raw = jnp.concatenate(
-        [
-            jnp.concatenate([pick(s10), pick(s11)], axis=-1),
-            jnp.concatenate([pick(s00), pick(s01)], axis=-1),
-        ],
-        axis=-2,
-    )  # rows: out at top, out at bottom; columns: in at top, in at bottom
+    blocks = tuple(block[..., index, :][..., :, index] for block in scattering)
     k_par = (
         jnp.sqrt(jnp.asarray(eps_top)) * jnp.sin(jnp.asarray(incidence_rad))
         if kx is None
         else jnp.asarray(kx)
     )
     bottom = flux_out[..., index] > 0 if _is_tensor(eps_bottom) else None
-    return _normalize_smatrix(raw, k_par, eps_top, eps_bottom, bottom)
+    return _normalize_smatrix(blocks, k_par, eps_top, eps_bottom, bottom)
 
 
 def solve_crossed_grating(
@@ -810,21 +778,5 @@ def solve_crossed_grating(
         layers, period_um, wavelength_um, incidence_rad, eps_incident, eps_exit, max_order,
         azimuth_rad, factorization, doublings, grid, truncation,
     )  # fmt: skip
-    size = orders.shape[0]
-    t_full, _, r_full, _ = scattering
-    incident = jnp.array([zeroth, size + zeroth])
-
-    def by_order(block):
-        amplitude = block[..., :, incident]
-        return jnp.stack([amplitude[..., :size, :], amplitude[..., size:, :]], axis=-2)
-
-    def per_order(flux):
-        forward = flux[..., : 2 * size]
-        return jnp.stack([forward[..., :size], forward[..., size:]], axis=-1)
-
-    r, t = by_order(r_full), by_order(t_full)
-    forward_in = flux_in[..., : 2 * size]
-    power_in = jnp.stack([forward_in[..., zeroth], forward_in[..., size + zeroth]], -1)
-    R = jnp.abs(r) ** 2 * per_order(flux_in)[..., :, :, None] / power_in[..., None, None, :]
-    T = jnp.abs(t) ** 2 * per_order(flux_out)[..., :, :, None] / power_in[..., None, None, :]
+    r, t, R, T = _order_results(scattering, flux_in, flux_out, zeroth, orders.shape[0])
     return CrossedGratingResult(orders=orders, r=r, t=t, R=R, T=T)

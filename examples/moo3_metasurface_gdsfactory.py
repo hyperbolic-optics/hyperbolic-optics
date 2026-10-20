@@ -1,33 +1,15 @@
 #!/usr/bin/env python3
 """A hyperbolic α-MoO₃ metasurface polarization converter: design → GDS → re-simulation.
 
-α-MoO₃ is in-plane hyperbolic between about 820 and 970 cm⁻¹: ε_x < 0 < ε_y
-along the two crystal axes in the flake plane. Elliptical MoO₃ pillars on a
-gold mirror make a reflective polarization converter:
+    air | MoO₃ ellipses in air | KBr spacer | gold | Si
 
-    air | MoO₃ ellipses (h) in air | KBr spacer (s) | gold | Si
+Ellipse radii and rotation, the crystal's in-plane rotation and both
+thicknesses are optimised for cross-polarized reflectance R_ps over
+880–920 cm⁻¹ (2D RCWA, gradients through MoO₃'s dispersion). The design is
+drawn, written to GDS, read back through a LayerStack and re-simulated at
+higher order, so what is checked is what would be fabricated.
 
-At normal incidence, x-polarized (p) light is converted to y (s) only if the
-structure's principal axes are not along x and y. Here two things set them,
-the crystal axes and the ellipse's orientation, and both are optimised:
-
-- ellipse radii and rotation;
-- crystal rotation in the plane (a continuous orientation, differentiated
-  through the tensor rotation);
-- MoO₃ and spacer thicknesses.
-
-The objective is the mean cross-polarized reflectance R_ps (p in, s out)
-over 880–920 cm⁻¹, from 2D RCWA with 81 harmonics. Gradients run through
-MoO₃'s measured dispersion.
-
-The design is then drawn as a gdsfactory PCell of 15 × 15 cells and written
-to GDS. The GDS is read back, and the unit cell is extracted from its
-polygons. The stack is read from a LayerStack, and the design is
-re-simulated at 81 and 225 harmonics. So what is verified is what would be
-fabricated, not the optimiser's own model.
-
-Needs the gdsfactory extra:  uv sync --extra gdsfactory
-Run:  python examples/moo3_metasurface_gdsfactory.py   (writes to examples/output/)
+Run:  uv run --extra gdsfactory python examples/moo3_metasurface_gdsfactory.py
 """
 
 import time

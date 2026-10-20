@@ -1,22 +1,8 @@
 """Metasurface design by local periodicity: cell libraries, phase maps, focusing.
 
-Each cell of a slowly varying metasurface transmits as it would in an infinite
-array of itself, so its zeroth-order Jones matrix from
-:mod:`hyperbolic_optics.rcwa2d` stands for it. A cell is any function of
-parameters returning layers: a pillar's radius, a fin's size and angle, the
-twist of each layer of an anisotropic stack, or all of them per site.
-
-- :func:`cell_library`: Jones matrices of a batch of cells, compiled once and
-  differentiable, for a discrete library or for every site of a design.
-- :func:`choose_cells`: the library entry that best realises a target phase.
-- :func:`geometric_phase_jones`: a cell turned by ``θ`` (Pancharatnam–Berry
-  phase ``±2θ`` for circular light).
-- :func:`lens_phase`, :func:`square_sites`, :func:`sample_grid` and
-  :func:`focus`: a lens's target, its sites, and the designed field propagated
-  by the angular spectrum (a check on the design, and a differentiable
-  objective; not a full-wave simulation of the finite metasurface).
-
-Layouts: :mod:`hyperbolic_optics.integrations.gdsfactory` (``metasurface_component``).
+Each cell transmits as it would in an infinite array of itself, so its
+zeroth-order Jones matrix from :mod:`hyperbolic_optics.rcwa2d` stands for it.
+Layouts: :func:`hyperbolic_optics.integrations.gdsfactory.metasurface_component`.
 """
 
 from __future__ import annotations
@@ -27,7 +13,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from hyperbolic_optics import rcwa2d
+from hyperbolic_optics import bcm, rcwa2d
 
 __all__ = [
     "cell_library",
@@ -104,8 +90,7 @@ def geometric_phase_jones(jones, angle_rad):
 
     Turning only a shape in a fixed lattice generally requires a new cell solve.
     """
-    c, s = jnp.cos(angle_rad), jnp.sin(angle_rad)
-    rotation = jnp.moveaxis(jnp.array([[c, -s], [s, c]]), (0, 1), (-2, -1))
+    rotation = bcm.rotation_matrix(0.0, 0.0, angle_rad)[..., :2, :2]
     return rotation @ jnp.asarray(jones) @ jnp.swapaxes(rotation, -1, -2)
 
 

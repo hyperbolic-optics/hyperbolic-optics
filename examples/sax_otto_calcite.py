@@ -1,36 +1,16 @@
 #!/usr/bin/env python3
 """Prism coupling to calcite's surface phonon polaritons, as a SAX circuit.
 
-In its ordinary Reststrahlen band (1410–1550 cm⁻¹; FDTDX's asymmetric-refraction
-example drives it at 1470 cm⁻¹) calcite has ε_o < 0 < ε_e. On an x-cut surface
-(optic axis in the surface plane), a TM wave running across the axis sees
-ε_o < −1 in both its field components and binds to the surface as a surface
-phonon polariton, beyond the light line. Running along the axis it sees ε_e > 0
-in-plane and ε_o < 0 normal to it -- hyperbolic, with bulk waves instead of a
-surface wave. Light reaches the polariton by tunnelling, in the Otto
-configuration:
+    KRS-5 prism | air gap (d) | x-cut calcite, 100 µm | air
 
-    KRS-5 prism | air gap (d) | calcite, x-cut, 100 µm | air
+In calcite's ordinary Reststrahlen band (ε_o < 0 < ε_e), a TM wave across the
+optic axis binds to the surface as a polariton; along the axis the crystal is
+hyperbolic. Each element is a planar SAX model sharing ``wl`` and ``kx``. The
+script checks the circuit against the whole stack, maps the polariton dip,
+shows p→s conversion with the axis turned, and tunes the gap to critical
+coupling by gradient descent through the circuit.
 
-built here as a three-instance SAX circuit of planar models from
-``hyperbolic_optics.integrations.sax``: the prism face, the gap, and the
-calcite sample. Every instance shares ``wl`` and the in-plane wavevector
-``kx``; the gap is evanescent (kx > 1), and the circuit carries that channel.
-
-The script:
-
-    1. Checks the circuit against the same stack solved in one piece.
-    2. Maps the p reflectance over kx and frequency with the optic axis across
-       the plane of incidence: the dip is the surface polariton.
-    3. Turns the axis to 60° from the plane of incidence: the polariton mixes
-       with the bulk hyperbolic waves (the fringes are those waves reflected
-       from the back of the crystal), and converts p to s, which no isotropic
-       sample can do.
-    4. Tunes the gap by gradient descent through the circuit (SAX's pure-JAX
-       backend) to critical coupling on the polariton, where R_pp vanishes.
-
-SAX pins an older JAX than this package, so it runs in its own environment:
-    uv run --with sax python examples/sax_otto_calcite.py   (writes to examples/output/)
+Run:  uv run --with sax python examples/sax_otto_calcite.py
 """
 
 from pathlib import Path

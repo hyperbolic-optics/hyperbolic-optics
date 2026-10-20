@@ -1,22 +1,4 @@
-"""Metasurfaces whose unit cells differ site by site: layout, read-back and SAX.
-
-A cell is a :class:`~.stack.VerticalStack` whose layers carry their own
-polygons (:attr:`~.stack.StackLayer.polygons`, in cell coordinates about the
-origin): any number of layers, each with its own material, crystal orientation
-(``rotation_deg`` or :class:`~.materials.Oriented`), thickness and shapes.
-Twisted stacks, crystals at any orientation and cells with different numbers
-of layers are all the same thing.
-
-- :func:`metasurface_component` draws each distinct cell once (level ``k`` on
-  ``layers[k]``, an unpatterned level as the cell's footprint) with its levels
-  recorded in the cell's ``info``, and places a reference to it at every site,
-  turned if asked. By default a reference turns the whole cell; use
-  ``rotate_materials=False`` for masks etched into a wafer with fixed axes.
-- :func:`read_metasurface` reads a layout back into per-site cells, geometry
-  from the polygons and materials from the cells' ``info``.
-- :func:`cell_layers` gives a cell's :mod:`~hyperbolic_optics.rcwa2d` layers,
-  and :func:`cell_sax_model` its zeroth-order four-port SAX model.
-"""
+"""Metasurfaces whose cells differ site by site: layout, read-back and SAX models."""
 
 from __future__ import annotations
 
@@ -32,8 +14,15 @@ import kfactory as kf
 import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack, LogicalLayer
 
-from hyperbolic_optics import rcwa2d
-from hyperbolic_optics.integrations.gdsfactory.lattice import crossed_grating_layers
+from hyperbolic_optics import bcm, rcwa2d
+from hyperbolic_optics.integrations.gdsfactory.lattice import (
+    _altitude,
+    _hulls,
+    _self_overlaps,
+    _steps,
+    _tiled,
+    crossed_grating_layers,
+)
 from hyperbolic_optics.integrations.gdsfactory.materials import (
     MaterialSpec,
     Oriented,
@@ -83,7 +72,7 @@ def cell_from_pdk(
         raise ValueError("sidewall_slices must be a nonnegative integer.")
     a1, a2 = np.asarray(lattice_um, float)
     # one rounded corner plus whole lattice steps, so the footprint tiles the plane exactly
-    step1, step2 = np.rint(a1 / dbu).astype(int), np.rint(a2 / dbu).astype(int)
+    step1, step2 = _steps(a1, a2, dbu)
     start = np.floor(_corners(a1, a2)[0] / dbu + 0.5).astype(int)
     footprint = kf.kdb.Region(
         kf.kdb.Polygon(
@@ -100,7 +89,7 @@ def cell_from_pdk(
             level.layer.layer
         ) == gf.get_layer("WAFER")
         # shapes crossing the footprint's edge wrap around, as RCWA periodises them
-        periodic = None if wafer else _tiled(level.layer.get_shapes(component), a1, a2, dbu)
+        periodic = None if wafer else _tiled(level.layer.get_shapes(component), step1, step2)
         region = footprint if wafer else periodic & footprint
         if not region.is_empty():
             low, high = sorted((level.zmin, level.zmin + level.thickness))
@@ -121,9 +110,7 @@ def cell_from_pdk(
                 np.linspace(low, high, sidewall_slices + 1) if level.sidewall_angle else [low, high]
             )
             reference_z = level.zmin + level.width_to_z * level.thickness
-            altitude = abs(np.linalg.det(np.array([a1, a2]))) / max(
-                np.linalg.norm(a1), np.linalg.norm(a2)
-            )
+            altitude = _altitude(a1, a2)
             for lo, hi in zip(edges[:-1], edges[1:], strict=True):
                 offset = (level.bias or 0.0) + (reference_z - (lo + hi) / 2) * np.tan(
                     np.radians(level.sidewall_angle)
@@ -196,31 +183,19 @@ def _corners(a1, a2) -> np.ndarray:
     return np.array([0.5 * (i * a1 + j * a2) for i, j in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
 
 
-def _tiled(region, a1, a2, dbu) -> kf.kdb.Region:
-    """``region`` and its eight nearest lattice images, unmerged."""
-    out = kf.kdb.Region()
-    step1, step2 = (np.rint(np.asarray(a) / dbu).astype(int) for a in (a1, a2))
-    for i in (-1, 0, 1):
-        for j in (-1, 0, 1):
-            dx, dy = i * step1 + j * step2
-            out += region.transformed(kf.kdb.Trans(int(dx), int(dy)))
-    return out
-
-
 def _vertices_um(region, dbu) -> list[np.ndarray]:
-    return [np.array([(p.x * dbu, p.y * dbu) for p in q.each_point_hull()]) for q in region.each()]
+    return [hull * dbu for hull in _hulls(region)]
 
 
 def _check_overlaps(cell: gf.Component, angle_deg: float, lattice_um) -> None:
     """Refuse shapes that, turned, overlap each other or their lattice images (RCWA adds them)."""
-    dbu = cell.kcl.dbu
-    a1, a2 = (np.asarray(a, float) for a in lattice_um)
+    a1, a2 = _steps(*lattice_um, cell.kcl.dbu)
     turn = kf.kdb.ICplxTrans(1, angle_deg, False, 0, 0)
     for level in cell.info["levels"]:
         if level["background"] is None:
             continue
         region = _region(cell, tuple(level["layer"])).transformed(turn)
-        if _tiled(region, a1, a2, dbu).area() < 9 * sum(p.area() for p in region.each()):
+        if _self_overlaps(region, a1, a2):
             raise ValueError(
                 f"level {level['name']!r} turned by {angle_deg:g}° overlaps itself or its periodic "
                 "images: shrink the shapes or enlarge the lattice."
@@ -315,14 +290,17 @@ def _cell_component(payload: str) -> gf.Component:
 
 # references at any angle are valid GDS; foundries that want them flattened can flatten
 # the result, at the cost of the cells' info that read_metasurface needs
+def _drawn(payload: str):
+    """The cell a payload names: a PDK-drawn component, or one drawn from its levels."""
+    data = json.loads(payload)
+    return gf.kcl[data["component"]] if "component" in data else _cell_component(payload)
+
+
 @gf.cell(set_settings=False, set_name=False, check_instances="ignore")
 def _placed(design: str) -> gf.Component:
     data = json.loads(design)
     component = gf.Component(f"metasurface_{hashlib.sha256(design.encode()).hexdigest()[:12]}")
-    cells = [
-        gf.kcl[json.loads(p)["component"]] if p.startswith('{"component"') else _cell_component(p)
-        for p in data["cells"]
-    ]
+    cells = [_drawn(payload) for payload in data["cells"]]
     for (x, y), index, angle in zip(
         data["sites"], data["indices"], data["angles_deg"], strict=True
     ):
@@ -385,8 +363,9 @@ def metasurface_component(
             seen[id(cell)] = payloads.index(payload)
         indices.append(seen[id(cell)])
     for index, angle in sorted(set(zip(indices, angles.tolist(), strict=True))):
-        if not payloads[index].startswith('{"component"'):  # PDK-drawn cells merge on read-back
-            _check_overlaps(_cell_component(payloads[index]), angle, lattice_um)
+        cell = _drawn(payloads[index])
+        if "levels" in cell.info:  # PDK-drawn cells merge their overlaps on read-back
+            _check_overlaps(cell, angle, lattice_um)
     design = json.dumps({
         "cells": payloads, "indices": indices,
         "lattice_um": [[float(v) for v in a] for a in lattice_um],
@@ -418,14 +397,11 @@ def _warn_off_grid(cell: VerticalStack, dbu: float) -> None:
 
 
 def _region(cell, layer) -> kf.kdb.Region:
-    """A cell's shapes on ``layer``, unmerged (empty if the layer is absent)."""
+    """A cell's shapes on ``layer`` (by number, as stored), empty if the layer is absent."""
     index = cell.kcl.layout.find_layer(*layer)
     if index is None:
         return kf.kdb.Region()
-    region = kf.kdb.Region(cell.kdb_cell.begin_shapes_rec(index))
-    if any(p.holes() for p in region.each()):
-        raise ValueError("Polygons with holes must be decomposed into simple polygons.")
-    return region
+    return kf.kdb.Region(cell.kdb_cell.begin_shapes_rec(index))
 
 
 def read_metasurface(
@@ -575,8 +551,7 @@ def turned(cell: VerticalStack, angle_rad, *, rotate_materials: bool = True) -> 
     """
     import jax.numpy as jnp
 
-    c, s = jnp.cos(angle_rad), jnp.sin(angle_rad)
-    turn = jnp.array([[c, -s], [s, c]])
+    turn = bcm.rotation_matrix(0.0, 0.0, angle_rad)[:2, :2]
     return replace(cell, layers=tuple(
         replace(level,
                 polygons=None if level.polygons is None

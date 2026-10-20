@@ -1,29 +1,14 @@
 #!/usr/bin/env python3
 """A geometric-phase metalens of TiO₂ nanofins: unit cell → lens → GDS → re-simulation.
 
-A rectangular TiO₂ fin is form-birefringent. Turned by ``θ``, an ideal
-half-wave fin converts circular light to the opposite handedness with the
-Pancharatnam–Berry phase ``2θ``, so a lens is one fin turned site by site to
-``θ = φ/2``. That ideal assumes the lattice turns with the fin. In a real
-layout it does not: the fin turns in a fixed square lattice, and its
-neighbours see it differently at every angle.
+An ideal half-wave fin turned by θ gives circular light the phase 2θ, but only
+if the lattice turns with it. Here the fin turns in a fixed 325 nm lattice:
+converged (``--max-order 16``) it converts 0.86 at 0° and about 0.675 near 45°.
+The script picks the fin, builds its 48-angle library from 13 solves by
+symmetry, designs an f = 30 µm lens from it (angular spectrum, local
+periodicity), and writes, reads back and re-simulates the GDS.
 
-1. **Fin.** A scan of fin length and width (660 nm, 600 nm tall, 325 nm
-   pitch, 2D RCWA), for the largest conversion at the worst angle (0° or 45°
-   in the lattice).
-2. **Angle library.** That fin turned through 48 angles in its lattice,
-   reconstructed from 13 RCWA solves by symmetry: its converted amplitude against the
-   ideal ``e^{2iθ}``. Converged (``--max-order 16``), it converts 0.86 at 0°
-   but about 0.675 around 45°; the 0° fin converges slowly.
-3. **Lens.** The hyperbolic phase for f = 30 µm over a 20 µm aperture (NA
-   0.32). Each site takes the angle whose real converted field best matches
-   the target, and the lens is propagated to the focus by the angular
-   spectrum (local periodicity, not a full-wave simulation of the finite lens).
-4. **GDS.** One fin cell, a turned reference per site; written, read back into
-   per-site cells and re-simulated.
-
-Needs the gdsfactory extra:  uv sync --extra gdsfactory
-Run:  python examples/metalens_gdsfactory.py   (writes to examples/output/)
+Run:  uv run --extra gdsfactory python examples/metalens_gdsfactory.py
 """
 
 import argparse
