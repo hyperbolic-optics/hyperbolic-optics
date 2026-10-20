@@ -110,6 +110,8 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   - `rcwa2d`: 2D-periodic polygons of full-tensor media on any Bravais
     lattice, with the normal-vector factorisation generalised to anisotropy.
     `crossed_grating_smatrix` gives a cell's zeroth-order four-port S-matrix.
+    The exit may be a crystal: anisotropic, hyperbolic or absorbing, with
+    each order's power-normalised modes in place of p and s.
   - `dispersion`: every built-in material in JAX (1e-12 against the NumPy
     classes), and `pockels_tensor` for the Pockels effect.
   - `modes`: full-vector guided modes of anisotropic stacks, and `beams`:

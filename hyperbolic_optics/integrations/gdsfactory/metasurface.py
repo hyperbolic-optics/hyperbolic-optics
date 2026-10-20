@@ -544,6 +544,8 @@ def cell_sax_model(
     medium. Only the zeroth order is a port, so the model describes a
     subwavelength array (higher orders evanescent). ``azimuth`` rotates the
     sample, as in ``stack_sax_model``; the ports retain a common p/s basis.
+    On a crystal or absorbing substrate (:meth:`~.stack.VerticalStack.exit_medium`)
+    the bottom ports are its two power-normalised modes.
     """
     import jax.numpy as jnp
 
@@ -553,7 +555,7 @@ def cell_sax_model(
 
     def model(wl=1.55, kx=0.0, azimuth=0.0):
         eps_top = cell.half_space_permittivity("incident", wl)
-        eps_bottom = cell.half_space_permittivity("exit", wl)
+        eps_bottom = cell.exit_medium(wl)
         smatrix = rcwa2d.crossed_grating_smatrix(
             cell_layers(cell, jnp.asarray(wl)), lattice, jnp.asarray(wl), 0.0,
             eps_top, eps_bottom, max_order, azimuth_rad=-jnp.asarray(azimuth), kx=kx, **kwargs,

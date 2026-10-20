@@ -170,7 +170,12 @@ In `tests/test_rcwa2d.py`:
 - Circular truncation needs a lattice that is not being optimised (see above).
 - Shapes must not overlap. A hole in a slab is a shape of the hole's material
   on the slab's background.
-- Incident and exit half-spaces must be isotropic and lossless.
+- The incident half-space must be isotropic and lossless. The exit may be a
+  crystal: pass its 3×3 tensor as `eps_exit` (anisotropic, hyperbolic or
+  absorbing, any orientation). Each order's two transmitted modes, power-
+  normalised, then replace p and s; a uniform cell matches
+  `bcm.solve_stack_on_crystal` to 1e-15, and on a lossless hyperbolic crystal
+  energy is conserved across the many high-k orders it carries away.
 - Cost: the operator is `4N × 4N` for `N` harmonics, so memory and time grow
   as `N²` and `N³`.
 - Plane-wave results for an infinitely periodic structure, as in the 1D

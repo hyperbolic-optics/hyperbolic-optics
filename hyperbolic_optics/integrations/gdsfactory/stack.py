@@ -27,7 +27,7 @@ import kfactory as kf
 import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack, LogicalLayer
 
-from hyperbolic_optics import rcwa
+from hyperbolic_optics import dispersion, rcwa
 from hyperbolic_optics.integrations.gdsfactory.geometry import LineGrating, extract_line_grating
 from hyperbolic_optics.integrations.gdsfactory.materials import (
     MaterialSpec,
@@ -120,6 +120,36 @@ class VerticalStack:
                 "finite layer instead."
             )
         return eps.real
+
+    def exit_medium(self, wavelength_um: Any) -> jax.Array:
+        """The exit half-space for 2D-periodic solves (:mod:`~hyperbolic_optics.rcwa2d`).
+
+        A real scalar ε where it is isotropic and lossless; otherwise its 3×3
+        tensor -- a crystal, hyperbolic or absorbing substrate, whose two
+        transmitted modes then replace p and s. Decided at ``wavelength_um``, or
+        under ``jit`` at a representative wavelength of the material.
+        """
+        wavelength = jnp.asarray(wavelength_um, dtype=float)
+        traced = isinstance(wavelength, jax.core.Tracer)
+        spec = self.exit
+        while isinstance(spec, Oriented):
+            spec = spec.material
+        if not traced:
+            probe = wavelength
+        elif isinstance(spec, str):
+            probe = 2e4 / sum(dispersion.frequency_range(spec))  # mid-window, cm⁻¹ → µm
+        else:
+            probe = 1.55
+        with jax.ensure_compile_time_eval():  # a static decision, even under jit
+            tensor = np.asarray(material_tensor(self.exit, probe))
+        eps = tensor[..., 0, 0]
+        if (
+            np.allclose(tensor, eps[..., None, None] * np.eye(3), atol=1e-12)
+            and np.abs(eps.imag).max() <= 1e-12
+            and eps.real.min() > 0
+        ):
+            return self.half_space_permittivity("exit", wavelength) if traced else eps.real
+        return material_tensor(self.exit, wavelength)
 
 
 def grating_layers(
