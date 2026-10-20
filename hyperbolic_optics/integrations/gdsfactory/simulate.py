@@ -1,23 +1,6 @@
-"""gplugins-shaped entry points: layout and PDK in, labelled results out.
+"""Labelled results from a layout (``simulate_*``) or a hand-written stack (``solve_*``).
 
-- :func:`simulate_stack` -- the planar stack at one point of a layout (from the
-  PDK's LayerStack), swept in wavelength, angle and in-plane orientation;
-- :func:`simulate_grating` -- a line grating in the layout, etched into that
-  stack, swept in wavelength and angle;
-- :func:`simulate_crossed_grating` -- a 2D-periodic pattern (pillars, holes,
-  any polygons) etched into that stack;
-- :func:`solve_stack` / :func:`solve_grating` / :func:`solve_crossed_grating`
-  -- the same for a
-  :class:`~hyperbolic_optics.integrations.gdsfactory.stack.VerticalStack` you
-  wrote yourself.
-
-Results carry their axes and the polarization analysis anisotropy calls for:
-Jones matrices, Mueller matrices and generalized ellipsometry, with the
-package's corrected p/s convention (``r[..., out, in]``, 0 = p, 1 = s).
-
-Planar stacks run on the differentiable JAX solver by default, or on the NumPy
-engine (``solver="numpy"``), the package's independent reference; the two agree
-to rounding.
+Amplitudes are ``[..., out, in]`` with 0 = p and 1 = s.
 """
 
 from __future__ import annotations
@@ -46,6 +29,7 @@ from hyperbolic_optics.integrations.gdsfactory.stack import (
     grating_stack,
     vertical_stack,
 )
+from hyperbolic_optics.jones import ellipsometric_angles
 from hyperbolic_optics.mueller import Mueller
 
 __all__ = [
@@ -71,14 +55,8 @@ def _mueller(jones: np.ndarray) -> np.ndarray:
 
 
 def _ellipsometry(r: np.ndarray) -> dict[str, np.ndarray]:
-    """Ψ/Δ from r_pp/r_ss and the anisotropy ratios r_ps/r_ss, r_sp/r_pp (degrees)."""
-    r_pp, r_ps, r_sp, r_ss = r[..., 0, 0], r[..., 1, 0], r[..., 0, 1], r[..., 1, 1]
-    out = {}
-    for key, numerator, denominator in (("", r_pp, r_ss), ("_ps", r_ps, r_ss), ("_sp", r_sp, r_pp)):
-        rho = numerator / denominator
-        out[f"Psi{key}"] = np.degrees(np.arctan(np.abs(rho)))
-        out[f"Delta{key}"] = np.degrees(np.angle(rho))
-    return out
+    """Ψ/Δ of Jones matrices ``[..., out, in]`` (input-first names: r_ps is [1, 0])."""
+    return ellipsometric_angles(r[..., 0, 0], r[..., 1, 0], r[..., 0, 1], r[..., 1, 1])
 
 
 @dataclass(frozen=True)
@@ -159,7 +137,7 @@ def _layer_tensors(stack: VerticalStack, wavelengths: np.ndarray, azimuths: np.n
     turn = bcm.rotation_matrix(0.0, 0.0, jnp.radians(jnp.asarray(azimuths)))[None]  # [1, B, 3, 3]
     tensors = []
     for layer in stack.layers:
-        eps = material_tensor(layer.material, wavelengths, layer.rotation_deg)[:, None]
+        eps = layer.tensors(wavelengths)[0][:, None]
         tensors.append(bcm.rotate_tensor(eps, turn))
     if not tensors:
         return jnp.zeros((len(wavelengths), len(azimuths), 0, 3, 3), dtype=complex)

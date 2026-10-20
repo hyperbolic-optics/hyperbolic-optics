@@ -18,15 +18,14 @@ uv sync --extra jax
 
 ## Precision
 
-Enable 64-bit JAX before calling the solver. The module does not switch it on
-for you, because that setting is global to your program:
+Enable 64-bit JAX first (the setting is global, so the package leaves it to you):
 
 ```python
 import jax
 jax.config.update("jax_enable_x64", True)
 ```
 
-Without it everything runs in complex64 and the solver warns.
+Without it the solver runs in complex64 and warns.
 
 ## Usage
 
@@ -89,20 +88,11 @@ fields.interface_flux  # [..., L + 1, 2]: S_z at each interface over the inciden
 fields.z_um, fields.fields   # depths, and (Ex, Ey, Ez, Hx, Hy, Hz) there, per polarization
 ```
 
-- **Stable.** The fields at each plane come from the scattering matrices of
-  the stack above and below it, never from transfer matrices. Thick, strongly
-  absorbing and evanescent layers stay finite.
-- **Differentiable.** Gradients go through all of it, thicknesses included.
-  The samples inside a layer sit at fixed fractions of its thickness
-  (`samples_per_layer`, static), so moving a layer boundary moves its samples
-  with it.
-- **Validated.** `tests/test_stack_fields.py` checks:
-  - R, T and each layer's absorption against the NumPy engine's
-    `FieldProfile`, and all six field components against depth, to 1e-12;
-  - each layer's absorption against the electric and magnetic loss density
-    `½(E†·ε_a·E + H†·μ_a·H)` integrated over its depth, with
-    `ε_a = (ε − ε†)/2i`. This check is independent of the interface fluxes,
-    whose differences alone would only telescope.
+Fields at each plane come from the scattering matrices above and below it,
+never from transfer matrices, so thick, absorbing and evanescent layers stay
+finite. Samples sit at fixed fractions of each layer, so gradients include the
+thicknesses. Each layer's absorption is checked against the loss density
+integrated over its depth (`tests/test_stack_fields.py`).
 
 ### Stacks on bulk crystals
 
@@ -118,28 +108,10 @@ result = bcm.solve_stack_on_crystal(
 result.r, result.R, result.T      # T: power carried into the crystal, per input
 ```
 
-This is the NumPy engine's `Semi Infinite Anisotropic Layer`, in the
-differentiable solver. Bulk crystals can be the substrate in any orientation,
-lossy, lossless or hyperbolic: calcite, sapphire, hBN, SiC, α-MoO₃, a LiNbO₃
-wafer.
-
-The waves the substrate carries away are found without eigendecomposition:
-
-- **Sign function.** The matrix sign function of `−iΔ`, by Newton's method,
-  separates the waves that decay into the crystal from those that don't.
-- **Causal loss.** A tiny causal loss assigns a lossless crystal's
-  propagating waves by the direction their energy flows. In a hyperbolic
-  crystal that need not be the sign of `kz`.
-- **Refinement.** Newton steps on the invariant-subspace (Riccati) equation
-  then give the lossless crystal's own subspaces, exactly.
-
-Degenerate modes, such as an optic axis along z at normal incidence where
-eigenvector methods fail, are handled exactly, with finite gradients.
-
-`tests/test_crystal_substrates.py` checks the r coefficients against the NumPy
-engine to 1e-12, for hyperbolic lossy calcite behind an Otto gap and lossless
-LiNbO₃ under a film. It also checks energy conservation, the isotropic limit,
-the degenerate case and gradients.
+The NumPy engine's `Semi Infinite Anisotropic Layer`, differentiable: any
+crystal in any orientation, lossy, lossless or hyperbolic. The outgoing waves
+come from a matrix sign function rather than eigenvectors, so degenerate modes
+(an optic axis along z at normal incidence) have finite gradients.
 
 ## Method
 
@@ -151,42 +123,19 @@ eigenvector derivatives to diverge where modes are degenerate. This is the
 bisection-doubling scheme of the boundary-value cascade method of Yang, Song &
 Cai ([arXiv:2608.06185](https://arxiv.org/abs/2608.06185)).
 
-One choice here differs from that paper. The paper writes a layer as a relation
-between E at one face and H at the other, and that relation is singular whenever
-a lossless layer is an odd number of quarter-waves thick. Here the doubling
-works on wave amplitudes in a reference medium whose waves always propagate. Its
-`kz = √(1 + kx²)` grows with the in-plane wavevector, and each wave is scaled to
-unit power. In that basis a passive layer's scattering matrix is
-power-normalised, so no step can meet a singular inverse. And because the
-reference impedance tracks that of evanescent and high-k waves, it doesn't
-reflect them almost totally, which is what a fixed `kz = 1` reference did, at
-the cost of up to 1e-3 of rounding error on high-order gratings. The start-up series is derived independently of the
-paper's supplement, so this is a related implementation rather than a
-reproduction of that method.
+Unlike the paper's E/H form, which is singular when a lossless layer is an odd
+number of quarter-waves thick, the doubling works on power-normalised wave
+amplitudes in a reference medium with `kz = √(1 + kx²)`, so no step meets a
+singular inverse. The start-up series is derived independently of the paper's
+supplement: a related implementation, not a reproduction.
 
-## Validation
-
-`tests/test_bcm.py` checks:
-
-- **Closed forms.** Fresnel for a bare interface, including total internal
-  reflection. The Airy formula for a film swept exactly onto every quarter-wave
-  thickness.
-- **The NumPy engine.** Complex coefficients, all eight, for dispersive
-  hyperbolic calcite, an Otto gap over biaxial α-MoO₃ swept in azimuth, a
-  gyrotropic-permeability layer, and a 150 µm evanescent gap that sends the
-  transfer backend to `NaN`. Each is fed the engine's own tensors and agrees to
-  about 1e-14.
-- **Gradients.** Against central finite differences, for thickness, tilt,
-  azimuth, wavelength, incidence and the real and imaginary parts of a tensor
-  component.
-- **Invariants.** Energy conservation (to 1e-12) and passivity, and convergence
-  in the number of doublings.
+Tests: `tests/test_bcm.py` (closed forms, the NumPy engine to ~1e-14,
+gradients, energy) and `tests/test_crystal_substrates.py`.
 
 ## Limitations
 
-- In `solve_stack` and `stack_smatrix` the half-spaces are isotropic and
-  lossless. For a semi-infinite crystal below the stack, use
-  `solve_stack_on_crystal` (see above).
+- `solve_stack` and `stack_smatrix` need isotropic, lossless half-spaces;
+  use `solve_stack_on_crystal` for a crystal substrate.
 - For wavelength derivatives that include the material's dispersion, take the
   tensor from `hyperbolic_optics.dispersion` (the built-in materials in JAX), not
   from the NumPy material classes, which carry no gradient.

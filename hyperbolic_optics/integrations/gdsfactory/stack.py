@@ -1,16 +1,7 @@
-"""Vertical stacks: hand-written, or read from a gdsfactory PDK's LayerStack.
+"""Vertical stacks, written by hand or read from a PDK ``LayerStack``.
 
-A :class:`VerticalStack` is an incident half-space, layers from the incident side
-down, and an exit half-space. Layers are uniform films or, for a line grating,
-patterned: ridges of one material with grooves of another.
-
-:func:`vertical_stack` reads the stack at one point of a layout from the PDK's
-``LayerStack``: the levels present there (``WAFER`` levels everywhere, others
-where their -- possibly derived, boolean -- layer has shapes), overlaps resolved
-by ``mesh_order`` as gdsfactory defines it (lower wins). :func:`grating_stack`
-compares the stack inside the ridges of a line grating with the stack in its
-gaps: where they differ, the layer is patterned. So etch depth, partial etches
-and what fills the grooves all come from the PDK, not from the user.
+Where levels overlap, the lower ``mesh_order`` wins, as in gdsfactory; etch
+depths and groove fills come from the PDK.
 """
 
 from __future__ import annotations
@@ -72,6 +63,21 @@ class StackLayer:
     name: str = ""
     polygons: tuple | None = None
 
+    def tensors(self, wavelength_um: Any) -> tuple[jax.Array, jax.Array | None]:
+        """Lab-frame ``(material, background)`` tensors; ``background`` is None if uniform."""
+        eps = material_tensor(self.material, wavelength_um, self.rotation_deg)
+        if self.background is None:
+            return eps, None
+        return eps, material_tensor(self.background, wavelength_um, self.rotation_deg)
+
+
+def _real_scalar(tensor, xp):
+    """Whether ε is a real, positive scalar, per batch point (``xp`` is np or jnp)."""
+    eps = tensor[..., 0, 0]
+    isotropic = xp.all(xp.isclose(tensor, eps[..., None, None] * xp.eye(3), atol=1e-12), (-2, -1))
+    finite = xp.all(xp.isfinite(tensor), axis=(-2, -1))
+    return isotropic & finite & (xp.abs(eps.imag) <= 1e-12) & (eps.real > 0)
+
 
 @dataclass(frozen=True)
 class VerticalStack:
@@ -80,7 +86,8 @@ class VerticalStack:
     Attributes:
         layers: The finite layers, from the incident side down.
         incident: Material of the incident half-space (isotropic, lossless).
-        exit: Material of the exit half-space (isotropic, lossless).
+        exit: Material of the exit half-space: isotropic and lossless, or for
+            2D-periodic solves a crystal or absorbing wafer (:meth:`exit_medium`).
     """
 
     layers: tuple[StackLayer, ...]
@@ -97,23 +104,8 @@ class VerticalStack:
         tensor = material_tensor(spec, jnp.asarray(wavelength_um, dtype=float))
         eps = tensor[..., 0, 0]
         if isinstance(tensor, jax.core.Tracer):
-            isotropic = jnp.all(
-                jnp.isclose(tensor, eps[..., None, None] * jnp.eye(3), atol=1e-12), axis=(-2, -1)
-            )
-            valid = (
-                isotropic
-                & jnp.all(jnp.isfinite(tensor), axis=(-2, -1))
-                & (jnp.abs(eps.imag) <= 1e-12)
-                & (eps.real > 0)
-            )
-            return jnp.where(valid, eps.real, jnp.nan)
-        isotropic = np.allclose(tensor, eps[..., None, None] * np.eye(3), atol=1e-12)
-        if (
-            not isotropic
-            or not np.isfinite(tensor).all()
-            or np.abs(eps.imag).max() > 1e-12
-            or eps.real.min() <= 0
-        ):
+            return jnp.where(_real_scalar(tensor, jnp), eps.real, jnp.nan)
+        if not np.all(_real_scalar(tensor, np)):
             raise ValueError(
                 f"The {which} half-space ({spec!r}) must be isotropic and lossless; the solvers "
                 "need real, positive ε there. Put an absorbing or anisotropic material in a "
@@ -142,13 +134,12 @@ class VerticalStack:
             probe = 1.55
         with jax.ensure_compile_time_eval():  # a static decision, even under jit
             tensor = np.asarray(material_tensor(self.exit, probe))
-        eps = tensor[..., 0, 0]
-        if (
-            np.allclose(tensor, eps[..., None, None] * np.eye(3), atol=1e-12)
-            and np.abs(eps.imag).max() <= 1e-12
-            and eps.real.min() > 0
-        ):
-            return self.half_space_permittivity("exit", wavelength) if traced else eps.real
+        if np.all(_real_scalar(tensor, np)):
+            return (
+                self.half_space_permittivity("exit", wavelength)
+                if traced
+                else tensor[..., 0, 0].real
+            )
         return material_tensor(self.exit, wavelength)
 
 
@@ -166,11 +157,10 @@ def grating_layers(
     layers = stack.layers if isinstance(stack, VerticalStack) else stack
     out = []
     for spec in layers:
-        eps = material_tensor(spec.material, wavelength_um, spec.rotation_deg)
-        if spec.background is None:
+        eps, groove = spec.tensors(wavelength_um)
+        if groove is None:
             out.append(rcwa.uniform_layer(eps, spec.thickness_um))
         else:
-            groove = material_tensor(spec.background, wavelength_um, spec.rotation_deg)
             out.append(
                 rcwa.lamellar_layer(
                     eps,

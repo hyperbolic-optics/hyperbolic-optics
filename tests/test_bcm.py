@@ -19,6 +19,7 @@ from hyperbolic_optics.layers import _euler_rotation_matrix  # noqa: E402
 from hyperbolic_optics.scattering import scattering_coefficients  # noqa: E402
 from hyperbolic_optics.structure import Structure  # noqa: E402
 from hyperbolic_optics.waves import Wave  # noqa: E402
+from tests._helpers import uniaxial as _uniaxial  # noqa: E402
 
 NO_LAYERS = (jnp.zeros((0, 3, 3)), jnp.zeros((0,)))
 
@@ -32,14 +33,6 @@ def _fresnel(n1, n2, theta):
     t_p = 2 * n1 * c1 / (n2 * c1 + n1 * c2)
     t_s = 2 * n1 * c1 / (n1 * c1 + n2 * c2)
     return r_p, r_s, t_p, t_s
-
-
-def _uniaxial(eps_o, eps_e, tilt, azimuth):
-    """Uniaxial tensor with its axis at ``tilt`` out of the interface, ``azimuth`` in it."""
-    axis = jnp.array(
-        [jnp.cos(tilt) * jnp.cos(azimuth), jnp.cos(tilt) * jnp.sin(azimuth), jnp.sin(tilt)]
-    )
-    return eps_o * jnp.eye(3) + (eps_e - eps_o) * jnp.outer(axis, axis)
 
 
 # A lossless anisotropic multilayer (arXiv:2608.06185 Fig. 3, LiNbO3 axis tilted

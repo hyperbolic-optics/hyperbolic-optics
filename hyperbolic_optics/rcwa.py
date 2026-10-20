@@ -1,18 +1,9 @@
 """Differentiable RCWA for 1D-periodic gratings of full-tensor anisotropic media.
 
-Rigorous coupled-wave analysis (the Fourier modal method) for structures that
-are periodic in x, uniform in y and layered in z. Each layer is piecewise
-constant in x, every segment carrying its own 3×3 permittivity and permeability
--- any orientation, including the xz and yz components a tilted crystal axis
-produces. Incidence may be conical (a plane of incidence at any azimuth to the
-grating vector).
-
-Layers are solved with the eigendecomposition-free cascade of
-:mod:`hyperbolic_optics.bcm`, now on ``4N × 4N`` Fourier-space operators for
-``N = 2·max_order + 1`` harmonics, so the whole calculation -- including the
-Fourier coefficients of the geometry -- is differentiable with ``jax.grad``:
-with respect to segment boundaries (fill factor, ridge position), thicknesses,
-period, tensors and their orientations, wavelength and incidence.
+Periodic in x, uniform in y, layered in z; each segment has its own 3×3 ε and μ
+in any orientation, and incidence may be conical. Layers use the cascade of
+:mod:`hyperbolic_optics.bcm` on ``4N × 4N`` Fourier-space operators, so
+everything, the geometry's Fourier coefficients included, is differentiable.
 
 Fourier factorisation
 ---------------------
@@ -25,9 +16,8 @@ rearranged back into ``D = [[ε]]·E`` with the inverse taken only in Fourier
 space. This is Li's factorisation for anisotropic lamellar gratings (L. Li,
 J. Mod. Opt. 45, 1313 (1998)); for an isotropic medium it reduces to the
 familiar inverse rule for ``Dx`` and Laurent's rule for ``Dy`` and ``Dz``.
-``factorization="laurent"`` uses plain Toeplitz matrices of ε instead, which is
-correct but converges slowly for TM light on high-contrast gratings; it is kept
-for comparison.
+``factorization="laurent"`` uses plain Toeplitz matrices of ε (slow for TM
+light on high-contrast gratings).
 
 Conventions
 -----------
@@ -198,6 +188,24 @@ def _toeplitz(
     return coefficients[..., index]
 
 
+def _li_functions(tensor: jax.Array) -> dict[str, jax.Array]:
+    """Li's rearrangement of a tensor in its own frame (index 0 = the normal).
+
+    ``(E_n, D_t, D_z) = F · (D_n, E_t, E_z)``; returns the coefficient functions
+    in the form the operator assembly uses: ``nn`` = 1/ε_nn, ``nt`` = ε_nt/ε_nn,
+    ``tn`` = ε_tn/ε_nn and ``tt`` = ε_tt − ε_tn·ε_nt/ε_nn (the Schur complements).
+    """
+    e = [[tensor[..., i, j] for j in range(3)] for i in range(3)]
+    out = {"nn": 1.0 / e[0][0]}
+    for key, j in (("nt", 1), ("nz", 2)):
+        out[key] = e[0][j] / e[0][0]
+    for key, i in (("tn", 1), ("zn", 2)):
+        out[key] = e[i][0] / e[0][0]
+    for key, (i, j) in (("tt", (1, 1)), ("tz", (1, 2)), ("zt", (2, 1)), ("zz", (2, 2))):
+        out[key] = e[i][j] - e[i][0] * e[0][j] / e[0][0]
+    return out
+
+
 def _factorize(
     tensor: jax.Array, boundaries: jax.Array, max_order: int, rule: str, edge_width=0.0
 ) -> jax.Array:
@@ -212,21 +220,16 @@ def _factorize(
     if rule != "li":
         raise ValueError(f"Unknown factorization {rule!r}; use 'li' or 'laurent'.")
 
-    e = [[tensor[..., i, j] for j in range(3)] for i in range(3)]
     # (Ex, Dy, Dz) in terms of the x-continuous (Dx, Ey, Ez); Laurent's rule
     # applies to every product here.
-    inv_xx = t(1.0 / e[0][0])
-    a = _solve(inv_xx, jnp.broadcast_to(jnp.eye(inv_xx.shape[-1]), inv_xx.shape))  # [[1/εxx]]⁻¹
-    xy, xz = t(e[0][1] / e[0][0]), t(e[0][2] / e[0][0])
-    yx, zx = t(e[1][0] / e[0][0]), t(e[2][0] / e[0][0])
-
-    def schur(i, j):
-        return t(e[i][j] - e[i][0] * e[0][j] / e[0][0])
+    f = {key: t(value) for key, value in _li_functions(tensor).items()}
+    a = _solve(f["nn"], jnp.broadcast_to(jnp.eye(f["nn"].shape[-1]), f["nn"].shape))  # [[1/εxx]]⁻¹
+    xy, xz, yx, zx = f["nt"], f["nz"], f["tn"], f["zn"]
 
     rows = [
         [a, a @ xy, a @ xz],
-        [yx @ a, schur(1, 1) + yx @ a @ xy, schur(1, 2) + yx @ a @ xz],
-        [zx @ a, schur(2, 1) + zx @ a @ xy, schur(2, 2) + zx @ a @ xz],
+        [yx @ a, f["tt"] + yx @ a @ xy, f["tz"] + yx @ a @ xz],
+        [zx @ a, f["zt"] + zx @ a @ xy, f["zz"] + zx @ a @ xz],
     ]
     return jnp.stack([jnp.stack(jnp.broadcast_arrays(*row), axis=-3) for row in rows], axis=-4)
 
@@ -326,6 +329,36 @@ def _harmonic_modes(eps, qx, qy, direction):
 # ---------------------------------------------------------------------------
 
 
+def _reference_basis(kx, ky, direction):
+    """Reference medium per harmonic, ``kz = √(1 + k∥²)``, at unit power.
+
+    Always propagating, and impedance-matched to the evanescent and high-k waves
+    of the high orders (see :func:`hyperbolic_optics.bcm._reference_modes`).
+    """
+    w, flux = _harmonic_modes(2.0 * (kx**2 + ky**2) + 1.0, kx, ky, direction)
+    return w / jnp.sqrt(2.0 * jnp.abs(flux))[..., None, :]
+
+
+def _order_results(scattering, flux_in, flux_out, zeroth: int, size: int):
+    """``(r, t, R, T)``, each ``[..., order, out, in]``, for light in the zeroth order."""
+    t_full, _, r_full, _ = scattering  # [..., 2N (p then s, by order), 2N]
+    incident = jnp.array([zeroth, size + zeroth])
+
+    def by_order(block):
+        amplitude = block[..., :, incident]
+        return jnp.stack([amplitude[..., :size, :], amplitude[..., size:, :]], axis=-2)
+
+    def per_order(flux):  # [..., order, out]
+        forward = flux[..., : 2 * size]
+        return jnp.stack([forward[..., :size], forward[..., size:]], axis=-1)
+
+    r, t = by_order(r_full), by_order(t_full)
+    power_in = per_order(flux_in)[..., zeroth, :][..., None, None, :]
+    R = jnp.abs(r) ** 2 * per_order(flux_in)[..., :, :, None] / power_in
+    T = jnp.abs(t) ** 2 * per_order(flux_out)[..., :, :, None] / power_in
+    return r, t, R, T
+
+
 def default_doublings(max_order: int) -> int:
     """Doublings that keep the slice error at the planar level as orders are added.
 
@@ -391,58 +424,30 @@ def solve_grating(
     direction = (jnp.cos(azimuth_rad)[..., None], jnp.sin(azimuth_rad)[..., None])
     k0 = 2 * jnp.pi / wavelength_um
 
-    # Reference medium per harmonic with kz = √(1 + k∥²), scaled to unit power:
-    # always propagating, and impedance-matched to the evanescent and high-k
-    # waves of the high orders (see bcm._reference_modes).
     ky = jnp.asarray(ky)[..., None]  # shared by every harmonic of a 1D grating
-    k_par_sq = kx**2 + ky**2
-    w_ref, flux_ref = _harmonic_modes(2.0 * k_par_sq + 1.0, kx, ky, direction)
-    w_ref = w_ref / jnp.sqrt(2.0 * jnp.abs(flux_ref))[..., None, :]
+    w_ref = _reference_basis(kx, ky, direction)
     w_in, flux_in = _harmonic_modes(eps_incident[..., None], kx, ky, direction)
     w_out, flux_out = _harmonic_modes(eps_exit[..., None], kx, ky, direction)
 
     scattering = _interface(w_in, w_ref)
     for layer in layers:
-        eps = _factorize(
-            jnp.asarray(layer.eps) + 0j,
-            layer.boundaries,
-            max_order,
-            factorization,
-            layer.edge_width,
-        )
-        if layer.mu is None:
-            eye = jnp.eye(size, dtype=eps.dtype)
-            mu = jnp.einsum("ij,mn->ijmn", jnp.eye(3, dtype=eps.dtype), eye)
-        else:
-            mu = _factorize(
-                jnp.asarray(layer.mu) + 0j,
-                layer.boundaries,
-                max_order,
-                factorization,
-                layer.edge_width,
+
+        def fourier(tensor, layer=layer):
+            tensor = jnp.asarray(tensor) + 0j
+            return _factorize(tensor, layer.boundaries, max_order, factorization, layer.edge_width)
+
+        eps = fourier(layer.eps)
+        if layer.mu is None:  # μ = 1
+            mu = jnp.einsum(
+                "ij,mn->ijmn", jnp.eye(3, dtype=eps.dtype), jnp.eye(size, dtype=eps.dtype)
             )
+        else:
+            mu = fourier(layer.mu)
         delta = _fourier_system_matrix(eps, mu, kx, ky)
         delta_ref = _solve(w_ref, delta @ w_ref)
         k0d = k0 * jnp.asarray(layer.thickness_um)
         scattering = _star(scattering, _layer(delta_ref, k0d, doublings))
     scattering = _star(scattering, _interface(w_ref, w_out))
 
-    t_full, _, r_full, _ = scattering  # [..., 2N (p then s, by order), 2N]
-    incident = jnp.array([max_order, size + max_order])  # zeroth-order p, s
-
-    def by_order(block):
-        # [..., 2N, 2] -> [..., order, out, in]
-        amplitude = block[..., :, incident]
-        return jnp.stack([amplitude[..., :size, :], amplitude[..., size:, :]], axis=-2)
-
-    r, t = by_order(r_full), by_order(t_full)
-    forward_in = flux_in[..., : 2 * size]
-    power_in = jnp.stack([forward_in[..., max_order], forward_in[..., size + max_order]], -1)
-
-    def per_order(flux):
-        forward = flux[..., : 2 * size]
-        return jnp.stack([forward[..., :size], forward[..., size:]], axis=-1)  # [..., order, out]
-
-    R = jnp.abs(r) ** 2 * per_order(flux_in)[..., :, :, None] / power_in[..., None, None, :]
-    T = jnp.abs(t) ** 2 * per_order(flux_out)[..., :, :, None] / power_in[..., None, None, :]
+    r, t, R, T = _order_results(scattering, flux_in, flux_out, max_order, size)
     return GratingResult(orders=orders, r=r, t=t, R=R, T=T)

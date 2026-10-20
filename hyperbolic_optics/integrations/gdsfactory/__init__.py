@@ -1,38 +1,6 @@
-"""gdsfactory bridge: PDK stacks and layouts into the solvers, gplugins-style.
+"""gdsfactory bridge, imported as ``hog``: PDK stacks, periodic layouts and metasurfaces.
 
-Everything is importable from here::
-
-    from hyperbolic_optics.integrations import gdsfactory as hog
-
-- **Geometry** (:mod:`.geometry`, :mod:`.lattice`): :func:`line_grating` and
-  :func:`periodic_array`, grid-snapped PCells, and :func:`extract_line_grating`
-  and :func:`extract_unit_cell`, which read a line grating or a 2D-periodic
-  pattern back from any component or GDS and refuse anything else.
-- **Materials** (:mod:`.materials`): material specifications, :class:`Oriented`
-  crystals with :func:`x_cut` / :func:`z_cut`, and the mapping from PDK material
-  names (:data:`DEFAULT_MATERIALS`).
-- **Stacks** (:mod:`.stack`): :class:`VerticalStack` and :class:`StackLayer`,
-  written by hand or read from a PDK ``LayerStack`` at a point of a layout
-  (:func:`vertical_stack`), under a line grating (:func:`grating_stack`) or
-  under a 2D-periodic pattern (:func:`crossed_grating_stack`).
-- **Simulation** (:mod:`.simulate`): :func:`simulate_stack`,
-  :func:`simulate_grating` and :func:`simulate_crossed_grating` take a layout
-  and PDK and return :class:`PlanarResponse`, :class:`GratingResponse` or
-  :class:`CrossedGratingResponse`, with Jones, Mueller and ellipsometric
-  analysis.
-
-- **Metasurfaces** (:mod:`.metasurface`): cells that differ site by site in
-  shape, material, crystal orientation, twist and number of layers.
-  :func:`cell_from_pdk` reads a cell's masks and PDK levels;
-  :func:`metasurface_component` draws sites, :func:`read_metasurface` reads a
-  layout back, and :func:`cell_sax_model` gives a cell's SAX model.
-
-- **S-parameters** (:mod:`.sparameters`): :func:`write_sparameters_stack` and
-  :func:`write_sparameters_cell`, cached as ``.npz``, gplugins-style;
-  :func:`model_from_npz` reads them into SAX.
-
-Results describe an infinitely extended stack or grating under plane-wave
-illumination. Requires the ``gdsfactory`` extra and an active PDK.
+Needs the ``gdsfactory`` extra and an active PDK; see the gdsfactory user guide.
 """
 
 from hyperbolic_optics.integrations.gdsfactory.geometry import (

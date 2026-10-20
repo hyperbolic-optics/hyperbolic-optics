@@ -73,11 +73,8 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   `Mueller` did the same, so every Jones vector, Mueller matrix, Stokes output,
   Jones–Mueller bridge and `compose_jones` product reported p→s conversion as
   s→p and the reverse. It shows wherever the two differ: any anisotropic sample
-  whose optic axis is out of the plane of incidence. The tests couldn't see it.
-  One asserted the swapped placement; every other used geometry with no
-  conversion. New tests check the converted power in each channel against
-  `FieldProfile.polarization_resolved`. The generalized ellipsometric ratios were
-  already right, and are now documented as the standard anisotropy ratios. 13
+  whose optic axis is out of the plane of incidence. New tests check each
+  channel's converted power against `FieldProfile.polarization_resolved`. 13
   golden snapshots are regenerated; only their Mueller arrays change.
 - An angle sweep **starting at normal incidence** with an isotropic exit was
   all-NaN. The exit layer recovered the prism permittivity as `(kx / sin θ)²`
@@ -85,10 +82,7 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
   furthest from normal.
 - `FieldProfile` under `backend="scattering"` **raised on any frequency sweep**
   whose first layer is non-dispersive (an isotropic gap, or an arbitrary
-  tensor) — the Otto configuration that backend exists for. Those modes carry no
-  frequency axis while the cascade below them does, and the prism's forward and
-  backward amplitudes were joined without broadcasting. Every existing test used
-  a single frequency.
+  tensor): the prism's amplitudes were joined without broadcasting.
 - A plain `uv sync` removed pytest and ruff, which were declared only as the
   `dev` extra; they are now also a `dev` dependency group, which uv installs by
   default.
@@ -98,15 +92,13 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
 - **Differentiable solvers in JAX** (optional `jax` extra), with exact
   gradients with respect to geometry, tensors, orientations, incidence and
   wavelength:
-  - `bcm`: planar stacks of full ε/μ tensors, built without
-    eigendecomposition (bisection doubling in a power-normalised reference
-    basis), matching the NumPy engine to ~1e-14. `stack_smatrix` gives the
+  - `bcm`: planar stacks of full ε/μ tensors, without eigendecomposition,
+    matching the NumPy engine to ~1e-14. `stack_smatrix` gives the
     four-port S-matrix with evanescent channels kept, and `cascade` connects
     two. `stack_fields` gives fields and absorption. `solve_stack_on_crystal`
     handles semi-infinite anisotropic, lossy or hyperbolic substrates.
   - `rcwa`: 1D gratings of full-tensor media (Li's rule, conical incidence,
-    `edge_width` smoothing). Agrees with FMMAX to 4e-7–2e-5 on isotropic
-    gratings.
+    `edge_width` smoothing).
   - `rcwa2d`: 2D-periodic polygons of full-tensor media on any Bravais
     lattice, with the normal-vector factorisation generalised to anisotropy.
     `crossed_grating_smatrix` gives a cell's zeroth-order four-port S-matrix.
@@ -128,25 +120,18 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
     pattern, with crystal cuts stated explicitly;
   - grid-snapped PCells, with extraction that refuses anything not exactly
     periodic;
-  - metasurfaces whose cells differ site by site in shape, material, crystal
-    orientation, twist and number of layers, drawn as references
-    (`metasurface_component`) and read back (`read_metasurface`), from the
-    cells' metadata or through a PDK's LayerStack; masks etched into a wafer
-    with fixed axes (`rotate_materials=False`); single cells read from a PDK,
-    sidewall slices included (`cell_from_pdk`);
+  - metasurfaces whose cells differ site by site, drawn as references
+    (`metasurface_component`) and read back (`read_metasurface`) from their
+    metadata or through the PDK; `cell_from_pdk` reads one cell, sidewall
+    slices included;
   - Jones, Mueller and ellipsometric results;
   - `write_sparameters_stack`, `write_sparameters_cell` and `model_from_npz`,
     gplugins-style; cache keys include evaluated materials and thicknesses.
 - **SAX** (`integrations.sax`): models of stacks, payload structures and (with
-  `hog.cell_sax_model`) metasurface cells, with polarization as a port mode. A
-  cell connected in SAX to a stack approximates the whole structure when
-  omitted diffraction orders decay across the connecting spacer.
-- Examples: `tfln_gdsfactory.py` (a real PDK), `moo3_metasurface_gdsfactory.py`
-  (the crystal's orientation optimised, then GDS and re-simulation),
+  `hog.cell_sax_model`) metasurface cells, with polarization as a port mode.
+- Examples: `tfln_gdsfactory.py` (a real PDK), `moo3_metasurface_gdsfactory.py`,
   `metalens_gdsfactory.py`, `sax_otto_calcite.py` and
-  `optimize_polarization_converter.py`. The metalens example shows that
-  nanofins turned in a fixed lattice fall short of the ideal geometric phase
-  (0.59 against 0.70 focusing efficiency, by local periodicity).
+  `optimize_polarization_converter.py`.
 - An independent NGSolve FEM reference for a rotated biaxial periodic cell
   (`benchmarks/validation/`), checked by the tests.
 - The optional extras need JAX `>=0.9.2,<0.12` and gdsfactory `>=9.51,<10`.

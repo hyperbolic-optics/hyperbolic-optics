@@ -1113,16 +1113,13 @@ class SellmeierMaterial(UniaxialMaterial):
     ``diag(n_o², n_o², n_e²)``; an isotropic entry has ``n_o = n_e``.
     """
 
+    material_key: str  # its entry under "sellmeier_materials" in material_params.json
+
     def __init__(
-        self,
-        material_key: str,
-        freq_min: float | None = None,
-        freq_max: float | None = None,
-        mu_r: float = 1.0,
+        self, freq_min: float | None = None, freq_max: float | None = None, mu_r: float = 1.0
     ) -> None:
         super().__init__()
-        params = load_material_parameters()["sellmeier_materials"][material_key]
-        self.material_key = material_key
+        params = load_material_parameters()["sellmeier_materials"][self.material_key]
         self.name = params["name"]
         self.mu_r = mu_r
         self.isotropic = params["type"] == "isotropic"
@@ -1178,57 +1175,49 @@ class SellmeierMaterial(UniaxialMaterial):
 class LithiumNiobate(SellmeierMaterial):
     """Congruent LiNbO₃, 0.4–5 µm (Zelmon et al. 1997); negative uniaxial."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("lithium_niobate", freq_min, freq_max, mu_r)
+    material_key = "lithium_niobate"
 
 
 class Rutile(SellmeierMaterial):
     """Rutile TiO₂, 0.43–1.53 µm (DeVore 1951); strongly positive uniaxial."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("rutile", freq_min, freq_max, mu_r)
+    material_key = "rutile"
 
 
 class QuartzSellmeier(SellmeierMaterial):
     """α-quartz, 0.198–2.05 µm (Ghosh 1999). ``Quartz`` is its IR phonon model."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("quartz_sellmeier", freq_min, freq_max, mu_r)
+    material_key = "quartz_sellmeier"
 
 
 class CalciteSellmeier(SellmeierMaterial):
     """Calcite, 0.204–2.172 µm (Ghosh 1999). ``Calcite`` is its IR phonon model."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("calcite_sellmeier", freq_min, freq_max, mu_r)
+    material_key = "calcite_sellmeier"
 
 
 class SapphireSellmeier(SellmeierMaterial):
     """Sapphire, 0.2–5.5 µm (Malitson & Dodge 1972). ``Sapphire`` is its IR phonon model."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("sapphire_sellmeier", freq_min, freq_max, mu_r)
+    material_key = "sapphire_sellmeier"
 
 
 class FusedSilica(SellmeierMaterial):
     """Fused silica, isotropic, 0.21–6.7 µm (Malitson 1965)."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("fused_silica", freq_min, freq_max, mu_r)
+    material_key = "fused_silica"
 
 
 class SiliconNitride(SellmeierMaterial):
     """Stoichiometric Si₃N₄, isotropic, 0.31–5.5 µm (Luke et al. 2015)."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("silicon_nitride", freq_min, freq_max, mu_r)
+    material_key = "silicon_nitride"
 
 
 class Silicon(SellmeierMaterial):
     """Crystalline silicon, isotropic, 1.36–11 µm (Salzberg & Villa 1957)."""
 
-    def __init__(self, freq_min=None, freq_max=None, mu_r=1.0) -> None:
-        super().__init__("silicon", freq_min, freq_max, mu_r)
+    material_key = "silicon"
 
 
 # Single source of truth for the material name -> class mapping, shared by the

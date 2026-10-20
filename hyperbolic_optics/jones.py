@@ -36,6 +36,16 @@ from hyperbolic_optics.mueller import Mueller
 from hyperbolic_optics.structure import Structure
 
 
+def ellipsometric_angles(r_pp, r_ps, r_sp, r_ss) -> dict[str, np.ndarray]:
+    """Ψ/Δ (degrees) of r_pp/r_ss and of the anisotropy ratios r_ps/r_ss and r_sp/r_pp."""
+    out = {}
+    for key, numerator, denominator in (("", r_pp, r_ss), ("_ps", r_ps, r_ss), ("_sp", r_sp, r_pp)):
+        rho = numerator / denominator
+        out[f"Psi{key}"] = np.degrees(np.arctan(np.abs(rho)))
+        out[f"Delta{key}"] = np.degrees(np.angle(rho))
+    return out
+
+
 class Jones:
     """Jones-calculus analyzer for coherent polarization (amplitude level).
 
@@ -341,24 +351,8 @@ class Jones:
             Dict of ``Psi, Delta, Psi_ps, Delta_ps, Psi_sp, Delta_sp`` (degrees),
             each in the scenario's presentation shape.
         """
-        r_pp, r_ss = self.structure.r_pp, self.structure.r_ss
-        r_ps, r_sp = self.structure.r_ps, self.structure.r_sp
-
-        def _angles(numerator: np.ndarray, denominator: np.ndarray) -> tuple:
-            rho = numerator / denominator
-            return np.degrees(np.arctan(np.abs(rho))), np.degrees(np.angle(rho))
-
-        psi, delta = _angles(r_pp, r_ss)
-        psi_ps, delta_ps = _angles(r_ps, r_ss)
-        psi_sp, delta_sp = _angles(r_sp, r_pp)
-        return {
-            "Psi": psi,
-            "Delta": delta,
-            "Psi_ps": psi_ps,
-            "Delta_ps": delta_ps,
-            "Psi_sp": psi_sp,
-            "Delta_sp": delta_sp,
-        }
+        s = self.structure
+        return ellipsometric_angles(s.r_pp, s.r_ps, s.r_sp, s.r_ss)
 
     def find_exceptional_points(self, overlap_threshold: float = 0.99) -> dict[str, np.ndarray]:
         """Locate exceptional points across the scenario sweep.

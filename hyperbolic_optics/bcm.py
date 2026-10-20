@@ -22,6 +22,7 @@ without it a warning says so.
 """
 
 import warnings
+from functools import partial
 from typing import NamedTuple
 
 import jax
@@ -270,6 +271,7 @@ def _star(left, right):
     )
 
 
+@partial(jax.jit, static_argnames="doublings")  # compiled once per shape, not per call
 def _layer(delta_ref: jax.Array, k0d: jax.Array, doublings: int):
     """Scattering matrix of one homogeneous layer in the reference basis.
 
@@ -365,6 +367,14 @@ def _scattering(eps, thickness_um, wavelength_um, kx, eps_incident, eps_exit, mu
     return _cascade(eps, mu, thickness_um, wavelength_um, kx, w_top, w_bottom, doublings)
 
 
+def _deltas(eps, mu, kx, w_ref) -> list:
+    """Each layer's ``Δ`` in reference-mode amplitudes, from the top down."""
+    return [
+        _solve(w_ref, system_matrix(eps[..., i, :, :], mu[..., i, :, :], kx) @ w_ref)
+        for i in range(eps.shape[-3])
+    ]
+
+
 def _cascade(eps, mu, thickness_um, wavelength_um, kx, w_top, w_bottom, doublings):
     """The layers between two half-spaces' mode bases, as scattering blocks."""
     eps, mu = _materials(eps, mu)
@@ -372,10 +382,8 @@ def _cascade(eps, mu, thickness_um, wavelength_um, kx, w_top, w_bottom, doubling
     k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
     w_ref = _reference_modes(kx)
     scattering = _interface(w_top, w_ref)
-    for index in range(eps.shape[-3]):
-        delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
-        k0d = k0 * thickness_um[..., index]
-        scattering = _star(scattering, _layer(_solve(w_ref, delta @ w_ref), k0d, doublings))
+    for index, delta in enumerate(_deltas(eps, mu, kx, w_ref)):
+        scattering = _star(scattering, _layer(delta, k0 * thickness_um[..., index], doublings))
     return _star(scattering, _interface(w_ref, w_bottom))
 
 
@@ -415,18 +423,20 @@ def stack_smatrix(
     s00, s01, s10, s11 = _scattering(
         eps, thickness_um, wavelength_um, kx, eps_top, eps_bottom, mu, doublings
     )
-    raw = jnp.concatenate(
-        [jnp.concatenate([s10, s11], axis=-1), jnp.concatenate([s00, s01], axis=-1)], axis=-2
-    )  # rows: out at top, out at bottom; columns: in at top, in at bottom
-    return _normalize_smatrix(raw, kx, eps_top, eps_bottom)
+    return _normalize_smatrix((s00, s01, s10, s11), kx, eps_top, eps_bottom)
 
 
-def _normalize_smatrix(raw, kx, eps_top, eps_bottom, bottom_propagating=None):
-    """Shared four-port convention, including complex √kz on evanescent ports.
+def _normalize_smatrix(blocks, kx, eps_top, eps_bottom, bottom_propagating=None):
+    """The four-port matrix of scattering ``blocks``, power-normalised (complex √kz
+    on evanescent ports).
 
     ``bottom_propagating`` (``[..., 2]``) marks bottom ports whose modes are
     already power-normalised (a crystal's, from :mod:`hyperbolic_optics.rcwa2d`).
     """
+    s00, s01, s10, s11 = blocks
+    raw = jnp.concatenate(
+        [jnp.concatenate([s10, s11], axis=-1), jnp.concatenate([s00, s01], axis=-1)], axis=-2
+    )  # rows: out at top, out at bottom; columns: in at top, in at bottom
     kz_top = _kz(jnp.asarray(eps_top), kx) + 0j
     crystal = bottom_propagating is not None
     kz_bottom = jnp.ones_like(kz_top) if crystal else _kz(jnp.asarray(eps_bottom), kx) + 0j
@@ -568,10 +578,7 @@ def stack_fields(
     k0 = 2 * jnp.pi / jnp.asarray(wavelength_um)
     w_ref = _reference_modes(kx)
 
-    deltas = []
-    for index in range(n_layers):
-        delta = system_matrix(eps[..., index, :, :], mu[..., index, :, :], kx)
-        deltas.append(_solve(w_ref, delta @ w_ref))
+    deltas = _deltas(eps, mu, kx, w_ref)
     layers = [_layer(deltas[i], k0 * thickness_um[..., i], doublings) for i in range(n_layers)]
     above = [_interface(_isotropic_modes(eps_incident, kx), w_ref)]
     for layer in layers:

@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
-"""Optimise a LiNbO3 film into a broadband p-to-s converter by gradient ascent.
+"""Optimise a LiNbO₃ film on glass into a broadband p-to-s converter by gradient ascent.
 
-A uniaxial LiNbO3 film sits on glass with its optic axis in the plane of the
-film. Two parameters -- the film thickness and the in-plane angle of the axis --
-are tuned to maximise the p-to-s power transmitted, averaged over 600-700 nm at
-normal incidence. The answer is known in advance: a half-wave plate, with the
-axis at 45 degrees and a thickness near λ / (2 Δn). The gradients come from
-:mod:`hyperbolic_optics.bcm` through ``jax.grad``; the optimiser is a few lines
-of Adam.
+Thickness and in-plane axis angle are tuned for p→s transmission over
+600–700 nm; the answer is a half-wave plate at 45°. The design is re-checked
+with the NumPy engine, which shares no code with the JAX path.
 
-The optimised design is then re-evaluated independently with the NumPy engine
-(``Structure`` + ``FieldProfile``), which shares none of the JAX code path.
-
-Needs the optional JAX dependency:  uv sync --extra jax   (or pip install jax)
-Run:  python examples/optimize_polarization_converter.py
+Run:  uv run --extra jax python examples/optimize_polarization_converter.py
 """
 
 import time

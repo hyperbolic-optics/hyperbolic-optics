@@ -37,6 +37,5 @@ if args.integration:
     cell = hog.VerticalStack((), exit=2.25)
     s = hog.cell_sax_model(cell, ((0.4, 0.0), (0.0, 0.4)), (0, 0))(wl=1.55)
     np.testing.assert_allclose(abs(s["top@p", "top@p"]) ** 2, 0.04)
-    assert callable(hog.write_sparameters_cell)
     print({p: version(p) for p in ("jax", "gdsfactory", "sax")})
 print("Installed wheel smoke checks passed")

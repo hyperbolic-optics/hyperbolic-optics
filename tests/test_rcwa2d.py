@@ -24,14 +24,8 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp  # noqa: E402
 
 from hyperbolic_optics import bcm, rcwa, rcwa2d  # noqa: E402
-
-
-def _uniaxial(eps_o, eps_e, tilt, azimuth):
-    axis = jnp.array(
-        [jnp.cos(tilt) * jnp.cos(azimuth), jnp.cos(tilt) * jnp.sin(azimuth), jnp.sin(tilt)]
-    )
-    return (eps_o * jnp.eye(3) + (eps_e - eps_o) * jnp.outer(axis, axis)).astype(complex)
-
+from tests._helpers import total as _total  # noqa: E402
+from tests._helpers import uniaxial as _uniaxial  # noqa: E402
 
 EYE = jnp.eye(3, dtype=complex)
 LN_TILTED = _uniaxial(5.46, 5.06, 0.7, 0.4)  # every off-diagonal component nonzero
@@ -41,11 +35,6 @@ FACTORIZATIONS = ("normal", "laurent")
 
 def _zeroth(result):
     return int(np.flatnonzero((np.asarray(result.orders) == 0).all(axis=1))[0])
-
-
-def _total(result):
-    """Summed efficiency over orders and outgoing polarizations, per input."""
-    return np.asarray(result.R.sum(axis=(-3, -2)) + result.T.sum(axis=(-3, -2)))
 
 
 def _pillar(eps, size=(0.3, 0.3), thickness=0.25, period=0.6):

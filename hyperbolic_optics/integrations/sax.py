@@ -1,40 +1,8 @@
-"""SAX models of planar anisotropic stacks.
+"""SAX models of planar anisotropic stacks and executed payloads.
 
-`SAX <https://github.com/flaport/sax>`_ composes S-matrix models into circuits.
-:func:`planar_model` turns a stack of anisotropic layers into one: a function
-of the wavelength (``wl``, µm, SAX's convention), the in-plane wavevector
-``kx`` and an azimuth, returning SAX's ``SDict`` over four multimode ports,
-
-    ``top@p``, ``top@s``, ``bottom@p``, ``bottom@s``
-
-keyed ``(in, out)`` as SAX expects. The values come from
-:func:`hyperbolic_optics.bcm.stack_smatrix`, so they are differentiable, and
-power-normalized between propagating ports (see
-:class:`~hyperbolic_optics.bcm.PlanarSMatrix`).
-
-Connecting one model's ``bottom`` to another's ``top`` in a SAX netlist stacks
-them, provided the two share that half-space: its permittivity, and the same
-``kx`` (pass ``kx`` as a global setting, not an angle, since the angle changes
-from medium to medium and ``kx`` does not). Evanescent channels are carried, so
-a gap beyond total internal reflection tunnels. ``bcm.cascade`` does the same
-connection without SAX.
-
-Plane-wave ports are not waveguide modes: connecting these to a guided-mode
-model needs an overlap or mode-matching step that this module does not
-provide.
-
-For gradients through a circuit use ``sax.circuit(..., backend="filipsson_gunnar")``
-(pure JAX, exact); SAX's default sparse (KLU) backend evaluates these models
-but fails in the backward pass.
-
-Payload users: :func:`structure_smatrix` / :func:`structure_sdict` take an
-executed :class:`~hyperbolic_optics.structure.Structure` and give the same
-four-port matrix on its scenario grid ``[angle, azimuth, frequency, thickness]``
--- every payload feature included (named materials and their rotations, custom
-tensors, magnetic layers, thickness sweeps).
-
-This module does not import SAX (it pins JAX below 0.10); the models are
-plain functions returning dictionaries, which SAX accepts.
+Models return ``SDict`` s over ``top@p``, ``top@s``, ``bottom@p`` and
+``bottom@s``, keyed ``(in, out)``, from :func:`hyperbolic_optics.bcm.stack_smatrix`.
+SAX itself is not imported (it pins JAX below 0.10). See the SAX user guide.
 """
 
 from __future__ import annotations

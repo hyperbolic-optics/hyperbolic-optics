@@ -1,17 +1,8 @@
 """Differentiable permittivity of the built-in materials, in JAX.
 
-The materials of :mod:`hyperbolic_optics.materials` -- hBN, α-MoO₃, calcite,
-sapphire, quartz, SiC, AlN, GaN and β-Ga₂O₃ -- are phonon-polariton media whose
-Reststrahlen bands are where they turn hyperbolic. Their NumPy classes evaluate
-the permittivity on the host, which breaks the chain of derivatives: a tensor
-taken from them carries no gradient with respect to frequency. This module
-evaluates the same oscillator models in JAX, so ``jax.grad`` of a
-:mod:`~hyperbolic_optics.bcm` or :mod:`~hyperbolic_optics.rcwa` result with
-respect to wavelength includes the material's dispersion.
-
-The parameters are read from each material's own class (and so from
-``material_params.json``), so the two implementations cannot drift apart; the
-test suite checks they agree to rounding.
+The models of :mod:`hyperbolic_optics.materials`, evaluated in JAX so that
+wavelength gradients include the dispersion. Parameters come from the same
+``material_params.json``; the tests check the two agree.
 
 Models:
 
@@ -24,12 +15,9 @@ Models:
 - monoclinic (β-Ga₂O₃): Lorentz Bu modes whose dipoles lie at angles αᵢ in the
   x-y plane, which gives the xy component, plus Au modes along z.
 
-Frequencies are in cm⁻¹, as elsewhere in the package; :func:`at_wavelength`
-takes µm. The tensors are in the crystal frame; rotate them with
-:func:`hyperbolic_optics.bcm.rotate_tensor`.
-
-:func:`pockels_tensor` gives the permittivity under an applied field (the
-Pockels effect), so a voltage is a design parameter like any other.
+Frequencies are in cm⁻¹ (:func:`at_wavelength` takes µm); tensors are in the
+crystal frame (rotate with :func:`hyperbolic_optics.bcm.rotate_tensor`).
+:func:`pockels_tensor` adds the Pockels effect of an applied field.
 """
 
 from functools import lru_cache

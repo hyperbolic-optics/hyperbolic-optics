@@ -63,31 +63,23 @@ in z, such as a slanted or twisted grating, is a stack of thin layers.
 
 ## What materials it handles
 
-Every segment takes a full 3×3 ε and μ with no symmetry assumed. These classes
-of material are validated:
+Every segment takes a full 3×3 ε and μ: isotropic dielectrics and metals,
+in-plane anisotropic and hyperbolic crystals (LiNbO₃, α-MoO₃), full tensors
+with xz and yz terms (tilted hBN) and non-symmetric, gyrotropic tensors. The
+isotropic and in-plane cases agree with FMMAX to 4e-7–1e-4 (the comparison
+script is in git history before `98a1f20`); full tensors, which FMMAX cannot
+represent, agree with an eigenmode solution to 1e-10 and, unpatterned, with the
+NumPy engine to 1e-14.
 
-| material | example | checked by |
-|---|---|---|
-| isotropic dielectric and metal | silicon, gold | FMMAX (same answer to 4e-7–2e-5), energy, symmetry |
-| anisotropic, axis in the plane | LiNbO₃ | FMMAX (converges to the same answer, 1e-5) |
-| **hyperbolic**, axis in the plane | α-MoO₃ at 900 cm⁻¹ | FMMAX (converges to the same answer, 1e-4) |
-| **hyperbolic, full tensor** (xz, yz terms) | hBN at 1450 cm⁻¹, axis tilted | eigenmode solution (1e-10), NumPy engine for the unpatterned film (1e-14), mirror symmetries, energy, passivity |
-| **non-symmetric** (gyrotropic, ε_xy = −ε_yx) | Hermitian gyrotropic tensor | FMMAX (converges to the same answer, 1e-5), energy conservation |
-| near-zero ε_xx | ε_xx = 0.01i | stays finite and passive |
-
-Two limits follow from the method itself:
-
-- **ε_xx and ε_zz must be nonzero in every segment** (and μ_xx, μ_zz likewise).
-  Li's rule contains 1/ε_xx and the field equations contain 1/ε_zz, so an
-  *exactly* zero, lossless value gives `NaN`. Any loss at all (ε_xx = 0.01i
-  was tested) keeps it finite.
-- **Incident and exit half-spaces must be isotropic and lossless.**
+- ε_xx, ε_zz, μ_xx and μ_zz must be nonzero: Li's rule divides by them. Any
+  loss keeps a near-zero value finite.
+- Incident and exit half-spaces must be isotropic and lossless.
 
 ## Convergence
 
-Truncation is the main source of error: keep raising `max_order` until the
-quantity you need stops changing. With the default Li factorisation, the change
-to the 161-order result is roughly:
+Truncation is the main error: raise `max_order` until the quantity you need
+stops changing. With Li's factorisation, the change to the 161-order result is
+roughly:
 
 | grating | 41 orders | 81 orders |
 |---|---|---|
@@ -97,90 +89,24 @@ to the 161-order result is roughly:
 | hyperbolic MoO₃, axis in the plane | 7e-4 | 2e-4 |
 | hyperbolic hBN, axis tilted (full tensor) | 2e-2 | 6e-3 |
 
-Hyperbolic ridges converge slowly because they carry propagating waves of very
-high in-plane wavevector, so plan on 81 orders or more for them.
-
-The number of doublings per layer grows with `max_order` automatically (see
-`rcwa.default_doublings`). Pass `factorization="laurent"` to compare against the
-unmodified Laurent rule, which reaches the same limit much more slowly for TM
-light.
-
-### Rounding
-
-Energy conservation measures the numerical error that is left apart from
-truncation. Lossless dielectric gratings conserve energy to 1e-13 at 41 orders
-and 1e-11 at 81.
-
-Lossless hyperbolic gratings are the hardest case: 1e-11 at 41 orders, 1e-9 at
-81 and 3e-8 at 161. That is still far below their truncation error.
+Hyperbolic ridges carry very high-k waves, so plan on 81 orders or more.
+Doublings grow with `max_order` automatically (`rcwa.default_doublings`).
+Lossless gratings conserve energy to 1e-13 (dielectric, 41 orders) down to
+3e-8 (hyperbolic, 161 orders), far below the truncation error.
 
 ### Gradients with respect to geometry on hyperbolic ridges
 
-The gradient is exact for the truncated model at any `max_order`. For some
-hyperbolic ridges, however, the truncated model itself depends on the edge
-positions with a ripple, whose amplitude falls as orders are added while its
-frequency rises. The ripple in the *slope* therefore does not fade.
+On some hyperbolic ridges (tilted-axis hBN) the truncated model ripples with
+the edge positions; the ripple's amplitude falls with `max_order` but its
+frequency rises, so the gradient's ripple persists. Compare gradients at two
+truncations; if they ripple, set `edge_width` (a fraction of the period:
+coefficient m is multiplied by sinc(m·edge_width)) and re-simulate the
+hard-edged layout to measure the shift.
 
-- **Tilted-axis hBN ridges** (period 8 µm, first diffracted order): the ripple
-  in d/d(fill) is comparable to the true slope even at 161 orders.
-- **A subwavelength hBN ribbon absorber** with the flakes' natural orientation
-  shows no ripple, even with hard edges.
-- **Dielectric ridges** show none either: silicon's d/d(fill) is identical at
-  41, 81 and 161 orders.
-
-So check before optimising geometry: compare the gradient at two truncations.
-Where it ripples, smooth the edges with `edge_width` (a fraction of the period)
-on `lamellar_layer` or `GratingLayer`. That convolves the profile with a box,
-multiplying Fourier coefficient m by sinc(m · edge_width).
-
-On the tilted-hBN grating:
-
-- at 161 orders, `edge_width = 0.04` removes the ripple completely (the gradient
-  changes sign 0 times, against 30 with hard edges);
-- at 81 orders no width suffices, because the remaining ripple comes from the
-  hBN's own high-k fields rather than the edges.
-
-Smoothing also shifts the answer slightly (−4% in that first-order efficiency at
-`edge_width = 0.04`). Re-simulate the hard-edged layout afterwards to measure
-the difference.
-
-## Validation
-
-In `tests/test_rcwa.py`:
-
-- **Uniform layers** reproduce the planar solver exactly (to about 1e-13), at
-  any truncation and at conical incidence.
-- **The doubling engine** agrees with:
-  - a SciPy matrix exponential of the same Fourier-space operator on a
-    patterned full-tensor layer
-  - an eigenmode S-matrix on a hyperbolic full-tensor layer, lossy and lossless
-- **Physics:**
-  - lossless gratings conserve energy across all orders, including full-tensor,
-    hyperbolic, gyrotropic and conical ones
-  - lossy gratings absorb and never gain energy
-  - a symmetric grating diffracts symmetrically at normal incidence
-  - mirroring the structure in x or y (which flips the signs of the
-    off-diagonal terms) mirrors the result
-  - a lateral shift changes only the phases of the orders
-  - Li's rule converges faster than Laurent's
-- **Gradients** match finite differences for fill factor, offset, thickness,
-  period, wavelength, incidence, azimuth and crystal tilt.
-
-Against [FMMAX](https://github.com/mfschubert/fmmax) (six gratings, including
-in-plane hyperbolic MoO₃ and a gyrotropic ridge): isotropic gratings agree to
-4e-7–2e-5 at every truncation, and the anisotropic ones converge to FMMAX's
-answer extrapolated to infinitely many orders (1e-5–1e-4). FMMAX cannot
-represent xz / yz components; a tilted, twisted liquid-crystal polarization
-grating (arXiv:2608.06185, Fig. 4) is in the tests instead.
+Tests: `tests/test_rcwa.py`.
 
 ## Limitations
 
-- Periodic in one direction only. For 2D-periodic metasurfaces see
+- Periodic in one direction only; for 2D see
   [Crossed Gratings (2D RCWA)](crossed-gratings.md).
-- Incident and exit half-spaces must be isotropic and lossless.
-- ε_xx, ε_zz, μ_xx and μ_zz must not be exactly zero (see above).
-- Results are for an infinitely periodic structure under plane-wave
-  illumination.
-- Speed: one 41-order grating layer takes about 85 ms per wavelength on a CPU,
-  against about 250 ms for FMMAX on the same case (both run without `jax.jit`).
-  Neither has been tuned, so this is not a performance comparison.
+- Plane-wave results for an infinitely periodic structure.

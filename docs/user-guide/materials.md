@@ -137,10 +137,7 @@ reststrahlen band.
 
 ## Transparency-Window Crystals (Sellmeier)
 
-The materials above are phonon models for the infrared Reststrahlen bands, where
-these crystals turn hyperbolic. The same crystals' birefringence at the
-wavelengths photonic chips use, from the visible to the mid-IR transparency
-edge, comes from lossless Sellmeier fits:
+Lossless Sellmeier fits for the transparency windows, where photonic chips work:
 
 | name | crystal | valid (µm) | source |
 |---|---|---|---|
@@ -153,11 +150,8 @@ edge, comes from lossless Sellmeier fits:
 | `Si3N4` | LPCVD silicon nitride, isotropic | 0.31–5.5 | Luke et al., Opt. Lett. 40, 4823 (2015) |
 | `Si` | crystalline silicon, isotropic | 1.36–11 | Salzberg & Villa, JOSA 47, 244 (1957) |
 
-The optic axis is along z, so the tensor is `diag(nₒ², nₒ², nₑ²)`. Frequencies
-are in cm⁻¹ as everywhere else (1550 nm is 6451.6 cm⁻¹), and the usual warning
-fires outside a fit's published range. They work in payloads, and in the JAX
-solvers through `hyperbolic_optics.dispersion`. The test suite checks each
-against the index its source gives, to 1e-3.
+The tensor is `diag(nₒ², nₒ², nₑ²)` (optic axis along z). Frequencies are in
+cm⁻¹ (1550 nm is 6451.6 cm⁻¹); outside a fit's range a warning fires.
 
 An x-cut LiNbO₃ film, with the optic axis in the plane of the film at 30° to
 the plane of incidence:

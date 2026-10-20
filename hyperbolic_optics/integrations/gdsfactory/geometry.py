@@ -1,12 +1,4 @@
-"""Line-grating geometry between gdsfactory layouts and the RCWA solver.
-
-- :func:`line_grating`, a PCell for a grating of identical parallel ridges, with
-  its period and ridge width snapped to the layout grid so that the exported
-  geometry is exactly periodic;
-- :func:`extract_line_grating`, which reads that geometry back from any
-  gdsfactory component (or imported GDS), and refuses anything that is not a
-  clean line grating rather than guessing.
-"""
+"""Line gratings: a grid-snapped PCell, and extraction that refuses anything else."""
 
 from __future__ import annotations
 

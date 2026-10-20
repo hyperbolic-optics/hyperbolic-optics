@@ -1,18 +1,4 @@
-"""2D-periodic layouts between gdsfactory and the crossed-grating solver.
-
-- :func:`periodic_array`, a PCell that repeats a unit cell of polygons on a
-  rectangular lattice, with the period and every vertex snapped to the layout
-  grid, so the exported geometry is exactly periodic;
-- :func:`extract_unit_cell`, which reads a 2D-periodic pattern back from any
-  gdsfactory component or imported GDS, and refuses anything that is not one;
-- :func:`crossed_grating_stack`, the PDK stack that pattern's etch makes, by
-  comparing the ``LayerStack`` column inside the shapes with the column around
-  them, as :func:`~hyperbolic_optics.integrations.gdsfactory.stack.grating_stack`
-  does for line gratings;
-- :func:`crossed_grating_layers`, the :mod:`hyperbolic_optics.rcwa2d` layers
-  for a unit cell etched into a stack. Its polygons may be JAX values, so a
-  shape can be optimised and then drawn with :func:`periodic_array`.
-"""
+"""2D-periodic layouts: grid-snapped PCells, exact extraction, PDK stacks and rcwa2d layers."""
 
 from __future__ import annotations
 
@@ -27,7 +13,7 @@ import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack
 
 from hyperbolic_optics import rcwa2d
-from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec, material_tensor
+from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec
 from hyperbolic_optics.integrations.gdsfactory.stack import (
     StackLayer,
     VerticalStack,
@@ -181,21 +167,48 @@ def _complete_lattices(groups, corners, a1, a2):
     return counts, motif
 
 
+def _steps(a1, a2, dbu) -> tuple[np.ndarray, np.ndarray]:
+    """Lattice vectors in whole grid steps."""
+    return tuple(np.rint(np.asarray(a, float) / dbu).astype(np.int64) for a in (a1, a2))
+
+
+def _altitude(a1, a2) -> float:
+    """The cell's smallest height: its area over its longer side."""
+    return abs(a1[0] * a2[1] - a1[1] * a2[0]) / max(np.hypot(*a1), np.hypot(*a2))
+
+
+def _tiled(region, a1, a2, reach: int = 1) -> kf.kdb.Region:
+    """``region`` and its lattice images up to ``reach`` steps away, unmerged (grid steps)."""
+    out = kf.kdb.Region()
+    for i in range(-reach, reach + 1):
+        for j in range(-reach, reach + 1):
+            dx, dy = i * a1 + j * a2
+            out += region.transformed(kf.kdb.Trans(int(dx), int(dy)))
+    return out
+
+
+def _self_overlaps(region, a1, a2, reach: int = 1) -> bool:
+    """Whether ``region``, tiled on the lattice, overlaps itself or its images."""
+    copies = (2 * reach + 1) ** 2
+    return _tiled(region, a1, a2, reach).area() < copies * sum(p.area() for p in region.each())
+
+
+def _hulls(region) -> list[np.ndarray]:
+    """Each polygon's vertices in grid steps ``[V, 2]``; holes are refused."""
+    if any(p.holes() for p in region.each()):
+        raise ValueError(
+            "a polygon has a hole; draw the hole's material as its own shape on the background"
+        )
+    return [np.array([(p.x, p.y) for p in q.each_point_hull()], np.int64) for q in region.each()]
+
+
 def _overlaps(cell_polygons, a1: np.ndarray, a2: np.ndarray) -> bool:
     """Whether the motif, tiled on the lattice, overlaps itself (within or across cells)."""
-    tiled = kf.kdb.Region()
-    area = 0
+    region = kf.kdb.Region()
+    for points in cell_polygons:
+        region.insert(kf.kdb.Polygon([kf.kdb.Point(int(x), int(y)) for x, y in points]))
     extent = np.ptp(np.concatenate(cell_polygons), axis=0)
-    spacing = abs(int(a1[0] * a2[1] - a1[1] * a2[0])) / max(np.hypot(*a1), np.hypot(*a2))
-    reach = int(np.hypot(*extent) // spacing) + 2
-    for shift_1 in range(-reach, reach + 1):
-        for shift_2 in range(-reach, reach + 1):
-            for points in cell_polygons:
-                shifted = points + shift_1 * a1 + shift_2 * a2
-                polygon = kf.kdb.Polygon([kf.kdb.Point(int(x), int(y)) for x, y in shifted])
-                tiled.insert(polygon)
-                area += polygon.area()
-    return tiled.merged().area() < area
+    return _self_overlaps(region, a1, a2, int(np.hypot(*extent) // _altitude(a1, a2)) + 2)
 
 
 def _candidate_bases(reference: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -249,15 +262,7 @@ def extract_unit_cell(
             parallelogram of cells. Pass it to impose a lattice instead.
     """
     dbu = component.kcl.dbu
-    region = kf.kdb.Region(component.begin_shapes_rec(gf.get_layer(layer)))
-    polygons = []
-    for polygon in region.each():
-        if polygon.holes():
-            raise ValueError(
-                f"a polygon on layer {layer} has a hole; draw the hole's material as its own "
-                "shape on the background instead"
-            )
-        polygons.append(np.array([(p.x, p.y) for p in polygon.each_point_hull()], dtype=np.int64))
+    polygons = _hulls(kf.kdb.Region(component.begin_shapes_rec(gf.get_layer(layer))))
     if len(polygons) < 2:
         raise ValueError(
             f"need a repeated pattern on layer {layer}, found {len(polygons)} polygons"
@@ -433,11 +438,10 @@ def crossed_grating_layers(
     layers = stack.layers if isinstance(stack, VerticalStack) else stack
     out = []
     for spec in layers:
-        eps = material_tensor(spec.material, wavelength_um, spec.rotation_deg)
-        if spec.background is None:
+        eps, background = spec.tensors(wavelength_um)
+        if background is None:
             out.append(rcwa2d.uniform(eps, spec.thickness_um))
         else:
-            background = material_tensor(spec.background, wavelength_um, spec.rotation_deg)
             polygons = spec.polygons if spec.polygons is not None else cell.polygons
             shapes = tuple(rcwa2d.Shape(jnp.asarray(p), eps) for p in polygons)
             out.append(rcwa2d.PatternedLayer(spec.thickness_um, background, shapes))

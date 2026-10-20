@@ -31,24 +31,13 @@ from hyperbolic_optics.rcwa import (  # noqa: E402
     _fourier_system_matrix,
     _harmonic_modes,
 )
-
-
-def _uniaxial(eps_o, eps_e, tilt, azimuth):
-    axis = jnp.array(
-        [jnp.cos(tilt) * jnp.cos(azimuth), jnp.cos(tilt) * jnp.sin(azimuth), jnp.sin(tilt)]
-    )
-    return (eps_o * jnp.eye(3) + (eps_e - eps_o) * jnp.outer(axis, axis)).astype(complex)
-
+from tests._helpers import total as _total  # noqa: E402
+from tests._helpers import uniaxial as _uniaxial  # noqa: E402
 
 EYE = jnp.eye(3, dtype=complex)
 LN_TILTED = _uniaxial(5.46, 5.06, 0.7, 0.4)  # every off-diagonal component nonzero
 SILICON = 3.5**2 * EYE
 GLASS = 1.45**2
-
-
-def _total(result):
-    """Summed efficiency over orders and outgoing polarizations, per input."""
-    return np.asarray(result.R.sum(axis=(-3, -2)) + result.T.sum(axis=(-3, -2)))
 
 
 # ---------------------------------------------------------------------------

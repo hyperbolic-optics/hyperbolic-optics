@@ -20,7 +20,7 @@ import numpy as np
 from gdsfactory.technology.layer_stack import LayerStack
 
 from hyperbolic_optics import __version__
-from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec, material_tensor
+from hyperbolic_optics.integrations.gdsfactory.materials import MaterialSpec
 from hyperbolic_optics.integrations.gdsfactory.metasurface import cell_sax_model
 from hyperbolic_optics.integrations.gdsfactory.simulate import stack_sax_model
 from hyperbolic_optics.integrations.gdsfactory.stack import (
@@ -52,6 +52,13 @@ def component_hash(component: gf.Component) -> str:
     return digest.hexdigest()
 
 
+def _cache_dir(dirpath) -> Path:
+    directory = Path(dirpath if dirpath is not None else gf.config.PATH.sparameters)
+    directory = directory / "hyperbolic_optics"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
 def _settings_hash(settings: Mapping[str, Any]) -> str:
     return hashlib.md5(json.dumps(_jsonable(settings), sort_keys=True).encode()).hexdigest()
 
@@ -74,9 +81,7 @@ def get_sparameters_path(
     component: gf.Component, dirpath: Path | str | None = None, **settings: Any
 ) -> Path:
     """Where a component's S-parameters for these settings live (gplugins' layout)."""
-    dirpath = Path(dirpath) if dirpath is not None else Path(gf.config.PATH.sparameters)
-    dirpath = dirpath / "hyperbolic_optics"
-    dirpath.mkdir(parents=True, exist_ok=True)
+    dirpath = _cache_dir(dirpath)
     key = hashlib.md5((component_hash(component) + _settings_hash(settings)).encode()).hexdigest()
     return dirpath / f"{component.name}_{key}.npz"
 
@@ -128,10 +133,7 @@ def _stack_settings(stack, wavelengths):
         layers=[
             dict(
                 thickness_um=layer.thickness_um,
-                eps=material_tensor(layer.material, wavelengths, layer.rotation_deg),
-                background=None
-                if layer.background is None
-                else material_tensor(layer.background, wavelengths, layer.rotation_deg),
+                tensors=layer.tensors(wavelengths),
                 polygons=layer.polygons,
             )
             for layer in stack.layers
@@ -210,10 +212,7 @@ def write_sparameters_cell(
         azimuth=azimuth,
         solver_settings=solver_settings,
     )
-    directory = Path(dirpath if dirpath is not None else gf.config.PATH.sparameters)
-    directory = directory / "hyperbolic_optics"
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"cell_{_settings_hash(settings)}.npz"
+    path = _cache_dir(dirpath) / f"cell_{_settings_hash(settings)}.npz"
     return _cached_model(
         path,
         settings,
