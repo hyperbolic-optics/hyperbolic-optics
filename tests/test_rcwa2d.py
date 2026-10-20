@@ -491,6 +491,27 @@ def test_tilted_axis_nanofin_against_the_paper():
 
 
 class TestZerothOrderSMatrix:
+    def test_mixed_cascade_tunnels_through_an_evanescent_gap(self):
+        upper = rcwa2d.crossed_grating_smatrix([], (0.3, 0.3), 1.55, 0.0, 2.25, 1.0, (0, 0), kx=1.2)
+        lower = bcm.stack_smatrix(EYE[None], jnp.array([0.12]), 1.55, 1.2, 1.0, 2.25)
+        whole = bcm.stack_smatrix(EYE[None], jnp.array([0.12]), 1.55, 1.2, 2.25, 2.25)
+        joined = bcm.cascade(upper, lower)
+        np.testing.assert_allclose(joined.s, whole.s, atol=1e-12)
+        np.testing.assert_allclose(np.sum(abs(joined.s) ** 2, axis=0), 1.0, atol=1e-12)
+
+    def test_zero_order_pattern_is_finite_and_conserves_power(self):
+        shape = rcwa2d.Shape(rcwa2d.rectangle((0.0, 0.0), (0.2, 0.1)), 4 * EYE)
+        result = rcwa2d.solve_crossed_grating(
+            [rcwa2d.PatternedLayer(0.2, EYE, (shape,))],
+            (0.4, 0.4),
+            1.55,
+            0.2,
+            1.0,
+            1.0,
+            (0, 0),
+        )
+        np.testing.assert_allclose(_total(result), 1.0, atol=1e-12)
+
     LN = bcm.rotate_tensor(
         jnp.diag(jnp.array([4.9, 5.2, 4.6], dtype=complex)), bcm.rotation_matrix(0.3, 0.7, 0.4)
     )

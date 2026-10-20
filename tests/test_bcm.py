@@ -361,5 +361,7 @@ def test_warns_without_x64():
     try:
         with pytest.warns(UserWarning, match="complex64"):
             bcm.solve_stack(*NO_LAYERS, 1.0, 0.3, 2.25, 1.0)
+        with pytest.warns(UserWarning, match="complex64"):
+            bcm.stack_smatrix(*NO_LAYERS, 1.0, 0.3, 2.25, 1.0)
     finally:
         jax.config.update("jax_enable_x64", True)

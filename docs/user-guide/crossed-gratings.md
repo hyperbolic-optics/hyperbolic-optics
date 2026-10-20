@@ -58,7 +58,11 @@ result.T.shape       # (121, 2, 2): [order, out, in], 0 = p and 1 = s
 - **Four-port S-matrix.** `crossed_grating_smatrix` takes the same arguments
   and returns the zeroth-order `PlanarSMatrix` (light from either side, both
   polarizations, power-normalised), for SAX circuits of metasurfaces
-  ([Scattering Matrices and SAX](sax.md)).
+  ([Scattering Matrices and SAX](sax.md)). Its optional `kx` overrides the
+  incidence angle with the conserved radial in-plane wavevector, allowing
+  evanescent zeroth orders. Normalization matches `bcm.stack_smatrix`.
+  Unitarity requires lossless media, propagating zeroth-order ports and
+  evanescent higher orders.
 
 ## Lattices
 

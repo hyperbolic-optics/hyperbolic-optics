@@ -23,12 +23,20 @@ z_um, fields = modes.slab_mode_fields(eps, thickness_um, 1.55, 1.0, 1.444**2,
 - Any 3 × 3 ε and μ in any layer. In a rotated crystal the modes are hybrid,
   neither TE nor TM. Lossy layers give a complex `n_eff`.
 - Modes propagate along x; rotate the tensors to change direction.
+- Default index bounds include both ε and μ. Indefinite tensors require an
+  explicit `index_range`, above both cladding indices. Higher contour moments
+  and adaptive subdivision resolve crowded spectra; unresolved contours raise
+  an error instead of silently returning a partial list. Contours are graded
+  towards the cladding index, so modes just above cutoff are found; the default
+  search starts 1e-6 (relative) above it.
 - `slab_mode_fields` returns E and H through the stack and into the
   claddings, normalised to unit power along x.
 
 `tests/test_modes.py` checks the slab dispersion relations (isotropic and
 uniaxial) and a lossy mode's loss against its absorbed power. It also checks
-a hybrid LiNbO₃ mode against prism coupling in the NumPy payload engine.
+a hybrid LiNbO₃ mode against prism coupling in the NumPy payload engine,
+all 46 modes of a thick isotropic slab, modes 5e-5 above cutoff, and
+electric/magnetic duality.
 
 ## The Pockels effect
 
