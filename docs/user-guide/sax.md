@@ -31,8 +31,8 @@ smatrix.propagating  # [4], False for a port evanescent in its half-space
   through the stack, while the angle changes from medium to medium. Stacks
   connected to one another must share `kx`.
 - **Normalization.** Amplitudes are scaled by √kz of their half-space.
-  - Between propagating ports, |s|² is the fraction of power transferred, and
-    a lossless stack's matrix is unitary.
+  - Between propagating ports, |s|² is the fraction of power transferred.
+    A lossless stack's matrix is unitary when all four ports propagate.
   - The top-incidence block is `solve_stack`'s r, with its R and T.
 - **Evanescent channels are kept.** Beyond total internal reflection a port
   is flagged `propagating = False`. It keeps the same √kz scaling, with
@@ -73,17 +73,22 @@ film(wl=6.7, kx=0.3, azimuth=0.2)    # SDict: {("top@p", "bottom@s"): ..., ...}
   `hog.cell_sax_model(cell, lattice)` wraps it as a SAX model (see
   [gdsfactory](gdsfactory.md#metasurfaces-with-different-cells-at-every-site)).
   Only the zeroth order is a port, so it holds for a subwavelength array.
+  Cell models use the same conserved `kx`, sample `azimuth` and complex √kz
+  normalization as planar models, including evanescent zeroth-order ports.
+  Their wavelength-dependent materials support JIT and differentiation.
   Connect it to other elements across a spacer thick enough for its
-  evanescent orders to decay.
+  omitted orders to decay: an order with decay constant α has amplitude
+  `exp(−αd)` across a spacer of thickness d. Check convergence with d,
+  especially near a diffraction threshold where α approaches zero.
 - **Connections.** In a netlist, connect one model's `bottom` to another's
   `top`, and pass `kx` as a global setting. SAX matches the `@p` and `@s`
   modes itself.
 - **Gradients.** Use `sax.circuit(..., backend="filipsson_gunnar")`, which is
   pure JAX and exact. SAX's default sparse (KLU) backend evaluates these
   models but fails in the backward pass.
-- **Not a dependency.** SAX pins JAX below 0.10 and this package uses a newer
-  JAX, so `hyperbolic_optics.integrations.sax` doesn't import it. The models
-  are plain functions returning dictionaries. Run SAX in its own environment:
+- **Not a dependency.** SAX pins JAX below 0.10, which narrows this package's
+  JAX range to 0.9, so `hyperbolic_optics.integrations.sax` doesn't import it.
+  The models are plain functions returning dictionaries. Add SAX when needed:
   `uv run --with sax python …`.
 - **Plane-wave ports only.** They are not waveguide modes. Connecting them to
   a guided-mode model needs an overlap or mode-matching step that is not

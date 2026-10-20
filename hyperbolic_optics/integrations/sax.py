@@ -33,8 +33,8 @@ four-port matrix on its scenario grid ``[angle, azimuth, frequency, thickness]``
 -- every payload feature included (named materials and their rotations, custom
 tensors, magnetic layers, thickness sweeps).
 
-This module does not import SAX (it pins an older JAX than this package's);
-the models are plain functions returning dictionaries, which SAX accepts.
+This module does not import SAX (it pins JAX below 0.10); the models are
+plain functions returning dictionaries, which SAX accepts.
 """
 
 from __future__ import annotations
@@ -48,7 +48,6 @@ from hyperbolic_optics import bcm
 
 __all__ = [
     "PORTS",
-    "kx_from_angle",
     "planar_model",
     "sdict",
     "structure_sdict",
@@ -84,11 +83,6 @@ def sdict(smatrix: bcm.PlanarSMatrix) -> dict[tuple[str, str], jnp.ndarray]:
         for i_in, port_in in enumerate(PORTS)
         for i_out, port_out in enumerate(PORTS)
     }
-
-
-def kx_from_angle(angle_rad, eps) -> jnp.ndarray:
-    """``kx = n·sin θ`` for an angle ``θ`` in a medium of permittivity ``eps``."""
-    return jnp.sqrt(jnp.asarray(eps)) * jnp.sin(jnp.asarray(angle_rad))
 
 
 def planar_model(
