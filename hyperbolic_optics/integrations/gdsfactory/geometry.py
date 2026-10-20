@@ -133,7 +133,7 @@ def extract_line_grating(
     period, start = np.polyfit(index, x0, 1)
     if np.max(np.abs(x0 - (start + period * index))) > tolerance:
         raise ValueError("ridges are not equally spaced; not a periodic line grating")
-    if np.mean(widths) >= period:
+    if np.mean(widths) >= period - tolerance:  # the fitted period carries rounding
         raise ValueError("ridges touch or overlap; no gap to form a grating")
     return LineGrating(
         period_um=float(period),
