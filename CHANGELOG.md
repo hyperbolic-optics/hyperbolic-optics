@@ -128,18 +128,26 @@ regimes 0.3.0 got wrong; the affected regimes are named in each entry.
     periodic;
   - metasurfaces whose cells differ site by site in shape, material, crystal
     orientation, twist and number of layers, drawn as references
-    (`metasurface_component`) and read back (`read_metasurface`);
+    (`metasurface_component`) and read back (`read_metasurface`), from the
+    cells' metadata or through a PDK's LayerStack; masks etched into a wafer
+    with fixed axes (`rotate_materials=False`); single cells read from a PDK,
+    sidewall slices included (`cell_from_pdk`);
   - Jones, Mueller and ellipsometric results;
-  - `write_sparameters_stack` and `model_from_npz`, gplugins-style.
+  - `write_sparameters_stack`, `write_sparameters_cell` and `model_from_npz`,
+    gplugins-style; cache keys include evaluated materials and thicknesses.
 - **SAX** (`integrations.sax`): models of stacks, payload structures and (with
   `hog.cell_sax_model`) metasurface cells, with polarization as a port mode. A
-  cell connected in SAX to a stack equals the whole structure to 1e-9.
+  cell connected in SAX to a stack approximates the whole structure when
+  omitted diffraction orders decay across the connecting spacer.
 - Examples: `tfln_gdsfactory.py` (a real PDK), `moo3_metasurface_gdsfactory.py`
   (the crystal's orientation optimised, then GDS and re-simulation),
   `metalens_gdsfactory.py`, `sax_otto_calcite.py` and
   `optimize_polarization_converter.py`. The metalens example shows that
   nanofins turned in a fixed lattice fall short of the ideal geometric phase
-  (0.61 against 0.77 focusing efficiency).
+  (0.59 against 0.70 focusing efficiency, by local periodicity).
+- An independent NGSolve FEM reference for a rotated biaxial periodic cell
+  (`benchmarks/validation/`), checked by the tests.
+- The optional extras need JAX `>=0.9.2,<0.12` and gdsfactory `>=9.51,<10`.
 - **Fully general ε/μ tensors**: `ArbitraryMaterial` accepts all nine components
   of each tensor (`eps_yx`, `eps_zx`, `eps_zy` and the `mu_` counterparts), so
   non-reciprocal media — gyrotropic permeability, magneto-optic permittivity —

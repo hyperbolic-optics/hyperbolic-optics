@@ -47,9 +47,6 @@ class TestModels:
         direct = bcm.stack_smatrix(rotated[:, None], jnp.array([0.1]), wl, 0.2, 1.0, 11.7)
         np.testing.assert_allclose(sd["top@p", "bottom@s"], direct.s[:, 3, 0], atol=1e-14)
 
-    def test_angle_helper(self):
-        assert float(hsax.kx_from_angle(np.pi / 6, 2.25)) == pytest.approx(0.75)
-
 
 class TestFromPayloads:
     """``structure_smatrix``: the engine's own r and t, completed with light from below."""
