@@ -27,6 +27,24 @@ from hyperbolic_optics.structure import Structure  # noqa: E402
 EYE = jnp.eye(3, dtype=complex)
 
 
+def test_zero_trace_hyperbolic_substrate_has_a_regular_limit():
+    def solve(zz):
+        return bcm.solve_stack_on_crystal(
+            jnp.zeros((0, 3, 3), complex),
+            jnp.zeros(0),
+            1.55,
+            0.3,
+            1.0,
+            jnp.diag(jnp.array([2.0, 2.0, zz], complex)),
+        )
+
+    result = solve(-4.0)
+    expected = (solve(-4.000001).r + solve(-3.999999).r) / 2
+    np.testing.assert_allclose(result.r, expected, atol=1e-12)
+    np.testing.assert_allclose(result.R.sum(-2) + result.T, 1.0, atol=1e-12)
+    assert np.isfinite(jax.grad(lambda zz: solve(zz).R.sum())(-4.0))
+
+
 def _against_engine(scenario, layers, substrate, atol):
     structure = Structure()
     structure.execute(

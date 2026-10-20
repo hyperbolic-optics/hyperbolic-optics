@@ -14,7 +14,6 @@ method and refined by the secant method.
 
 from __future__ import annotations
 
-import warnings
 from typing import NamedTuple
 
 import jax
@@ -28,11 +27,11 @@ __all__ = ["GuidedMode", "slab_mode_fields", "slab_modes"]
 
 
 class GuidedMode(NamedTuple):
-    """A guided (or lossy, or leaky) mode of a planar stack, propagating along x.
+    """A guided, possibly lossy mode of a planar stack, propagating along x.
 
     Attributes:
         effective_index: Complex ``n_eff = β/k₀``; ``Im > 0`` for a mode that
-            decays as it propagates (absorption, or leakage).
+            decays as it propagates through an absorbing stack.
         loss_db_per_cm: Power attenuation, ``20·log₁₀(e)·k₀·Im(n_eff)`` per cm.
         multiplicity: How many eigenvalues of the round trip reach 1 (2 for a
             degenerate pair).
@@ -56,7 +55,10 @@ def _planar_parts(eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu, kx)
 
     def half_space(eps_half):
         eps_half = jnp.asarray(eps_half)
-        return bcm._isotropic_modes(eps_half, kx, bcm._kz_outgoing(eps_half, kx, k0))
+        # Guided contours stay to the right of the cladding branch points.
+        # Keep their evanescent branch analytic throughout the contour; a
+        # switch based on Re(ε−kx²) introduces a discontinuity off the real axis.
+        return bcm._isotropic_modes(eps_half, kx, 1j * jnp.sqrt(kx**2 - eps_half + 0j))
 
     deltas = [
         bcm._solve(w_ref, bcm.system_matrix(eps[..., i, :, :], mu[..., i, :, :], kx) @ w_ref)
@@ -87,11 +89,19 @@ def _planar_round_trip(eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu
     return jax.jit(matrix)
 
 
-def _index_bounds(eps, eps_top, eps_bottom):
+def _index_bounds(eps, eps_top, eps_bottom, mu):
     cladding = max(float(np.sqrt(np.real(eps_top))), float(np.sqrt(np.real(eps_bottom))))
-    core = max(
-        float(np.max(np.sqrt(np.real(np.linalg.eigvals(np.asarray(e)))))) for e in np.asarray(eps)
-    )
+    tensors = [
+        np.asarray(eps),
+        np.broadcast_to(np.eye(3), eps.shape) if mu is None else np.asarray(mu),
+    ]
+    bounds = []
+    for tensor in tensors:
+        hermitian = (tensor + tensor.conj().swapaxes(-1, -2)) / 2
+        if np.min(np.linalg.eigvalsh(hermitian)) <= 0:
+            raise ValueError("Give index_range explicitly for indefinite ε or μ.")
+        bounds.append(np.linalg.norm(tensor, ord=2, axis=(-2, -1)))
+    core = float(np.max(np.sqrt(bounds[0] * bounds[1])))
     return cladding, core
 
 
@@ -125,15 +135,17 @@ def slab_modes(
         wavelength_um: Vacuum wavelength (real).
         eps_top, eps_bottom: Cladding permittivities (isotropic, real).
         index_range: Real ``n_eff`` to search; by default from just above the
-            higher cladding index to the highest index in the core. Keep it
+            higher cladding index to a bound from ε and μ in the core. Indefinite
+            tensors require an explicit range. Keep it
             above the claddings' indices: the branch point at each is where a
             mode stops being guided.
         max_loss: Largest ``Im n_eff`` searched; by default 5 % of the range.
         mu: Layer permeabilities; identity if omitted.
         split: ``(layer, fraction)`` of the internal plane; by default the
             middle of the highest-index layer.
-        quadrature, probes: Contour quadrature points, and random probe
-            vectors (at least the number of modes in the range).
+        quadrature, probes: Contour quadrature points and random probe vectors
+            (at most two independent vectors for this 2×2 problem). Higher
+            moments and adaptive subdivision handle contours with more roots.
         tolerance: ``|1 − μ|`` at which a root is accepted.
         doublings: Doublings per layer, as in :func:`hyperbolic_optics.bcm.solve_stack`.
         seed: Seed of the probe vectors.
@@ -141,18 +153,35 @@ def slab_modes(
     Returns:
         :class:`GuidedMode` s, highest effective index first (fundamental first).
     """
+    bcm._check_x64()
     eps = jnp.asarray(eps, dtype=complex)
     thickness_um = jnp.asarray(thickness_um, dtype=float)
-    cladding, core = _index_bounds(eps, eps_top, eps_bottom)
-    low, high = index_range if index_range is not None else (cladding * (1 + 1e-6), core)
+    if not len(eps):
+        return []
+    if index_range is None:
+        cladding, core = _index_bounds(eps, eps_top, eps_bottom, mu)
+        low, high = cladding * (1 + 1e-6), core
+        if high <= low:
+            return []
+    else:
+        low, high = index_range
+        if low <= max(np.sqrt(eps_top), np.sqrt(eps_bottom)):
+            raise ValueError("A guided index_range must lie above both cladding indices.")
     depth = 0.05 * (high - low) if max_loss is None else float(max_loss)
+    if not high > low or not depth > 0 or quadrature < 16 or probes < 1:
+        raise ValueError(
+            "Need an increasing index_range, positive max_loss/probes and quadrature ≥16."
+        )
     if split is None:
         peak = [float(np.max(np.real(np.linalg.eigvals(np.asarray(e))))) for e in eps]
         split = (int(np.argmax(peak)), 0.5)
     round_trip = _planar_round_trip(
         eps, thickness_um, wavelength_um, eps_top, eps_bottom, mu, split, doublings
     )
-    roots = _contour_roots(round_trip, (low, high), depth, quadrature, probes, tolerance, seed)
+    branch = float(np.sqrt(max(np.real(eps_top), np.real(eps_bottom))))
+    roots = _contour_roots(
+        round_trip, (low, high), depth, quadrature, probes, tolerance, seed, branch
+    )
     k0 = 2 * np.pi / float(wavelength_um)
     return [
         GuidedMode(
@@ -196,6 +225,7 @@ def slab_mode_fields(
     The fields are marched from the internal plane with bounded scattering
     matrices, so thick claddings or strongly evanescent layers stay stable.
     """
+    bcm._check_x64()
     eps = jnp.asarray(eps, dtype=complex)
     thickness_um = jnp.asarray(thickness_um, dtype=float)
     n_eff = jnp.asarray(effective_index, dtype=complex)
@@ -249,7 +279,7 @@ def slab_mode_fields(
     # the top cladding: outgoing (upward, decaying) waves only
     eye3 = jnp.eye(3, dtype=complex)
     top_amplitudes = jnp.linalg.solve(w_top, w_ref @ jnp.concatenate([down[0], up[0]]))
-    kz_top = bcm._kz_outgoing(jnp.asarray(eps_top), n_eff, k0)
+    kz_top = 1j * jnp.sqrt(n_eff**2 - eps_top + 0j)
     for z in np.linspace(-cladding_um[0], 0.0, cladding_samples, endpoint=False):
         tangential = w_top[:, 2:] @ (top_amplitudes[2:] * jnp.exp(-1j * k0 * kz_top * z))
         z_list.append(z)
@@ -261,7 +291,7 @@ def slab_mode_fields(
     bottom_amplitudes = jnp.linalg.solve(
         w_bottom, w_ref @ jnp.concatenate([down[len(planes) - 1], up[len(planes) - 1]])
     )
-    kz_bottom = bcm._kz_outgoing(jnp.asarray(eps_bottom), n_eff, k0)
+    kz_bottom = 1j * jnp.sqrt(n_eff**2 - eps_bottom + 0j)
     for z in np.linspace(0.0, cladding_um[1], cladding_samples + 1)[1:]:
         tangential = w_bottom[:, :2] @ (bottom_amplitudes[:2] * jnp.exp(1j * k0 * kz_bottom * z))
         z_list.append(tops[-1] + z)
@@ -277,13 +307,13 @@ def slab_mode_fields(
     return z_um, fields / np.sqrt(power)
 
 
-def _contour_roots(round_trip, real_range, depth, quadrature, probes, tolerance, seed):
+def _contour_roots(round_trip, real_range, depth, quadrature, probes, tolerance, seed, branch):
     """Every ``z`` near a real range where ``A₀₁·B₁₀(z)`` has eigenvalue 1.
 
-    The range is tiled by ellipses centred on the real axis, each reaching
-    ``±depth`` across it and overlapping its neighbours, with aspect ratio at
-    most 2 (the trapezoid rule converges slowly on a long, flat contour). In
-    each, Beyn's method estimates the roots, which the secant method refines.
+    Overlapping rectangles cover the range and ``±depth`` in imaginary index,
+    graded towards the cladding branch point ``branch`` when the range starts
+    close to it. Saturated contours split along their longer axis, keeping all
+    of the search region covered. Beyn estimates are refined by the secant method.
     Returns ``[(z, residual, multiplicity)]`` in order of ``Re z``, degenerate
     roots once.
     """
@@ -292,14 +322,59 @@ def _contour_roots(round_trip, real_range, depth, quadrature, probes, tolerance,
     tiles = max(1, int(np.ceil(width / (4 * depth))))
     segment = width / tiles
     found = []
+
+    def search(left, right, bottom=-depth, top=depth, level=0):
+        centre = complex(0.5 * (left + right), 0.5 * (bottom + top))
+        radius = 0.5 * (right - left)
+        height = 0.5 * (top - bottom)
+        roots, saturated = _beyn(
+            round_trip, centre, radius, height, quadrature, probes, tolerance, seed, width
+        )
+        if saturated:
+            roots, saturated = _beyn(
+                round_trip, centre, radius, height, 4 * quadrature, probes, tolerance, seed, width
+            )
+        if saturated:
+            if level == 16:
+                hint = "narrow index_range" if jax.config.jax_enable_x64 else "enable 64-bit JAX"
+                raise RuntimeError(f"Mode contour remains unresolved; {hint}.")
+            if radius >= height:
+                return search(left, centre.real + 0.05 * radius, bottom, top, level + 1) + search(
+                    centre.real - 0.05 * radius, right, bottom, top, level + 1
+                )
+            return search(left, right, bottom, centre.imag + 0.05 * height, level + 1) + search(
+                left, right, centre.imag - 0.05 * height, top, level + 1
+            )
+        return roots
+
+    def graded(left, right, gap):
+        """A tile whose left edge is ``gap`` from a branch point: rectangles that
+        shrink towards it, each at least half its size away, so every contour's
+        quadrature converges (near cutoff a uniform tile misses roots)."""
+        size = min(depth, right - left)
+        boxes = [(left + 0.9 * size, right, -depth, depth)]
+        if depth > size:
+            boxes += [(left, left + 1.1 * size, 0.9 * size, depth),
+                      (left, left + 1.1 * size, -depth, -0.9 * size)]  # fmt: skip
+        while size > 2 * gap:
+            inner = size / 2
+            boxes += [(left + 0.9 * inner, left + size, -size, size),
+                      (left, left + 1.1 * inner, 0.9 * inner, size),
+                      (left, left + 1.1 * inner, -size, -0.9 * inner)]  # fmt: skip
+            size = inner
+        boxes.append((left, left + size, -size, size))
+        return [root for box in boxes for root in search(*box)]
+
     for tile in range(tiles):
         # neighbours overlap by 10 %, but no tile reaches past the range's ends:
         # an end may be a branch point (a cladding's index, for guided modes)
         left = max(x0, x0 + (tile - 0.1) * segment)
         right = min(x1, x0 + (tile + 1.1) * segment)
-        centre = complex(0.5 * (left + right), 0.0)
-        found += _beyn(round_trip, centre, 0.5 * (right - left), depth, quadrature, probes,
-                       tolerance, seed + tile, width)  # fmt: skip
+        gap = x0 - branch
+        if tile == 0 and 0 < gap < 0.1 * (right - left):
+            found += graded(left, right, gap)
+        else:
+            found += search(left, right)
 
     roots = []
     for z, residual, mu in sorted(found, key=lambda r: r[0].real):
@@ -313,35 +388,44 @@ def _contour_roots(round_trip, real_range, depth, quadrature, probes, tolerance,
 
 
 def _beyn(round_trip, centre, semi_real, semi_imag, quadrature, probes, tolerance, seed, scale):
-    """Beyn's method in one ellipse, then secant refinement: ``[(z, residual, μ)]``."""
-    theta = 2 * np.pi * (np.arange(quadrature) + 0.5) / quadrature
-    points = centre + semi_real * np.cos(theta) + 1j * semi_imag * np.sin(theta)
-    tangents = -semi_real * np.sin(theta) + 1j * semi_imag * np.cos(theta)  # dz/dθ
+    """Block-Hankel contour moments, then secant refinement; flag saturated contours."""
+    nodes, weights = np.polynomial.legendre.leggauss(max(4, quadrature // 4))
+    corners = centre + np.array(
+        [
+            -semi_real - 1j * semi_imag,
+            semi_real - 1j * semi_imag,
+            semi_real + 1j * semi_imag,
+            -semi_real + 1j * semi_imag,
+        ]
+    )
+    edges = np.roll(corners, -1) - corners
+    points = (corners[:, None] + edges[:, None] * (nodes + 1) / 2).ravel()
+    tangents = (edges[:, None] * weights / 2).ravel()
 
     size = np.asarray(round_trip(points[0])).shape[-1]
     probes = min(probes, size)
     rng = np.random.default_rng(seed)
     probe = rng.standard_normal((size, probes)) + 1j * rng.standard_normal((size, probes))
-    moment0 = np.zeros((size, probes), dtype=complex)
-    moment1 = np.zeros((size, probes), dtype=complex)
+    blocks = 4
+    moments = np.zeros((2 * blocks, size, probes), dtype=complex)
+    radius = max(semi_real, semi_imag)
+    magnitude = 0.0  # Σ|integrand·dz|: the scale of rounding in the moments
     for z, dz in zip(points, tangents, strict=True):
         t = np.eye(size) - np.asarray(round_trip(z))
-        solved = np.linalg.solve(t, probe) * dz / quadrature / 1j
-        moment0 += solved
-        moment1 += z * solved
+        solved = np.linalg.solve(t, probe) * dz / (2j * np.pi)
+        magnitude += np.linalg.norm(solved)
+        local = (z - centre) / radius
+        moments += local ** np.arange(2 * blocks)[:, None, None] * solved
+    moment0 = np.block([[moments[i + j] for j in range(blocks)] for i in range(blocks)])
+    moment1 = np.block([[moments[i + j + 1] for j in range(blocks)] for i in range(blocks)])
     u, sigma, vh = np.linalg.svd(moment0, full_matrices=False)
-    rank = int(np.sum(sigma > 1e-9 * sigma[0])) if sigma[0] > 0 else 0
+    rank = int(np.sum(sigma > max(1e-9 * sigma[0], 1e-10 * magnitude)))
     if rank == 0:
-        return []
-    if rank == probes and probes < size:
-        warnings.warn(
-            f"{rank} roots fill all {probes} probes: some may be missing. Raise probes, "
-            "or narrow the region.",
-            UserWarning,
-            stacklevel=4,
-        )
+        return [], False
+    if rank == len(sigma):
+        return [], True
     u, sigma, v = u[:, :rank], sigma[:rank], vh[:rank].conj().T
-    estimates = np.linalg.eigvals(u.conj().T @ moment1 @ v / sigma)
+    estimates = centre + radius * np.linalg.eigvals(u.conj().T @ moment1 @ v / sigma)
 
     def mismatch(z):
         matrix = np.asarray(round_trip(z))
@@ -352,7 +436,14 @@ def _beyn(round_trip, centre, semi_real, semi_imag, quadrature, probes, toleranc
 
     reach = max(semi_real, semi_imag)
     found = []
-    for estimate in estimates:
+
+    def inside(z):
+        return abs(z.real - centre.real) <= semi_real * (1 + 1e-9) and abs(
+            z.imag - centre.imag
+        ) <= semi_imag * (1 + 1e-9)
+
+    candidates = [z for z in estimates if inside(z)]
+    for estimate in candidates:
         z_prev, z = complex(estimate), complex(estimate) + 1e-6 * scale
         g_prev, _ = mismatch(z_prev)
         if g_prev is None:
@@ -369,7 +460,14 @@ def _beyn(round_trip, centre, semi_real, semi_imag, quadrature, probes, toleranc
         g, mu = mismatch(z)
         if g is None:
             continue
-        inside = ((z.real - centre.real) / semi_real) ** 2 + (z.imag / semi_imag) ** 2 <= 1 + 1e-9
-        if abs(g) < 1e3 * tolerance and inside:
+        if abs(g) < 1e3 * tolerance and inside(z):
             found.append((z, abs(g), mu))
-    return found
+    # A failed refinement is not evidence that the contour contained no root.
+    distinct = []
+    for root in found:
+        if not any(abs(root[0] - other[0]) < 1e-8 * max(1.0, abs(root[0])) for other in distinct):
+            distinct.append(root)
+    resolved = sum(
+        np.sum(np.abs(1 - mu) < max(1e-7, 1e3 * residual)) for _, residual, mu in distinct
+    )
+    return distinct, resolved < len(candidates)

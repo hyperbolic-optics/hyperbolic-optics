@@ -52,7 +52,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from hyperbolic_optics.bcm import _check_x64, _interface, _layer, _solve, _star
+from hyperbolic_optics.bcm import _check_x64, _interface, _layer, _normalize_smatrix, _solve, _star
 from hyperbolic_optics.rcwa import _fourier_system_matrix, _harmonic_modes, default_doublings
 
 __all__ = [
@@ -127,7 +127,8 @@ class Shape(NamedTuple):
 
     Attributes:
         vertices: ``[..., V, 2]`` in µm, in cell coordinates (either winding).
-            Shapes may cross the cell edge; they are periodised.
+            Shapes may cross the cell edge; they are periodised. They must not
+            overlap one another or their periodic images (overlaps add).
         eps: Permittivity tensor in the lab frame, ``[..., 3, 3]``.
         mu: Permeability tensor, or ``None`` for μ = 1.
     """
@@ -391,7 +392,7 @@ def _normal_field(indicators, lattice, grid, sigma):
     dx = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gx * smooth, eu, ev))
     dy = jnp.real(jnp.einsum("...mn,im,jn->...ij", 1j * gy * smooth, eu, ev))
     squared = dx**2 + dy**2
-    flat = squared < 1e-18 * jnp.max(squared)  # only the field's isolated zeros
+    flat = squared <= 1e-18 * jnp.max(squared)
     safe = jnp.sqrt(jnp.where(flat, 1.0, squared))  # differentiable everywhere
     # The natural gradient direction, not a sign-canonicalised one: the factorisation
     # is pointwise independent of n's sign, but any fixed half-plane cut coincides
@@ -590,10 +591,9 @@ def _operators(
 
 def _scattering(
     layers, period_um, wavelength_um, incidence_rad, eps_incident, eps_exit, max_order,
-    azimuth_rad, factorization, doublings, grid, truncation,
+    azimuth_rad, factorization, doublings, grid, truncation, kx=None,
 ):  # fmt: skip
     """``(orders, zeroth, scattering blocks, flux_in, flux_out)`` over every harmonic."""
-    _check_x64()
     mx, my = max_order
     lattice = _as_lattice(period_um)
     _, _, b1, b2, _ = _vectors(lattice)
@@ -609,7 +609,11 @@ def _scattering(
 
     eps_incident, eps_exit = jnp.asarray(eps_incident), jnp.asarray(eps_exit)
     wavelength_um, azimuth_rad = jnp.asarray(wavelength_um), jnp.asarray(azimuth_rad)
-    k_par = jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+    k_par = (
+        jnp.sqrt(eps_incident) * jnp.sin(jnp.asarray(incidence_rad))
+        if kx is None
+        else jnp.asarray(kx)
+    )
     scale = (wavelength_um / (2 * jnp.pi))[..., None]
     gx = orders[:, 0] * b1[0] + orders[:, 1] * b2[0]
     gy = orders[:, 0] * b1[1] + orders[:, 1] * b2[1]
@@ -644,25 +648,28 @@ def crossed_grating_smatrix(
     doublings: int | None = None,
     grid: tuple[int, int] | None = None,
     truncation: str = "parallelogram",
+    *,
+    kx: jax.Array | None = None,
 ):
     """The zeroth-order, four-port scattering matrix of a 2D-periodic stack.
 
     A metasurface as a circuit element: light from either side, in either
     polarization, into the zeroth order on either side, power-normalised over
     :data:`hyperbolic_optics.bcm.PORTS` as :func:`hyperbolic_optics.bcm.stack_smatrix`
-    is. The higher orders are solved for but are not ports, so the matrix is
-    unitary only while they are evanescent (a subwavelength lattice, lossless).
+    is. The higher orders are solved for but are not ports. Unitarity requires
+    lossless media, propagating zeroth orders and evanescent higher orders.
     Arguments as in :func:`solve_crossed_grating`, with ``incidence_rad`` in the
-    top medium.
+    top medium. Alternatively, ``kx`` supplies the conserved in-plane wavevector
+    over k₀ and overrides ``incidence_rad``, including evanescent top ports.
+    Evanescent ports retain BCM's complex √kz normalization; |s|² is not power there.
 
     Returns:
         :class:`hyperbolic_optics.bcm.PlanarSMatrix`.
     """
-    from hyperbolic_optics.bcm import PlanarSMatrix
-
-    orders, zeroth, (s00, s01, s10, s11), flux_top, flux_bottom = _scattering(
+    _check_x64()
+    orders, zeroth, (s00, s01, s10, s11), _, _ = _scattering(
         layers, period_um, wavelength_um, incidence_rad, eps_top, eps_bottom, max_order,
-        azimuth_rad, factorization, doublings, grid, truncation,
+        azimuth_rad, factorization, doublings, grid, truncation, kx,
     )  # fmt: skip
     size = orders.shape[0]
     index = jnp.array([zeroth, size + zeroth])  # p and s of the zeroth order
@@ -677,12 +684,12 @@ def crossed_grating_smatrix(
         ],
         axis=-2,
     )  # rows: out at top, out at bottom; columns: in at top, in at bottom
-    flux = jnp.concatenate([flux_top[..., index], flux_bottom[..., index]], axis=-1)
-    tolerance = 1e-12
-    carried = jnp.abs(flux) > tolerance  # evanescent (or cutoff) ports are left unscaled
-    root = jnp.where(carried, jnp.sqrt(jnp.where(carried, jnp.abs(flux), 1.0)), 1.0)
-    s = raw * root[..., :, None] / root[..., None, :]
-    return PlanarSMatrix(s=s, propagating=jnp.broadcast_to(carried, s.shape[:-1]))
+    k_par = (
+        jnp.sqrt(jnp.asarray(eps_top)) * jnp.sin(jnp.asarray(incidence_rad))
+        if kx is None
+        else jnp.asarray(kx)
+    )
+    return _normalize_smatrix(raw, k_par, eps_top, eps_bottom)
 
 
 def solve_crossed_grating(
@@ -723,6 +730,7 @@ def solve_crossed_grating(
         :class:`CrossedGratingResult`: ``orders`` ``[N, 2]`` and ``r``, ``t``,
         ``R``, ``T`` ``[..., N, out, in]``. Only order (0, 0) is incident.
     """
+    _check_x64()
     orders, zeroth, scattering, flux_in, flux_out = _scattering(
         layers, period_um, wavelength_um, incidence_rad, eps_incident, eps_exit, max_order,
         azimuth_rad, factorization, doublings, grid, truncation,

@@ -25,6 +25,48 @@ from hyperbolic_optics import bcm, dispersion, modes  # noqa: E402
 EYE = jnp.eye(3, dtype=complex)
 
 
+def test_thick_slab_finds_every_analytic_mode():
+    reference = TestSlabModes()
+    reference.T, reference.N_CLAD = 10.0, 1.0
+    expected = sorted(
+        n
+        for pol in ("te", "tm")
+        for parity in ("even", "odd")
+        for n in reference._analytic(4.0, 4.0, 4.0, pol, parity)
+    )
+    found = modes.slab_modes(4 * EYE[None], jnp.array([10.0]), 1.55, 1.0, 1.0)
+    assert len(expected) == 46
+    np.testing.assert_allclose(sorted(m.effective_index.real for m in found), expected, atol=1e-9)
+
+
+@pytest.mark.parametrize("thickness", [0.2455, 0.25])
+def test_modes_just_above_cutoff_are_found(thickness):
+    # Si in SiO2: the first odd modes sit 5e-5 to 1e-4 above the cladding index,
+    # next to the branch point that bounds the default search
+    reference = TestSlabModes()
+    reference.T, reference.N_CLAD = thickness, np.sqrt(2.085)
+    expected = sorted(
+        n
+        for pol in ("te", "tm")
+        for parity in ("even", "odd")
+        for n in reference._analytic(12.1, 12.1, 12.1, pol, parity)
+        if n > reference.N_CLAD * (1 + 1e-6)  # slab_modes' guard against the branch point
+    )
+    found = modes.slab_modes(12.1 * EYE[None], jnp.array([thickness]), 1.55, 2.085, 2.085)
+    assert len(expected) >= 3
+    np.testing.assert_allclose(sorted(m.effective_index.real for m in found), expected, atol=1e-9)
+
+
+def test_magnetic_default_bounds_match_electromagnetic_duality():
+    args = (jnp.array([0.5]), 1.55, 1.0, 1.0)
+    electric = modes.slab_modes(4 * EYE[None], *args)
+    magnetic = modes.slab_modes(EYE[None], *args, mu=4 * EYE[None])
+    assert len(electric) == len(magnetic) == 4
+    np.testing.assert_allclose(
+        [m.effective_index for m in magnetic], [m.effective_index for m in electric], atol=1e-9
+    )
+
+
 class TestSlabModes:
     WAVELENGTH, T, N_CLAD = 1.55, 0.6, 1.45
 
