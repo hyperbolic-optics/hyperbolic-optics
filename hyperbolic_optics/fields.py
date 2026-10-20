@@ -230,6 +230,10 @@ class FieldProfile:
         by incident p. They equal ``Structure.calculate_transmissivity`` exactly;
         ``transmittance`` then converts |amplitude|² to *power* with the correct
         Poynting/impedance weighting. Presentation shape.
+
+        For crystal exits these are eigenmode coordinates. At a degeneracy
+        their basis can rotate between eigensolvers, changing the coefficients;
+        reconstructed fields and power remain invariant.
         """
         if self.use_cascade:
             stable = scattering_coefficients(self.layers, self.k_0)

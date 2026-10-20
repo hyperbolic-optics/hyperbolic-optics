@@ -20,9 +20,95 @@ import pytest
 
 from hyperbolic_optics.fields import FieldProfile
 from hyperbolic_optics.structure import Structure
+from hyperbolic_optics.waves import Wave
 
 ISOTROPIC_EXIT_EPS = 2.25
 PRISM_EPS = 5.5
+
+
+class TestDegenerateSicExit:
+    """SiC modal amplitudes depend on the degenerate basis; physical fields do not."""
+
+    @pytest.mark.parametrize("backend", ["transfer", "scattering"])
+    @pytest.mark.parametrize("mix_basis", [False, True])
+    def test_aln_film_fields_match_analytic_solution(self, backend, mix_basis, monkeypatch):
+        if mix_basis:
+            original = Wave.wave_sorting
+            angle = 0.37
+            rotation = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
+            def mixed(wave):
+                forward, backward, down, up = original(wave)
+                if wave.semi_infinite:
+                    np.testing.assert_allclose(forward[..., 0], forward[..., 1], atol=1e-12)
+                    down, up = down @ rotation, up @ rotation
+                return forward, backward, down, up
+
+            monkeypatch.setattr(Wave, "wave_sorting", mixed)
+
+        structure = Structure()
+        structure.execute(
+            {
+                "ScenarioData": {
+                    "type": "Incident",
+                    "incidentAngle": [0.0, 10.0, 30.0, 55.0, 75.0, 85.0],
+                    "frequency": [650.0, 750.0, 850.0, 950.0, 1000.0, 1040.0],
+                },
+                "Layers": [
+                    {"type": "Ambient Incident Layer", "permittivity": 11.56},
+                    {"type": "Crystal Layer", "material": "AlN", "thickness": 1.0, "rotationY": 0},
+                    {"type": "Semi Infinite Anisotropic Layer", "material": "SiC", "rotationY": 0},
+                ],
+            },
+            backend=backend,
+        )
+        profile = FieldProfile(structure)
+        kx = structure.k_x
+        q0 = np.sqrt(11.56 - kx**2 + 0j)
+        optical_depth = structure.k_0 * structure.layers[1].thickness
+
+        for polarization in ("s", "p"):
+            admittance = [q0 if polarization == "s" else 11.56 / q0]
+            propagation, shifts = [], []
+            for layer in structure.layers[1:]:
+                eps = layer.eps_tensor
+                # The payload engine adds 1e-8 rad about y even at rotationY=0.
+                # Include εxz in the analytic TM dispersion and phase exactly.
+                if polarization == "s":
+                    q = np.sqrt(eps[..., 1, 1] - kx**2 + 0j)
+                    shift = 0.0
+                    y = q
+                else:
+                    xx, zz, xz = eps[..., 0, 0], eps[..., 2, 2], eps[..., 0, 2]
+                    q = np.sqrt((xx * zz - xz**2) * (zz - kx**2) / zz**2 + 0j)
+                    q = np.where(q.imag < 0, -q, q)
+                    shift = -kx * xz / zz
+                    y = q * zz / (zz - kx**2)
+                propagation.append(q)
+                shifts.append(shift)
+                admittance.append(y)
+            y0, y1, y2 = admittance
+            r01, r12 = (y0 - y1) / (y0 + y1), (y1 - y2) / (y1 + y2)
+            phase = np.exp(1j * propagation[0] * optical_depth)
+            transmitted = (
+                (1 + r01)
+                * (1 + r12)
+                * phase
+                * np.exp(1j * shifts[0] * optical_depth)
+                / (1 + r01 * r12 * phase**2)
+            )
+            zero = np.zeros_like(transmitted)
+            if polarization == "s":
+                expected = np.stack([zero, transmitted, -y2 * transmitted, zero], axis=-1)
+            else:
+                transmitted = transmitted * q0 / np.sqrt(11.56)
+                expected = np.stack([transmitted, zero, zero, y2 * transmitted], axis=-1)
+            actual = profile._solve(polarization)[4][-1]
+            np.testing.assert_allclose(actual, expected, rtol=1e-11, atol=1e-12)
+
+        if mix_basis:
+            # Modal cross terms can be nonzero despite zero physical cross-polarization.
+            assert np.max(abs(profile.transmission_coefficients()["t_ps"])) > 0.01
 
 
 def stack(exit_layer, incident_angle=30.0, gap_thickness=0.5):

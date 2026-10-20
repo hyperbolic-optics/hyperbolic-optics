@@ -48,4 +48,12 @@ than bit-values, and so hold on any platform: ``test_physical_invariants.py``
 comparisons in ``test_scattering.py``.
 
 Regenerate deliberately, never casually.
+
+The SiC/AlN snapshot's four modal transmission coefficients are excluded from
+comparison: isotropic SiC has degenerate exit eigenvalues, so LAPACK may rotate
+the eigenvectors and change those coordinates without changing any field.
+Its reflection, Mueller and power snapshots remain checked. The portable
+``TestDegenerateSicExit`` regression compares Cartesian transmitted fields
+with an independent analytic film solution for both backends, including an
+explicit rotation of the degenerate basis. No snapshot was regenerated.
 """

@@ -60,6 +60,12 @@ def test_golden(name):
         f"{name}: snapshot keys {set(golden.files)} != computed keys {set(actual)}"
     )
     for key in golden.files:
+        if name == "sic_aln_stack_incident" and key in {"fp_t_ss", "fp_t_ps", "fp_t_sp", "fp_t_pp"}:
+            # SiC is isotropic: its degenerate exit eigenvectors may mix under
+            # LAPACK changes. Their coordinates are not physical observables.
+            # TestDegenerateSicExit checks Cartesian fields against the analytic
+            # film solution, including an explicitly rotated eigenbasis.
+            continue
         np.testing.assert_allclose(
             actual[key],
             golden[key],
