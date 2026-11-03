@@ -2,90 +2,150 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/citation/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/contributing/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/bcm/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/beams/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/dispersion/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/fields/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/gdsfactory/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/jones/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/layers/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/materials/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/metasurfaces/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/modes/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/mueller/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/plots/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/rcwa/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/rcwa2d/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/sax/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/scattering/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/scenario/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/structure/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/api/sweep/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/examples/basic/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/getting-started/installation/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/getting-started/quickstart/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/concepts/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/crossed-gratings/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/differentiable/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/gdsfactory/</loc>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/gratings/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/jones/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/materials/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/modes/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/mueller/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/power/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
+    </url>
+    <url>
+         <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/sax/</loc>
+         <lastmod>2026-11-03</lastmod>
     </url>
     <url>
          <loc>https://hyperbolic-optics.github.io/hyperbolic-optics/user-guide/scenarios/</loc>
-         <lastmod>2026-07-28</lastmod>
+         <lastmod>2026-11-03</lastmod>
     </url>
 </urlset>
